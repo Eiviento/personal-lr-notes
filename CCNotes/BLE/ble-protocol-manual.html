@@ -192,6 +192,34 @@ body{
   .topbar__title{font-size:13px;}
   .main{padding:20px 16px;}
 }
+
+/* ==================== Content Typography ==================== */
+.main-section{margin-bottom:40px;scroll-margin-top:calc(var(--topbar-height) + 16px);}
+.section-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:20px;padding-bottom:8px;border-bottom:2px solid var(--blue);}
+.section-subtitle{font-size:17px;font-weight:600;color:var(--text);margin-top:28px;margin-bottom:12px;}
+.section-subsubtitle{font-size:15px;font-weight:600;color:var(--text);margin-top:20px;margin-bottom:10px;}
+.section-text{font-size:14px;line-height:1.8;color:var(--text);margin-bottom:14px;}
+
+/* ==================== Data Tables ==================== */
+.data-table{width:100%;border-collapse:collapse;margin:16px 0 20px;font-size:13px;}
+.data-table th,.data-table td{border:1px solid var(--border);padding:8px 12px;text-align:left;vertical-align:top;}
+.data-table th{background:var(--surface);font-weight:600;color:var(--text);white-space:nowrap;}
+.data-table td{color:var(--text-secondary);}
+.data-table tr:nth-child(even) td{background:var(--surface);}
+.data-table code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover);padding:1px 5px;border-radius:3px;color:var(--cyan);}
+
+/* ==================== ASCII Diagrams ==================== */
+.ascii-diagram{font-family:var(--font-mono);font-size:12px;line-height:1.4;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px;overflow-x:auto;margin:12px 0 16px;color:var(--text);white-space:pre;tab-size:2;-moz-tab-size:2;}
+
+/* ==================== Callout Blocks ==================== */
+.callout{border-left:4px solid var(--blue);background:var(--surface);padding:12px 16px;margin:16px 0 20px;border-radius:0 6px 6px 0;font-size:13px;color:var(--text-secondary);line-height:1.7;}
+.callout strong{color:var(--text);}
+
+/* ==================== Inline Code ==================== */
+code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover);padding:1px 5px;border-radius:3px;color:var(--cyan);}
+
+/* ==================== Placeholder Component Markers ==================== */
+[data-component]{margin:12px 0 16px;min-height:40px;}
 </style>
 </head>
 <body>
@@ -213,7 +241,1454 @@ body{
   <!-- Sidebar Navigation -->
   <nav class="sidebar" id="sidebarContent"></nav>
   <!-- Main Content Area -->
-  <main class="main" id="mainContent">内容加载中...</main>
+  <main class="main" id="mainContent">
+
+<section id="sec-overview" class="main-section">
+
+  <h2 class="section-title">一、协议栈总览与阅读路线</h2>
+
+  <blockquote class="callout"><strong>面向读者</strong>：已了解 BLE 基本概念，需要系统查阅各层报文格式、字段定义、操作码全集的开发者。<br>
+  <strong>阅读路线</strong>：第一章总览树 → 沿协议栈自底向上逐层查阅。到 L2CAP 层后分两路：<strong>SMP（安全/加密路）</strong>和 <strong>ATT/GATT（数据路）</strong>，最后在第九章"加密完整流程"两条路汇合。</blockquote>
+
+  <h3 class="section-subtitle" id="sec-overview-stack">1.1 协议栈树状图</h3>
+
+  <pre class="ascii-diagram">                           应用层 (App)
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+              SMP (CID=0x0006)      ATT (CID=0x0004)
+              安全管理器               属性协议
+              [配对待加密]            [读写通知]
+                    │                     │
+                    └──────────┬──────────┘
+                               │
+                         L2CAP 层 (CID 复用/分片重组)
+                               │
+                         HCI (Host↔Controller 内部接口，不过空中)
+                               │
+                    链路层 (Link Layer)
+                    ┌──────────┴──────────┐
+                    │                     │
+              广告信道 (37/38/39)     数据信道 (0~36)
+              ADV_IND / SCAN /        LL Data PDU / LL Control PDU
+              CONNECT_IND             [跳频 + 加密]
+                    │                     │
+                    └──────────┬──────────┘
+                               │
+                          物理层 (PHY)
+                    2.4GHz GFSK, Preamble + Access Address</pre>
+
+  <h3 class="section-subtitle" id="sec-overview-layers">1.2 各层一句话定位</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>层</th><th>一句话</th><th>关键标识</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>PHY</strong></td><td>无线电波怎么调制、帧头怎么同步</td><td>Preamble 0xAA, Access Address</td></tr>
+      <tr><td><strong>Link Layer</strong></td><td>包怎么发、怎么确认、怎么跳频</td><td>PDU Header: PDU Type(广告) / LLID(数据)</td></tr>
+      <tr><td><strong>HCI</strong></td><td>芯片内部 Host↔Controller 通信</td><td>不过空中，ATA 抓包看不到</td></tr>
+      <tr><td><strong>L2CAP</strong></td><td>协议复用（给 SMP 还是 ATT？）、分片重组</td><td>CID 字段</td></tr>
+      <tr><td><strong>SMP</strong></td><td>配对、密钥交换、身份认证</td><td>CID=0x0006, 7 种 PDU Code</td></tr>
+      <tr><td><strong>ATT/GATT</strong></td><td>数据读写通知的"语言"和数据组织</td><td>CID=0x0004, 20+ 种 Opcode</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-overview-flow">1.3 一条完整连接的报文序列全景</h3>
+
+  <pre class="ascii-diagram">设备B (Peripheral)                           设备A (Central)
+  │                                               │
+  │ ═══════════ 广播阶段 (37/38/39 信道) ═══════════│
+  │ ADV_IND [AdvA + AdvData(LTV)] ───────────────→│
+  │←─────────────── SCAN_REQ ────────────────────│  (可选)
+  │ SCAN_RSP ───────────────────────────────────→│  (可选)
+  │←─────────────── CONNECT_IND ────────────────│
+  │                                               │
+  │ ═══════════ 连接阶段 (数据信道 0~36) ════════════│
+  │←──→ LL Data PDU / LL Control PDU ──←──→      │
+  │   (参数协商: VERSION_IND, FEATURE_REQ/RSP)    │
+  │                                               │
+  │ ═══════════ SMP 配对 (L2CAP CID=0x0006) ═══════ │
+  │←──→ Pairing Req/Rsp → Public Key →            │
+  │     DHKey Check → Key Distribution            │
+  │                                               │
+  │ ═══════════ 链路加密 ═══════════════════════════ │
+  │ LL_ENC_REQ/RSP → LL_START_ENC_REQ/RSP         │
+  │ ═════════ 此后全部 AES-CCM 加密 ═══════════════ │
+  │                                               │
+  │ ═══════════ ATT 数据交互 (L2CAP CID=0x0004) ════ │
+  │←──→ discoverServices → read/write/notify      │
+  │                                               │
+  │ ═══════════ 断开 ═══════════════════════════════ │
+  │ LL_TERMINATE_IND ────────────────────────────→│</pre>
+
+  <blockquote class="callout"><strong>阅读建议</strong>：如果只想查某个字段/Opcode，直接跳到第十章综合速查表。</blockquote>
+
+  <div data-component="protocol-stack"></div>
+
+</section>
+
+<section id="sec-phy" class="main-section">
+
+  <h2 class="section-title">二、物理层 — 空中帧结构</h2>
+
+  <h3 class="section-subtitle" id="sec-phy-frame">2.1 完整空中帧</h3>
+
+  <p class="section-text">所有 BLE 包在空中的完整结构（从 PHY 层看）：</p>
+
+  <pre class="ascii-diagram">┌──────────┬──────────────┬──────────────────────────────────┬───────┬─────┐
+│ Preamble │Access Address│              PDU                 │  MIC  │ CRC │
+│  1 字节   │   4 字节      │ ┌──────────┬──────────────────┐ │ 4 字节 │3 字节│
+│  0xAA    │              │ │LL Header │    Payload        │ │       │     │
+│          │              │ │  2 字节   │  0~251 字节       │ │       │     │
+└──────────┴──────────────┴─┴──────────┴──────────────────┴─┴───────┴─────┘</pre>
+
+  <div data-component="bit-layout" data-id="air-frame"></div>
+
+  <h3 class="section-subtitle" id="sec-phy-aa">2.2 Access Address</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>阶段</th><th>Access Address</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>广告包</strong></td><td><code>0x8E89BED6</code></td><td>蓝牙规范固定值，所有 BLE 设备共用</td></tr>
+      <tr><td><strong>数据包</strong></td><td>32-bit 随机值</td><td>CONNECT_IND 的 AA 字段下发，每个连接唯一</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>作用</strong>：</p>
+  <p class="section-text">广告包：链路层硬件用 0x8E89BED6 识别"这是一个 BLE 广播包"</p>
+  <p class="section-text">数据包：链路层硬件用 AA 过滤——匹配才收，不匹配直接丢弃（不消耗 CPU）</p>
+
+  <h3 class="section-subtitle" id="sec-phy-mic-crc">2.3 MIC 与 CRC</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th></th><th>MIC (Message Integrity Check)</th><th>CRC (Cyclic Redundancy Check)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>位置</strong></td><td>紧接 Payload 之后</td><td>帧末尾 3 字节</td></tr>
+      <tr><td><strong>大小</strong></td><td>4 字节</td><td>3 字节</td></tr>
+      <tr><td><strong>目的</strong></td><td>防<strong>人为篡改</strong>（安全）</td><td>防<strong>物理误码</strong>（噪声干扰）</td></tr>
+      <tr><td><strong>算法</strong></td><td>AES-CBC-MAC（用 Session Key）</td><td>多项式除法（公开算法）</td></tr>
+      <tr><td><strong>明文/密文</strong></td><td>加密时随 Payload 一起加密</td><td>始终明文</td></tr>
+      <tr><td><strong>何时出现</strong></td><td>仅加密后的 Data PDU 有</td><td>所有包都有</td></tr>
+      <tr><td><strong>验证方</strong></td><td>只有持有 LTK 的配对双方</td><td>任何人都能算</td></tr>
+    </tbody>
+  </table>
+
+  <blockquote class="callout">CRC 防天灾（无线噪声），MIC 防人祸（篡改攻击）。</blockquote>
+
+</section>
+
+<section id="sec-ll-adv" class="main-section">
+
+  <h2 class="section-title">三、链路层 — 广播阶段（广告信道）</h2>
+
+  <p class="section-text">链路层 PDU Header 有<strong>两套格式</strong>——广告信道和数据信道完全不同。本章讲广告信道。</p>
+
+  <h3 class="section-subtitle" id="sec-adv-header">3.1 广告信道 PDU Header 格式（16 bit）</h3>
+
+  <pre class="ascii-diagram"> bit: [15:8]    [7]   [6]    [5]    [4]   [3:0]
+     ┌────────┬──────┬──────┬──────┬─────┬──────────┐
+     │ Length │RxAdd │TxAdd │ChSel │ RFU │ PDU Type │
+     │ 8 bit  │ 1b   │ 1b   │ 1b   │ 1b  │  4 bit   │
+     └────────┴──────┴──────┴──────┴─────┴──────────┘</pre>
+
+  <div data-component="bit-layout" data-id="adv-pdu-header"></div>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>位宽</th><th>位范围</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>PDU Type</strong></td><td>4 bit</td><td>[3:0]</td><td>0000=ADV_IND, 0001=ADV_DIRECT_IND, 0010=ADV_NONCONN_IND, 0011=SCAN_REQ, 0100=SCAN_RSP, 0101=CONNECT_IND, 0110=ADV_SCAN_IND</td></tr>
+      <tr><td>RFU</td><td>1 bit</td><td>[4]</td><td>Reserved (保留)</td></tr>
+      <tr><td>ChSel</td><td>1 bit</td><td>[5]</td><td>信道选择算法: 0=Algorithm1, 1=Algorithm2</td></tr>
+      <tr><td>TxAdd</td><td>1 bit</td><td>[6]</td><td>发送方地址类型: 0=Public MAC, 1=Random MAC</td></tr>
+      <tr><td>RxAdd</td><td>1 bit</td><td>[7]</td><td>目标方地址类型: 0=Public MAC, 1=Random MAC（仅 ADV_DIRECT_IND 和 CONNECT_IND 使用）</td></tr>
+      <tr><td><strong>Length</strong></td><td>8 bit</td><td>[15:8]</td><td>Payload 字节数（6~37）</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-adv-payload">3.2 广告 PDU Payload 结构（AdvA + AdvData）</h3>
+
+  <p class="section-text">广播 PDU 的 Payload 格式因 PDU Type 而异：</p>
+
+  <pre class="ascii-diagram">ADV_IND / ADV_NONCONN_IND / ADV_SCAN_IND:
+  [AdvA(6B)] [AdvData(0~31B)]
+   └─── Payload ─────────────┘
+
+ADV_DIRECT_IND:
+  [AdvA(6B)] [InitA(6B)]     ← 无 AdvData
+   └── Payload=12B ──────────┘
+
+SCAN_REQ:
+  [ScanA(6B)] [AdvA(6B)]
+   └── Payload=12B ───┘
+
+SCAN_RSP:
+  [AdvA(6B)] [ScanRspData(0~31B)]
+   └─── Payload ─────────────────┘
+
+CONNECT_IND:
+  [InitA(6B)] [AdvA(6B)] [LLData(22B)]
+   └── Payload=34B ───────────────────┘</pre>
+
+  <h3 class="section-subtitle" id="sec-ltv">3.3 AdvData / ScanRspData — AD Structure LTV 格式</h3>
+
+  <p class="section-text">广播数据用 <strong>LTV（Length-Type-Value）</strong> 自描述格式编码，多个 AD Structure 依次拼接。</p>
+
+  <h4 class="section-subsubtitle">3.3.1 单个 AD Structure 格式</h4>
+
+  <pre class="ascii-diagram">┌──────────┬──────────┬─────────────────────┐
+│  Length  │ AD Type  │      AD Data        │
+│  1 字节   │  1 字节   │  (Length-1 字节)    │
+└──────────┴──────────┴─────────────────────┘</pre>
+
+  <div data-component="bit-layout" data-id="ltv-structure"></div>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>含义</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>L (Length)</strong></td><td>1 字节</td><td>Type + Data 的总长度（不含自身）。值为 0 表示 AD 列表结束</td></tr>
+      <tr><td><strong>T (Type)</strong></td><td>1 字节</td><td>由蓝牙 SIG 统一分配的 AD Type 编号</td></tr>
+      <tr><td><strong>V (Value)</strong></td><td>Length-1 字节</td><td>实际数据，格式取决于 AD Type</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">3.3.2 解析规则</h4>
+
+  <pre class="ascii-diagram">逐字节解析：
+  读 Length → 如果为 0，结束
+            → 如果 &gt; 0，读取 Type (1B) + Data (Length-1 B)
+            → 指针前进 Length 字节 → 继续读下一个 Length</pre>
+
+  <h4 class="section-subsubtitle">3.3.3 实例</h4>
+
+  <pre class="ascii-diagram">02 01 06        ← Length=2, Type=0x01(Flags), Data=0x06
+03 03 0F 18     ← Length=3, Type=0x03(Complete 16-bit UUIDs), Data=0x0F 0x18
+                   → UUID 列表: 0x180F (Battery Service)
+09 09 46 4C 4F 57 4D 45 54 45 52
+                ← Length=9, Type=0x09(Complete Local Name), Data="FLOWMETER"
+00              ← Length=0, AD 列表结束</pre>
+
+  <h4 class="section-subsubtitle">3.3.4 常用 AD Type 速查表</h4>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>AD Type</th><th>名称</th><th>Data 格式</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>0x01</strong></td><td>Flags</td><td>1 字节位掩码</td><td><strong>必须排第一个</strong>。bit0=LE Limited Discoverable, bit1=LE General Discoverable, bit2=BR/EDR Not Supported</td></tr>
+      <tr><td>0x02</td><td>Incomplete 16-bit Service UUIDs</td><td>多个 16-bit UUID (小端)</td><td>放不下的服务 UUID，需 SCAN_RSP 补全</td></tr>
+      <tr><td>0x03</td><td>Complete 16-bit Service UUIDs</td><td>多个 16-bit UUID (小端)</td><td>完整的 16-bit 服务 UUID 列表</td></tr>
+      <tr><td>0x06</td><td>Incomplete 128-bit Service UUIDs</td><td>多个 128-bit UUID</td><td>同上，128-bit 版本</td></tr>
+      <tr><td>0x07</td><td>Complete 128-bit Service UUIDs</td><td>多个 128-bit UUID</td><td>同上，128-bit 版本</td></tr>
+      <tr><td>0x08</td><td>Shortened Local Name</td><td>UTF-8 字符串</td><td>设备简称</td></tr>
+      <tr><td><strong>0x09</strong></td><td>Complete Local Name</td><td>UTF-8 字符串</td><td>设备全名（如 "FLOWMETER"）</td></tr>
+      <tr><td><strong>0x0A</strong></td><td>TX Power Level</td><td>1 字节有符号整数</td><td>发射功率 dBm（用于距离估算）</td></tr>
+      <tr><td>0x16</td><td>Service Data (16-bit UUID)</td><td>UUID(2B) + Data</td><td>服务关联数据</td></tr>
+      <tr><td><strong>0xFF</strong></td><td>Manufacturer Specific Data</td><td>Company ID(2B 小端) + 自定义</td><td>厂商自定义数据（如 iBeacon）</td></tr>
+    </tbody>
+  </table>
+
+  <blockquote class="callout"><strong>LTV 的优势</strong>：自描述格式——解析方不需要预先知道 31 字节里放了什么，逐字节解析即可。新增 AD Type 不影响兼容性。</blockquote>
+
+  <h3 class="section-subtitle" id="sec-adv-conn">3.4 广播→连接流程与各 PDU 报文</h3>
+
+  <pre class="ascii-diagram">设备B (Peripheral)                        设备A (Central)
+  │                                           │
+  │ ADV_IND ─────────────────────────────────→│  (a) 37/38/39 信道轮发
+  │   PDU Type=0000, AdvA, AdvData(LTV)       │
+  │                                           │
+  │←──────────── SCAN_REQ ──────────────────  │  (b) 可选，主动扫描时发
+  │             PDU Type=0011                 │
+  │ SCAN_RSP ───────────────────────────────→│  (c) 可选，额外 31 字节
+  │   PDU Type=0100, AdvA, ScanRspData        │
+  │                                           │
+  │←──────────── CONNECT_IND ─────────────── │  (d) 发起连接
+  │             PDU Type=0101, Payload=34B    │
+  │                                           │
+══╪══════════ Connection ═══════════════════╪══</pre>
+
+  <h4 class="section-subsubtitle">(a) ADV_IND 报文</h4>
+
+  <p class="section-text"><strong>PDU Header (16 bit)</strong>：PDU Type=0000, RFU=0, ChSel=0, TxAdd=0/1, RxAdd=0, Length=6+AdvData长度</p>
+  <p class="section-text"><strong>PDU Payload</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>AdvA</td><td>6 字节</td><td>广播方 MAC 地址</td></tr>
+      <tr><td>AdvData</td><td>0~31 字节</td><td>AD Structure LTV 格式</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">(b) SCAN_REQ 报文</h4>
+
+  <p class="section-text"><strong>PDU Header</strong>：PDU Type=0011, Length=12</p>
+  <p class="section-text"><strong>PDU Payload (12 字节)</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>ScanA</td><td>6 字节</td><td>扫描方 MAC 地址</td></tr>
+      <tr><td>AdvA</td><td>6 字节</td><td>目标广播方 MAC（确认是发给我的）</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">(c) SCAN_RSP 报文</h4>
+
+  <p class="section-text"><strong>PDU Header</strong>：PDU Type=0100, Length=6+ScanRspData长度</p>
+  <p class="section-text"><strong>PDU Payload</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>AdvA</td><td>6 字节</td><td>广播方 MAC</td></tr>
+      <tr><td>ScanRspData</td><td>0~31 字节</td><td>AD Structure LTV 格式（额外数据）</td></tr>
+    </tbody>
+  </table>
+
+  <blockquote class="callout">AdvData(31B) + ScanRspData(31B) = 最多 <strong>62 字节</strong>广播数据。</blockquote>
+
+  <h4 class="section-subsubtitle">(d) CONNECT_IND 报文 — 最重要的一个包</h4>
+
+  <p class="section-text"><strong>PDU Header</strong>：PDU Type=0101, Length=34</p>
+  <p class="section-text"><strong>PDU Payload (34 字节)</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>InitA</td><td>6 字节</td><td>发起方 MAC</td></tr>
+      <tr><td>AdvA</td><td>6 字节</td><td>广播方 MAC</td></tr>
+      <tr><td><strong>AA</strong></td><td><strong>4 字节</strong></td><td><strong>32 位随机 Access Address</strong> ← 后续所有数据包用这个值标识连接</td></tr>
+      <tr><td>CRCInit</td><td>3 字节</td><td>CRC 计算初始值</td></tr>
+      <tr><td>WinSize</td><td>1 字节</td><td>传输窗口 = 1.25ms × WinSize</td></tr>
+      <tr><td>WinOffset</td><td>2 字节</td><td>第一次连接事件偏移 = 1.25ms × WinOffset</td></tr>
+      <tr><td><strong>Interval</strong></td><td>2 字节</td><td>连接间隔 = 1.25ms × Interval（7.5ms ~ 4s）</td></tr>
+      <tr><td>Latency</td><td>2 字节</td><td>从设备可跳过的连接事件次数（0~499）</td></tr>
+      <tr><td><strong>Timeout</strong></td><td>2 字节</td><td>监督超时 = 10ms × Timeout（100ms ~ 32s）</td></tr>
+      <tr><td>ChM</td><td>5 字节</td><td>37 位信道图：bit=1 表示可用</td></tr>
+      <tr><td>Hop</td><td>1 字节</td><td>跳频增量（5~16，必须与 37 互质）</td></tr>
+      <tr><td>SCA</td><td>1 字节</td><td>睡眠时钟精度（0~7，ppm）</td></tr>
+    </tbody>
+  </table>
+
+  <div data-component="bit-layout" data-id="connect-ind-payload"></div>
+
+  <p class="section-text"><strong>关键约束</strong>：</p>
+
+  <pre class="ascii-diagram">(1 + Latency) × Interval × 2 ≤ Timeout</pre>
+
+  <p class="section-text">违反此约束可能导致从设备跳过一次事件后被误判断连。</p>
+  <p class="section-text"><strong>CONNECT_IND 之后</strong>：双方立即进入 Connection State。数据包用 Access Address = AA（替代 MAC 地址），按 ChM 指定的信道跳频通信。从设备不回复 ACK——真正的确认是第一次连接事件中从设备在 150μs 内回复。</p>
+
+  <h3 class="section-subtitle" id="sec-adv-decision">3.5 广播 PDU 类型选择决策</h3>
+
+  <pre class="ascii-diagram">需要被连接？
+├── 是 → 限制谁能连？
+│   ├── 是（已知 MAC） → ADV_DIRECT_IND (Payload=12B, 无 AdvData)
+│   └── 否             → ADV_IND (最常用)
+└── 否 → 需要更多广播数据？
+    ├── 是 → ADV_SCAN_IND (+ SCAN_RSP = 62B)
+    └── 否 → ADV_NONCONN_IND (纯信标)</pre>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>PDU Type</th><th>PDU Type 值</th><th>可扫描</th><th>可连接</th><th>有 AdvData</th><th>典型场景</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>ADV_IND</td><td>0000</td><td>✅</td><td>✅</td><td>✅</td><td>通用广播等连接</td></tr>
+      <tr><td>ADV_DIRECT_IND</td><td>0001</td><td>❌</td><td>✅ (仅 InitA)</td><td>❌</td><td>快速重连已配对设备</td></tr>
+      <tr><td>ADV_NONCONN_IND</td><td>0010</td><td>❌</td><td>❌</td><td>✅</td><td>iBeacon/Eddystone 信标</td></tr>
+      <tr><td>ADV_SCAN_IND</td><td>0110</td><td>✅</td><td>❌</td><td>✅</td><td>仅广播+额外信息</td></tr>
+    </tbody>
+  </table>
+
+</section>
+
+<section id="sec-ll-conn" class="main-section">
+
+  <h2 class="section-title">四、链路层 — 连接阶段（数据信道）</h2>
+
+  <p class="section-text">连接建立后，所有通信在数据信道（0~36）上进行。PDU Header 从"广告信道格式"切换为"数据信道格式"。</p>
+
+  <h3 class="section-subtitle" id="sec-data-header">4.1 数据信道 PDU Header 格式（16 bit）</h3>
+
+  <pre class="ascii-diagram"> bit: [15:8]    [7:6]  [5]   [4]   [3]   [2]   [1:0]
+     ┌────────┬──────┬─────┬─────┬─────┬─────┬────────┐
+     │ Length │ RFU  │ CP  │ MD  │ SN  │NESN │  LLID  │
+     │ 8 bit  │ 2b   │ 1b  │ 1b  │ 1b  │ 1b  │ 2 bit  │
+     └────────┴──────┴─────┴─────┴─────┴─────┴────────┘</pre>
+
+  <div data-component="bit-layout" data-id="data-pdu-header"></div>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>位宽</th><th>位范围</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>LLID</strong></td><td>2 bit</td><td>[1:0]</td><td><strong>10</strong>=LL Data PDU（起始片段）, <strong>01</strong>=LL Data PDU（空包/续传片段）, <strong>11</strong>=LL Control PDU</td></tr>
+      <tr><td><strong>NESN</strong></td><td>1 bit</td><td>[2]</td><td>Next Expected SN——确认对方上一包已收，期望对方下一个包的 SN 值</td></tr>
+      <tr><td><strong>SN</strong></td><td>1 bit</td><td>[3]</td><td>Sequence Number——本包序列号（0/1 翻转=新包, 相同=重传包）</td></tr>
+      <tr><td><strong>MD</strong></td><td>1 bit</td><td>[4]</td><td>More Data——1=本连接事件内还有更多数据要发</td></tr>
+      <tr><td><strong>CP</strong></td><td>1 bit</td><td>[5]</td><td>Coded PHY 指示（BLE 5.0: 0=非Coded PHY, 1=Coded PHY）</td></tr>
+      <tr><td>RFU</td><td>2 bit</td><td>[7:6]</td><td>Reserved</td></tr>
+      <tr><td><strong>Length</strong></td><td>8 bit</td><td>[15:8]</td><td>Payload 字节数（0=空包, 最大 27/251 取决于特性协商）</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>SN/NESN 确认重传机制</strong>：</p>
+
+  <pre class="ascii-diagram">停等协议（Stop-and-Wait）：一次只发一包，收到回复才发下一包。
+
+SN:  本包序列号，新包 0→1→0→1 交替翻转
+     连续两包 SN 相同 → 这是重传
+NESN: 告诉对方"我收到了你 SN=X 的包，期待你的下一个 SN=NESN"
+     确认和期望打包在同一个字段里
+
+例：Master(SN=0) → Slave 回复(NESN=1) → Master(SN=1) → ...</pre>
+
+  <h3 class="section-subtitle" id="sec-llid">4.2 LLID 决定 PDU 类型</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>LLID</th><th>PDU 类型</th><th>含义</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>10</td><td><strong>LL Data PDU</strong></td><td>承载上层数据（L2CAP→ATT 或 SMP），起始片段</td></tr>
+      <tr><td>01</td><td><strong>LL Data PDU</strong></td><td>空包（维持心跳/确认）或分片续传片段</td></tr>
+      <tr><td>11</td><td><strong>LL Control PDU</strong></td><td>链路层自身管理命令</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-ll-data">4.3 LL Data PDU 结构</h3>
+
+  <pre class="ascii-diagram">┌──────────┬────────────────────────────────────┬───────┬─────┐
+│LL Header │              Payload                │  MIC  │ CRC │
+│  2 字节   │ ┌──────────┬─────────────────────┐ │ 4 字节 │3 字节│
+│LLID=10   │ │ L2CAP头  │   上层协议数据       │ │(加密时)│     │
+│          │ │Len(2)+CID│                     │ │       │     │
+└──────────┴─┴──────────┴─────────────────────┴─┴───────┴─────┘</pre>
+
+  <p class="section-text"><strong>Payload = L2CAP 包</strong>（详见第六章）。LL Data PDU 本身不关心 Payload 里的内容——它只是"卡车"，把 L2CAP 包从 A 运到 B。</p>
+
+  <p class="section-text"><strong>LL Data PDU — 空包（LLID=01, Length=0）</strong>：</p>
+
+  <pre class="ascii-diagram">┌──────────┬─────┐
+│LL Header │ CRC │  ← 无 Payload, 无 MIC
+│  2 字节   │3 字节│
+└──────────┴─────┘</pre>
+
+  <p class="section-text">空包的作用：① 确认收到对方上一包（通过 NESN） ② 维持连接心跳 ③ 从设备没数据时"签到"。</p>
+
+  <h3 class="section-subtitle" id="sec-ll-control">4.4 LL Control PDU 结构</h3>
+
+  <pre class="ascii-diagram">┌──────────┬────────┬──────────────────┬─────┐
+│LL Header │ Opcode │  Control Data    │ CRC │
+│  2 字节   │  1 字节 │  (可变长度)       │3 字节│
+│LLID=11   │  始终明文│                  │     │
+└──────────┴────────┴──────────────────┴─────┘</pre>
+
+  <p class="section-text"><strong>LL Control PDU Opcode 全集</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Opcode</th><th>PDU 名称</th><th>方向</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x00</td><td>LL_CONNECTION_UPDATE_REQ</td><td>M→S</td><td>更新连接参数</td></tr>
+      <tr><td>0x01</td><td>LL_CHANNEL_MAP_REQ</td><td>M→S</td><td>更新信道图</td></tr>
+      <tr><td>0x02</td><td>LL_TERMINATE_IND</td><td>双向</td><td>断开连接</td></tr>
+      <tr><td>0x03</td><td>LL_ENC_REQ</td><td>M→S</td><td>加密请求</td></tr>
+      <tr><td>0x04</td><td>LL_ENC_RSP</td><td>S→M</td><td>加密响应</td></tr>
+      <tr><td>0x05</td><td>LL_START_ENC_REQ</td><td>M→S</td><td>开始加密（明文！）</td></tr>
+      <tr><td>0x06</td><td>LL_START_ENC_RSP</td><td>S→M</td><td>开始加密确认（明文！）</td></tr>
+      <tr><td>0x07</td><td>LL_UNKNOWN_RSP</td><td>双向</td><td>收到未知 Control PDU</td></tr>
+      <tr><td>0x08</td><td>LL_FEATURE_REQ</td><td>双向</td><td>特性交换请求</td></tr>
+      <tr><td>0x09</td><td>LL_FEATURE_RSP</td><td>双向</td><td>特性交换响应</td></tr>
+      <tr><td>0x0A</td><td>LL_PAUSE_ENC_REQ</td><td>双向</td><td>暂停加密 (5.1+)</td></tr>
+      <tr><td>0x0B</td><td>LL_PAUSE_ENC_RSP</td><td>双向</td><td>暂停加密确认</td></tr>
+      <tr><td>0x0C</td><td>LL_VERSION_IND</td><td>双向</td><td>版本通知（无 Req/Rsp，单向）</td></tr>
+      <tr><td>0x0D</td><td>LL_REJECT_IND</td><td>双向</td><td>拒绝不支持的 Control PDU</td></tr>
+      <tr><td>0x0E</td><td>LL_SLAVE_FEATURE_REQ</td><td>S→M</td><td>从设备主动特性请求 (4.2+)</td></tr>
+      <tr><td>0x14</td><td>LL_PHY_REQ</td><td>双向</td><td>PHY 更新请求 (5.0)</td></tr>
+      <tr><td>0x15</td><td>LL_PHY_RSP</td><td>双向</td><td>PHY 更新响应</td></tr>
+      <tr><td>0x16</td><td>LL_LENGTH_REQ</td><td>双向</td><td>数据长度扩展请求 (4.2)</td></tr>
+      <tr><td>0x17</td><td>LL_LENGTH_RSP</td><td>双向</td><td>数据长度扩展响应</td></tr>
+      <tr><td>0x19</td><td>LL_PERIODIC_SYNC_IND</td><td>—</td><td>周期广播同步 (5.0)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-ll-control-payload">4.5 关键 Control PDU Payload 详解</h3>
+
+  <h4 class="section-subsubtitle">LL_CONNECTION_UPDATE_REQ (Opcode=0x00, Length=11)</h4>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>0x00</td></tr>
+      <tr><td>WinSize</td><td>1 字节</td><td></td></tr>
+      <tr><td>WinOffset</td><td>2 字节</td><td>= 1.25ms × WinOffset</td></tr>
+      <tr><td>Interval</td><td>2 字节</td><td>新连接间隔</td></tr>
+      <tr><td>Latency</td><td>2 字节</td><td>新从设备延迟</td></tr>
+      <tr><td>Timeout</td><td>2 字节</td><td>新监督超时</td></tr>
+      <tr><td>Instant</td><td>2 字节</td><td>生效时刻（连接事件计数器值）</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>无 Response</strong>：接受则在 Instant 时刻自动切换；拒绝则回 LL_REJECT_IND。</p>
+
+  <h4 class="section-subsubtitle">LL_CHANNEL_MAP_REQ (Opcode=0x01, Length=8)</h4>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>0x01</td></tr>
+      <tr><td>ChM</td><td>5 字节</td><td>37 位信道图（bit=1=可用）</td></tr>
+      <tr><td>Instant</td><td>2 字节</td><td>生效时刻</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">LL_TERMINATE_IND (Opcode=0x02, Length=2)</h4>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>0x02</td></tr>
+      <tr><td>ErrorCode</td><td>1 字节</td><td>断开原因码</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">LL_VERSION_IND (Opcode=0x0C, Length=6)</h4>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>0x0C</td></tr>
+      <tr><td>VersNr</td><td>1 字节</td><td>蓝牙控制器版本号（如 9=4.2, 10=5.0）</td></tr>
+      <tr><td>CompId</td><td>2 字节</td><td>公司 ID</td></tr>
+      <tr><td>SubVersNr</td><td>2 字节</td><td>固件子版本号</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">LL_FEATURE_REQ/RSP (Opcode=0x08/0x09, Length=9)</h4>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>0x08(Req) / 0x09(Rsp)</td></tr>
+      <tr><td>FeatureSet</td><td>8 字节</td><td>64 位特性位掩码</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>FeatureSet 关键位</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>位</th><th>特性</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>bit 0</td><td>LE Encryption</td><td>支持链路层加密</td></tr>
+      <tr><td>bit 1</td><td>Connection Parameters Request</td><td>支持连接参数请求</td></tr>
+      <tr><td>bit 3</td><td>Slave-initiated Features Exchange</td><td>从设备可主动发起特性交换</td></tr>
+      <tr><td>bit 5</td><td>LE Data Packet Length Extension</td><td>支持 251 字节 Payload (4.2+)</td></tr>
+      <tr><td>bit 8</td><td>LE 2M PHY</td><td>支持 2Mbps PHY (5.0)</td></tr>
+      <tr><td>bit 9</td><td>LE Coded PHY</td><td>支持 Coded PHY (5.0 长距离)</td></tr>
+      <tr><td>bit 10</td><td>LE Extended Advertising</td><td>支持扩展广播 (5.0)</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">LL_PHY_REQ/RSP (Opcode=0x14/0x15, Length=3)</h4>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>0x14(Req) / 0x15(Rsp)</td></tr>
+      <tr><td>TX_PHYS</td><td>1 字节</td><td>bit0=1M, bit1=2M, bit2=Coded(S8), bit3=Coded(S2)</td></tr>
+      <tr><td>RX_PHYS</td><td>1 字节</td><td>同上</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">LL_LENGTH_REQ/RSP (Opcode=0x16/0x17, Length=9)</h4>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>0x16(Req) / 0x17(Rsp)</td></tr>
+      <tr><td>MaxRxOctets</td><td>2 字节</td><td>最大接收 Payload 字节数 (27~251)</td></tr>
+      <tr><td>MaxRxTime</td><td>2 字节</td><td>最大接收时间（μs）</td></tr>
+      <tr><td>MaxTxOctets</td><td>2 字节</td><td>最大发送 Payload 字节数</td></tr>
+      <tr><td>MaxTxTime</td><td>2 字节</td><td>最大发送时间（μs）</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">LL_REJECT_IND (Opcode=0x0D, Length=3)</h4>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>0x0D</td></tr>
+      <tr><td>RejectOpcode</td><td>1 字节</td><td>被拒绝的 Control PDU Opcode</td></tr>
+      <tr><td>ErrorCode</td><td>1 字节</td><td>拒绝原因</td></tr>
+    </tbody>
+  </table>
+
+</section>
+
+<section id="sec-hci" class="main-section">
+
+  <h2 class="section-title">五、HCI — 主机控制器接口（简述）</h2>
+
+  <p class="section-text">HCI 是 Host（主 CPU）和 Controller（蓝牙 IC）之间的<strong>内部通信协议</strong>，不过空中。</p>
+
+  <pre class="ascii-diagram">┌──── Host（主 CPU）────┐          ┌── Controller（蓝牙 IC）──┐
+│ App → GATT → ATT      │  HCI     │ 链路层 → PHY            │
+│          ↓            │ ──────→  │   ↓                     │
+│        L2CAP          │ UART/SPI │  拆 HCI 头 → 组装       │
+│   [+HCI ACL 头]       │          │  LL Data PDU → 发出     │
+└───────────────────────┘          └─────────────────────────┘</pre>
+
+  <p class="section-text"><strong>HCI ACL 头的作用</strong>：Host 发给 Controller 时标注"这是发给哪条连接的（Connection Handle）"。Controller 收到后撕掉 HCI 头，只把 L2CAP 包装到 LL Data PDU 里。</p>
+
+  <blockquote class="callout"><strong>空中抓包看不到 HCI 头</strong>——它在芯片之间的 UART/SPI 上跑，不进 2.4GHz。</blockquote>
+
+</section>
+
+<section id="sec-l2cap" class="main-section">
+
+  <h2 class="section-title">六、L2CAP — 逻辑链路控制与适配协议</h2>
+
+  <p class="section-text">L2CAP 解决两个问题：</p>
+  <p class="section-text">1. <strong>协议复用</strong>：同一个 LL Data PDU 通道里，区分 ATT 还是 SMP？靠 CID</p>
+  <p class="section-text">2. <strong>分片重组（SAR）</strong>：上层数据大于链路层 Payload 时切分，接收方重组</p>
+
+  <h3 class="section-subtitle" id="sec-l2cap-fmt">6.1 L2CAP 包格式</h3>
+
+  <pre class="ascii-diagram">┌──────────────────┬──────────────────┬─────────────────────────┐
+│    Length        │       CID        │    Information Payload  │
+│    2 字节         │     2 字节       │    (Length 字节)        │
+└──────────────────┴──────────────────┴─────────────────────────┘</pre>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Length</td><td>2 字节</td><td>Payload 字节数（不含自身和 CID），纸面上限 65535</td></tr>
+      <tr><td>CID</td><td>2 字节</td><td>信道标识符——决定 Payload 交给哪个上层协议</td></tr>
+      <tr><td>Payload</td><td>Length 字节</td><td>上层协议 PDU（ATT / SMP / L2CAP Signaling 等）</td></tr>
+    </tbody>
+  </table>
+
+  <blockquote class="callout">Length 是纯长度值，不含标志位。实际能传多少由 ATT MTU（~517）和 LL Payload（27/251）联合决定。</blockquote>
+
+  <h3 class="section-subtitle" id="sec-l2cap-cid">6.2 CID 全集</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>CID</th><th>协议</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>0x0004</strong></td><td><strong>ATT</strong></td><td>属性协议——GATT 读写通知走这条路</td></tr>
+      <tr><td>0x0005</td><td>L2CAP Signaling</td><td>L2CAP 层自身控制命令（参数更新等）</td></tr>
+      <tr><td><strong>0x0006</strong></td><td><strong>SMP</strong></td><td>安全管理器——配对/加密/密钥分发</td></tr>
+      <tr><td>0x0020~0x003F</td><td>LE Credit Based</td><td>面向连接的自定义信道 (4.2+)</td></tr>
+    </tbody>
+  </table>
+
+  <blockquote class="callout">CID 对 App 层透明，Android BLE 协议栈自动处理。</blockquote>
+
+  <h3 class="section-subtitle" id="sec-l2cap-sig">6.3 L2CAP Signaling（CID=0x0005）— 控制命令</h3>
+
+  <p class="section-text">用于 L2CAP 层自身的参数协商。BLE 中最常用的是<strong>连接参数更新</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Code</th><th>命令</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x01</td><td>Command Reject</td><td>拒绝不支持的 L2CAP 命令</td></tr>
+      <tr><td>0x12</td><td>Connection Parameter Update Request</td><td><strong>从设备主动请求修改连接参数</strong></td></tr>
+      <tr><td>0x13</td><td>Connection Parameter Update Response</td><td>Master 对更新请求的响应</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>LL Control vs L2CAP Signaling 改连接参数的区别</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th></th><th>LL_CONNECTION_UPDATE_REQ (LL层)</th><th>L2CAP Connection Parameter Update (L2CAP层)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>谁发起</strong></td><td>仅 Master</td><td>Master 或 Slave</td></tr>
+      <tr><td><strong>响应</strong></td><td>无 Response（接受=即时生效，拒绝=LL_REJECT_IND）</td><td>有 Request/Response 配对</td></tr>
+      <tr><td><strong>如何承载</strong></td><td>LL Control PDU (LLID=11)</td><td>LL Data PDU (LLID=10) → L2CAP CID=0x0005</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text">两条路都能改连接参数，Slave 想改参数时必须走 L2CAP 路。</p>
+
+</section>
+
+<section id="sec-smp" class="main-section">
+
+  <h2 class="section-title">七、SMP — 安全管理器（左分叉，CID=0x0006）</h2>
+
+  <p class="section-text">SMP 负责配对、密钥交换、身份认证、密钥分发。所有 SMP PDU 承载在 LL Data PDU → L2CAP CID=0x0006 中。</p>
+
+  <h3 class="section-subtitle" id="sec-smp-format">7.1 SMP PDU 通用格式与 Code 全集</h3>
+
+  <pre class="ascii-diagram">┌──────┬──────────────────────────┐
+│ Code │        Data              │
+│ 1 字节│    (可变，取决于 Code)    │
+└──────┴──────────────────────────┘</pre>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Code</th><th>PDU 名称</th><th>方向</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x01</td><td>Pairing Request</td><td>双向</td><td>配对特征交换（IO Cap/AuthReq）</td></tr>
+      <tr><td>0x02</td><td>Pairing Response</td><td>双向</td><td>配对特征响应</td></tr>
+      <tr><td>0x03</td><td>Pairing Confirm</td><td>双向</td><td>Legacy 配对确认值</td></tr>
+      <tr><td>0x04</td><td>Pairing Random</td><td>双向</td><td>Legacy 配对随机数</td></tr>
+      <tr><td>0x05</td><td>Pairing Failed</td><td>双向</td><td>配对失败通知</td></tr>
+      <tr><td>0x06</td><td>Encryption Information</td><td>双向</td><td>分发 LTK</td></tr>
+      <tr><td>0x07</td><td>Master Identification</td><td>双向</td><td>分发 EDIV + Rand</td></tr>
+      <tr><td>0x08</td><td>Identity Information</td><td>双向</td><td>分发 IRK</td></tr>
+      <tr><td>0x09</td><td>Identity Address Information</td><td>双向</td><td>分发身份地址</td></tr>
+      <tr><td>0x0A</td><td>Signing Information</td><td>双向</td><td>分发 CSRK</td></tr>
+      <tr><td>0x0B</td><td>Security Request</td><td>S→M</td><td>从设备请求 Master 启动加密</td></tr>
+      <tr><td>0x0C</td><td><strong>Pairing Public Key</strong></td><td>双向</td><td><strong>SC: ECDH P-256 公钥（64 字节）</strong></td></tr>
+      <tr><td>0x0D</td><td><strong>Pairing DHKey Check</strong></td><td>双向</td><td><strong>SC: DHKey 一致性校验</strong></td></tr>
+      <tr><td>0x0E</td><td>Pairing Keypress Notification</td><td>双向</td><td>Passkey Entry 按键确认</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-smp-phases">7.2 配对完整四阶段流程</h3>
+
+  <pre class="ascii-diagram">                     Phase 1              Phase 2          Phase 3        Phase 4
+                配对特征交换             密钥交换            认证           密钥分发
+                   ────────             ────────          ────────       ────────
+                   SMP Req/Rsp     Public Key (ECDH)   NumComp/JustW   DHKey Check
+                   交换 IO CAP     或 Confirm+Random     Passkey        分发 LTK/IRK
+                                     (Legacy)                        /CSRK/地址</pre>
+
+  <div data-component="flowchart" data-id="pairing-phases"></div>
+
+  <p class="section-text"><strong>四种配对方式路径</strong>：</p>
+
+  <pre class="ascii-diagram">                     Phase1: 交换 IO Capabilities
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                ▼
+       都支持 SC?         Legacy 设备      任一方 NoInputNoOutput
+              │                │                │
+        ┌─────┴─────┐    ┌────┴────┐          ▼
+        ▼           ▼    ▼         ▼      Just Works
+  双方都有显示?  一方无显示  │   一方显示一方键盘   (不验证身份)
+        │           │    │         │
+        ▼           ▼    ▼         ▼
+   Numeric      Just    Just    Passkey
+   Comparison   Works   Works    Entry
+   (用户比对)  (无验证) (TK=0)  (输PIN)</pre>
+
+  <div data-component="flowchart" data-id="auth-paths"></div>
+
+  <h3 class="section-subtitle" id="sec-smp-phase1">7.3 Phase 1：配对特征交换</h3>
+
+  <pre class="ascii-diagram">设备A (Central)                          设备B (Peripheral)
+  │                                         │
+  │ SMP Pairing Request ───────────────────→│ Code=0x01
+  │←────── SMP Pairing Response ───────────┤ Code=0x02</pre>
+
+  <p class="section-text"><strong>SMP Pairing Request/Response PDU</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Code</td><td>1 字节</td><td>0x01(Req) / 0x02(Rsp)</td></tr>
+      <tr><td><strong>IO Capability</strong></td><td>1 字节</td><td>0x00=DisplayOnly, 0x01=DisplayYesNo, 0x02=KeyboardOnly, 0x03=NoInputNoOutput, 0x04=KeyboardDisplay</td></tr>
+      <tr><td>OOB Data Flag</td><td>1 字节</td><td>0x00=不使用 OOB</td></tr>
+      <tr><td><strong>AuthReq</strong></td><td>1 字节</td><td>bit0=Bonding, bit2=MITM, bit3=SC, bit4=Keypress</td></tr>
+      <tr><td>Maximum Key Size</td><td>1 字节</td><td>密钥长度 (7~16)</td></tr>
+      <tr><td>Initiator Key Dist</td><td>1 字节</td><td>发起方要分发的密钥类型位图</td></tr>
+      <tr><td>Responder Key Dist</td><td>1 字节</td><td>响应方要分发的密钥类型位图</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>IO Capability 决定配对方式的规则</strong>：</p>
+
+  <pre class="ascii-diagram">任一方 IO=NoInputNoOutput → Just Works
+双方 IO 都有显示能力 + 都支持 SC → Numeric Comparison
+一方 DisplayOnly + 一方 KeyboardOnly → Passkey Entry
+其他组合 → Just Works</pre>
+
+  <h3 class="section-subtitle" id="sec-smp-phase2">7.4 Phase 2：密钥交换</h3>
+
+  <p class="section-text"><strong>LE Legacy Pairing（BLE 4.0/4.1）</strong></p>
+
+  <p class="section-text">用 <strong>TK（Temporary Key）→ STK（Short Term Key）</strong>。</p>
+
+  <pre class="ascii-diagram">Just Works: TK = 0  (不安全！)
+Passkey:    TK = 6 位 PIN → 20 bit 安全强度
+OOB:        TK = OOB 渠道交换的 128 bit
+
+Mconfirm = AES-CMAC(TK, Mrand || 配对参数)
+Sconfirm = AES-CMAC(TK, Srand || 配对参数)
+
+交互序列:
+  M → S: SMP Pairing Confirm (0x03) [Confirm=16B]
+  S → M: SMP Pairing Confirm (0x03) [Confirm=16B]
+  M → S: SMP Pairing Random  (0x04) [Random=16B]
+  S → M: SMP Pairing Random  (0x04) [Random=16B]
+
+双方验证: 自己算 Confirm == 收到 Confirm → 通过
+STK = AES-CMAC(TK, Mrand || Srand)</pre>
+
+  <blockquote class="callout"><strong>Legacy 关键弱点</strong>：Just Works 时 TK=0 → 旁听者抓到 Mconfirm+Mrand 即可算出 STK → 完全透明解密。</blockquote>
+
+  <p class="section-text"><strong>LE Secure Connections（BLE 4.2+）</strong></p>
+
+  <p class="section-text">用 <strong>ECDH P-256</strong>，密钥强度 128-bit，不依赖 PIN。</p>
+
+  <pre class="ascii-diagram">双方各生成 ECDH P-256 密钥对:
+  sk_a (256-bit 私钥) → Pka = sk_a × G (公钥, 64 字节)
+  sk_b (256-bit 私钥) → Pkb = sk_b × G (公钥, 64 字节)
+
+交互:
+  M → S: SMP Public Key (0x0C) [Pka: X(32B) + Y(32B) = 64B]
+  S → M: SMP Public Key (0x0C) [Pkb: X(32B) + Y(32B) = 64B]
+
+双方各自计算: DHKey = ECDH(自己的私钥, 对方的公钥)
+             = sk_a × Pkb = sk_b × Pka = sk_a × sk_b × G  ← 相同！</pre>
+
+  <p class="section-text"><strong>公钥明文传输没关系</strong>——ECDH 安全性不依赖公钥保密，而依赖椭圆曲线离散对数难题（从公钥反推私钥在数学上不可行）。</p>
+
+  <h3 class="section-subtitle" id="sec-smp-phase3">7.5 Phase 3：认证（四种路径）</h3>
+
+  <p class="section-text"><strong>路径 A：Numeric Comparison（最安全）</strong></p>
+
+  <pre class="ascii-diagram">M → S: Na (128-bit 随机数)
+S → M: Nb (128-bit 随机数)
+
+双方各自计算:
+  C = f4(Pka, Pkb, Na, Nb, 0)
+  → 取高 32 位 → 转 6 位十进制数字
+
+双方屏幕各显示 6 位数字 → 用户肉眼比对 → 一致按确认
+
+M → S: SMP Confirm (0x03) // 用户确认后发
+
+为什么防 MITM:
+  攻击者替换公钥 → 双方算出的数字不同 → 用户发现 → 拒绝</pre>
+
+  <p class="section-text"><strong>路径 B：Just Works（SC 版本）</strong></p>
+
+  <pre class="ascii-diagram">跳过 Phase 3 验证（不显示 6 位数字）。
+密钥仍是 128-bit ECDH → 防被动窃听
+不防主动 MITM → 攻击者可在 Phase 2 拦截并替换公钥
+  Phone ←→ M(SessionKey₁) ←→ 耳机(SessionKey₂)
+  M 完全透明读、改、转发一切
+
+但比 Legacy Just Works 安全得多：
+  Legacy: 旁听者也能解密（TK=0 → STK 极易算）
+  SC:     至少需要攻击者主动介入配对过程</pre>
+
+  <p class="section-text"><strong>路径 C：Passkey Entry（SC 版本）</strong></p>
+
+  <pre class="ascii-diagram">一方显示 6 位 PIN → 用户输入到另一方
+PIN 作为 Na/Nb 种子参与 f4
+→ 只有输入相同 PIN 的双方才能生成相同确认码
+→ PIN 起到身份验证作用</pre>
+
+  <p class="section-text"><strong>路径 D：Legacy Just Works / Passkey</strong></p>
+
+  <pre class="ascii-diagram">Legacy Just Works: TK=0, 旁听即可破
+Legacy Passkey: TK=6位PIN, 20-bit安全, 可暴力破解</pre>
+
+  <h3 class="section-subtitle" id="sec-smp-phase4">7.6 Phase 4：DHKey 校验 → 密钥派生 → 密钥分发</h3>
+
+  <p class="section-text"><strong>DHKey Check（仅 SC）</strong></p>
+
+  <pre class="ascii-diagram">双方各自计算:
+  MacKey = f5(DHKey, Na, Nb, "macKey", ...) 的第二部分
+  Check  = AES-CMAC(MacKey, DHKey || Na || Nb || IO Caps || AddrA || AddrB)
+
+M → S: SMP DHKey Check (0x0D) [Check=16B]
+S → M: SMP DHKey Check (0x0D) [Check=16B]
+→ 双方验证一致 = 密钥交换未被篡改</pre>
+
+  <p class="section-text"><strong>密钥派生链</strong></p>
+
+  <pre class="ascii-diagram">                ECDH(sk_a, Pkb) = DHKey
+                         │
+           ┌─────────────┼─────────────┐
+           ▼             ▼             ▼
+     f5 → LTK       f5 → MacKey    f6 → 校验值
+      (128-bit)       (128-bit)      (128-bit)
+     存入绑定表       用于SC验证      用于完整性校验
+
+
+后续每条连接:
+  LTK ──AES-CMAC(LTK, SKDm||SKDs)──→ SessionKey (128-bit)
+                                        ↑ 每次连接全新随机数</pre>
+
+  <p class="section-text"><strong>密钥分发</strong></p>
+
+  <p class="section-text">加密隧道建立后分发长期密钥（各 PDU 由新加密链路保护）：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Code</th><th>PDU</th><th>大小</th><th>内容</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x06</td><td>Encryption Info</td><td>16B</td><td><strong>LTK</strong>（长期密钥）</td></tr>
+      <tr><td>0x07</td><td>Master ID</td><td>10B</td><td>EDIV(2B) + Rand(8B) ← 下次找 LTK 的索引</td></tr>
+      <tr><td>0x08</td><td>Identity Info</td><td>16B</td><td><strong>IRK</strong>（身份解析密钥，解析 RPA 私有地址）</td></tr>
+      <tr><td>0x09</td><td>Identity Address</td><td>7B</td><td>AddrType(1B) + Addr(6B) ← 对方的身份地址</td></tr>
+      <tr><td>0x0A</td><td>Signing Info</td><td>16B</td><td><strong>CSRK</strong>（连接签名密钥，用于数据签名）</td></tr>
+    </tbody>
+  </table>
+
+  <blockquote class="callout"><strong>EDIV+Rand 的作用</strong>：类似"钥匙串编号"——下次重连时，Master 在 LL_ENC_REQ 中带上这组值，Slave 用它在绑定表中查找对应的 LTK。</blockquote>
+
+</section>
+
+<section id="sec-att" class="main-section">
+
+  <h2 class="section-title">八、ATT / GATT — 属性协议（右分叉，CID=0x0004）</h2>
+
+  <p class="section-text">ATT 定义数据交互的"动词"（怎么读写），GATT 定义数据的"名词"（怎么组织）。承载于 LL Data PDU → L2CAP CID=0x0004。</p>
+
+  <h3 class="section-subtitle" id="sec-att-format">8.1 ATT PDU 通用格式</h3>
+
+  <pre class="ascii-diagram">┌────────┬──────────────────────────────┐
+│ Opcode │       Parameters             │
+│ 1 字节  │   (0 ~ MTU-1 字节)           │
+└────────┴──────────────────────────────┘
+
+Opcode 结构:
+  Bit [5:0] = Method (具体操作)
+  Bit [6]   = Command Flag (0=需响应, 1=无需响应)
+  Bit [7]   = Authentication Signature Flag (0=无签名, 1=有CSRK签名)</pre>
+
+  <h3 class="section-subtitle" id="sec-att-opcode">8.2 ATT Opcode 全集</h3>
+
+  <p class="section-text"><strong>读操作（Requests）</strong></p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Opcode</th><th>PDU 名称</th><th>参数</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x0A</td><td>Read Request</td><td>Handle(2B)</td><td>读取指定 Handle 的值</td></tr>
+      <tr><td>0x0B</td><td>Read Response</td><td>Value(变长)</td><td>返回读取的数据</td></tr>
+      <tr><td>0x0C</td><td>Read Blob Request</td><td>Handle(2B) + Offset(2B)</td><td>长数据分段续读</td></tr>
+      <tr><td>0x0D</td><td>Read Blob Response</td><td>Part Value(变长)</td><td>返回一段数据</td></tr>
+      <tr><td>0x08</td><td>Read By Type Request</td><td>StartHandle(2B) + EndHandle(2B) + UUID(2/16B)</td><td>范围内搜索同类型属性 → 发现 Characteristic</td></tr>
+      <tr><td>0x09</td><td>Read By Type Response</td><td>多个 [Handle(2B)+Value]</td><td>返回匹配的属性列表</td></tr>
+      <tr><td>0x10</td><td>Read By Group Type Request</td><td>StartHandle(2B) + EndHandle(2B) + UUID(2/16B)</td><td>范围内搜索组类型属性 → 发现 Service</td></tr>
+      <tr><td>0x11</td><td>Read By Group Type Response</td><td>多个 [StartHandle+EndHandle+Value]</td><td>返回 Service 列表</td></tr>
+      <tr><td>0x04</td><td>Find Information Request</td><td>StartHandle(2B) + EndHandle(2B)</td><td>范围内发现所有属性 → 发现 Descriptor</td></tr>
+      <tr><td>0x05</td><td>Find Information Response</td><td>多个 [Handle(2B)+UUID(2/16B)]</td><td>返回属性信息列表</td></tr>
+      <tr><td>0x06</td><td>Find By Type Value Request</td><td>StartHandle+EndHandle+Type(2B)+Value</td><td>按类型+值搜索</td></tr>
+      <tr><td>0x07</td><td>Find By Type Value Response</td><td>多个 [Handle范围]</td><td>返回匹配的属性 Handle</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>写操作（Requests &amp; Commands）</strong></p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Opcode</th><th>PDU 名称</th><th>参数</th><th>确认？</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x12</td><td>Write Request</td><td>Handle(2B) + Value(变长)</td><td>✅ 有</td><td>带确认写</td></tr>
+      <tr><td>0x13</td><td>Write Response</td><td>无</td><td>—</td><td>写确认回复</td></tr>
+      <tr><td><strong>0x52</strong></td><td><strong>Write Command</strong></td><td>Handle(2B) + Value(变长)</td><td>❌ 无</td><td>无确认快速写（bit6=1 → 0x12|0x40=0x52）</td></tr>
+      <tr><td>0xD2</td><td>Signed Write Command</td><td>Handle(2B) + Value + CSRK签名(12B)</td><td>❌ 无</td><td>带 CSRK 签名写</td></tr>
+      <tr><td>0x16</td><td>Prepare Write Request</td><td>Handle(2B) + Offset(2B) + PartValue</td><td>✅ 有</td><td>长写准备（不立即生效）</td></tr>
+      <tr><td>0x17</td><td>Prepare Write Response</td><td>Handle(2B) + Offset(2B) + PartValue</td><td>—</td><td>回显准备的内容</td></tr>
+      <tr><td>0x18</td><td>Execute Write Request</td><td>Flags(1B: 0x00=取消, 0x01=原子提交)</td><td>✅ 有</td><td>提交或取消所有 Prepare</td></tr>
+      <tr><td>0x19</td><td>Execute Write Response</td><td>无</td><td>—</td><td>提交确认</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>通知与指示（Server → Client 推送）</strong></p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Opcode</th><th>PDU 名称</th><th>参数</th><th>确认？</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>0x1B</strong></td><td><strong>Handle Value Notification</strong></td><td>Handle(2B) + Value(变长)</td><td>❌ 无</td><td>通知推送（快，不可靠）</td></tr>
+      <tr><td>0x1D</td><td>Handle Value Indication</td><td>Handle(2B) + Value(变长)</td><td>✅ 有</td><td>指示推送（慢，可靠）</td></tr>
+      <tr><td>0x1E</td><td>Handle Value Confirmation</td><td>无</td><td>—</td><td>指示确认回复</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>Notification vs Indication 选择</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th></th><th>Notification</th><th>Indication</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>可靠性</strong></td><td>不可靠（丢了就丢了）</td><td>可靠（等 CFM 才发下一个）</td></tr>
+      <tr><td><strong>速度</strong></td><td>快</td><td>慢（必须等确认）</td></tr>
+      <tr><td><strong>适用场景</strong></td><td>流速/累计流量（丢了下一包马上到）</td><td>报警事件（绝对不能丢）</td></tr>
+      <tr><td><strong>CCCD 值</strong></td><td>0x0001</td><td>0x0002</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>错误与 MTU</strong></p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Opcode</th><th>PDU 名称</th><th>参数</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x01</td><td>Error Response</td><td>ReqOpcode(1B) + Handle(2B) + ErrorCode(1B)</td><td>操作失败通知</td></tr>
+      <tr><td>0x02</td><td>Exchange MTU Request</td><td>ClientRxMTU(2B)</td><td>MTU 协商请求</td></tr>
+      <tr><td>0x03</td><td>Exchange MTU Response</td><td>ServerRxMTU(2B)</td><td>MTU 协商响应 → ATT MTU = min(两者)</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>常用 ATT Error Code</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>值</th><th>名称</th><th>含义</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x01</td><td>Invalid Handle</td><td>Handle 不存在</td></tr>
+      <tr><td>0x02</td><td>Read Not Permitted</td><td>无读权限</td></tr>
+      <tr><td>0x03</td><td>Write Not Permitted</td><td>无写权限</td></tr>
+      <tr><td>0x05</td><td>Insufficient Authentication</td><td>未配对认证</td></tr>
+      <tr><td>0x08</td><td>Insufficient Encryption</td><td>未加密或加密强度不够</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-gatt">8.3 GATT 数据组织</h3>
+
+  <pre class="ascii-diagram">Profile (概念层，不存在于 Attribute DB)
+└── Service (功能模块)
+    ├── Declaration [Handle=N][Type=0x2800/0x2801][Value=Service UUID]
+    │
+    └── Characteristic (具体数据项)
+        ├── Declaration [Handle=M][Type=0x2803][Value=Properties(1B)+ValueHandle(2B)+UUID]
+        ├── Value [Handle=ValueHandle][Type=UUID][Value=实际数据]
+        └── Descriptor (CCCD/CUD等，可选)
+            └── [Handle][Type][Value]</pre>
+
+  <p class="section-text"><strong>UUID 分配规律</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>UUID 前缀</th><th>类别</th><th>示例</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x18XX</td><td>Service</td><td>0x180F=Battery Service, 0x180A=Device Information, 0x1800=GAP, 0x1801=GATT</td></tr>
+      <tr><td>0x2AXX</td><td>Characteristic</td><td>0x2A19=Battery Level, 0x2A6E=Temperature</td></tr>
+      <tr><td>0x29XX</td><td>Descriptor</td><td><strong>0x2902=CCCD</strong>（最重要）</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>CCCD（Client Characteristic Configuration Descriptor, UUID=0x2902）</strong>：控制 Notification/Indication 的开关。</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>CCCD 值</th><th>含义</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x0000</td><td>关闭（默认值，连接断开时自动重置为此值）</td></tr>
+      <tr><td>0x0001</td><td>启用 Notification</td></tr>
+      <tr><td>0x0002</td><td>启用 Indication</td></tr>
+    </tbody>
+  </table>
+
+  <blockquote class="callout">⚠️ <strong>重连后必须重新写 CCCD</strong>——连接断开时设备端 CCCD 自动归零。</blockquote>
+
+  <h3 class="section-subtitle" id="sec-discovery">8.4 服务发现流程（discoverServices）</h3>
+
+  <p class="section-text">三个 Round 逐一"探"出 GATT 表：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Round</th><th>ATT PDU</th><th>查询类型</th><th>发现内容</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Read By Group Type (0x2800)</td><td>Primary Service</td><td>所有 Service UUID + Handle 范围</td></tr>
+      <tr><td>2</td><td>Read By Type (0x2803)</td><td>Characteristic</td><td>每个 Characteristic 的 Properties + ValueHandle + UUID</td></tr>
+      <tr><td>3</td><td>Find Information</td><td>所有 Handle</td><td>Handle 间隙 → Descriptor (CCCD/CUD 等)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-mtu">8.5 MTU 协商</h3>
+
+  <pre class="ascii-diagram">ATT 默认 MTU = 23 字节（ATT Payload = 23, 实际数据 = 20~22）
+协商流程:
+  Client → Server: Exchange MTU Request (0x02) [ClientRxMTU=512]
+  Server → Client: Exchange MTU Response (0x03) [ServerRxMTU=251]
+  → ATT MTU = min(512, 251) = 251
+
+Android: gatt.requestMtu(512) → onMtuChanged(mtu, status)</pre>
+
+  <blockquote class="callout">必须 <code>requestMtu</code> 再 <code>discoverServices</code>——MTU 协商在连接早期完成，后续所有操作都受益于大 MTU。</blockquote>
+
+</section>
+
+<section id="sec-encrypt" class="main-section">
+
+  <h2 class="section-title">九、加密完整流程（跨层总览）</h2>
+
+  <p class="section-text">加密是 SMP（生成 LTK）和链路层（LL_ENC_REQ/RSP 启动加密）的协作结果。</p>
+
+  <h3 class="section-subtitle" id="sec-enc-overview">9.1 分层总览</h3>
+
+  <pre class="ascii-diagram">┌───────────────────────────────────────────────┐
+│        加密的跨层协作                            │
+│                                               │
+│  SMP (L2CAP CID=0x0006)                       │
+│    ├── Phase 1~4: 配对 → 生成 LTK (128-bit)    │
+│    └── LTK 存入绑定表                           │
+│            ↓                                   │
+│  链路层 LL Control PDU                         │
+│    ├── LL_ENC_REQ/RSP:  交换 SKDm/SKDs         │
+│    ├── SessionKey = AES-CMAC(LTK, SKDm||SKDs)  │
+│    └── LL_START_ENC_REQ/RSP: 启动 AES-CCM      │
+│            ↓                                   │
+│  LL Data PDU: Payload + MIC 全程 AES-CCM 加密  │
+└───────────────────────────────────────────────┘</pre>
+
+  <div data-component="flowchart" data-id="enc-range"></div>
+
+  <h3 class="section-subtitle" id="sec-enc-handshake">9.2 首次加密：三次握手（LL_ENC_REQ → LL_ENC_RSP → LL_START_ENC）</h3>
+
+  <pre class="ascii-diagram">设备A (Master)                            设备B (Slave)
+  │                                         │
+  │ LL_ENC_REQ ────────────────────────────→│ Opcode=0x03, Length=23
+  │←─────────── LL_ENC_RSP ──────────────── │ Opcode=0x04, Length=13
+  │                                         │
+  │ SessionKey = AES-CMAC(LTK, SKDm||SKDs)  │ 双方各自计算
+  │                                         │
+  │ LL_START_ENC_REQ ──────────────────────→│ Opcode=0x05, Length=1  ← 明文！
+  │←─────────── LL_START_ENC_RSP ────────── │ Opcode=0x06, Length=1  ← 明文！
+  │                                         │
+══╪══════════ 此后全部 AES-CCM 加密 ════════╪══</pre>
+
+  <p class="section-text"><strong>LL_ENC_REQ / LL_ENC_RSP Payload</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>出现</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>两者</td><td>0x03(REQ) / 0x04(RSP)</td></tr>
+      <tr><td><strong>Rand</strong></td><td>8 字节</td><td>REQ</td><td>64-bit 随机数，配合 EDIV 查找 LTK</td></tr>
+      <tr><td><strong>EDIV</strong></td><td>2 字节</td><td>REQ</td><td>加密分集——LTK 索引号</td></tr>
+      <tr><td><strong>SKDm</strong></td><td>8 字节</td><td>REQ</td><td>Master Session Key Diversifier（每次连接全新随机）</td></tr>
+      <tr><td><strong>IVm</strong></td><td>4 字节</td><td>REQ</td><td>Master Initial Vector</td></tr>
+      <tr><td><strong>SKDs</strong></td><td>8 字节</td><td>RSP</td><td>Slave Session Key Diversifier（每次连接全新随机）</td></tr>
+      <tr><td><strong>IVs</strong></td><td>4 字节</td><td>RSP</td><td>Slave Initial Vector</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>LL_START_ENC_REQ/RSP</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>大小</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opcode</td><td>1 字节</td><td>0x05(REQ) / 0x06(RSP)</td></tr>
+    </tbody>
+  </table>
+
+  <blockquote class="callout">LL_START_ENC_REQ/RSP <strong>本身是明文</strong>——对方必须先读到"即将切换到加密模式"这条指令才能切换解密引擎。</blockquote>
+
+  <h3 class="section-subtitle" id="sec-enc-sessionkey">9.3 Session Key 派生</h3>
+
+  <pre class="ascii-diagram">SessionKey = AES-CMAC(
+    Key  = LTK (128 bit, 来自 SMP 配对/绑定),
+    Data = SKDm (64 bit) || SKDs (64 bit)
+)
+
+SKDm/SKDs 每次连接都是全新随机数
+→ SessionKey 每次都不同
+→ 防重放攻击（同一个 LTK 不能重放旧的加密流量）</pre>
+
+  <h3 class="section-subtitle" id="sec-enc-range">9.4 加密范围</h3>
+
+  <pre class="ascii-diagram">┌──────────┬──────────────┬──────────────────┬───────┬─────┐
+│Preamble  │Access Address│   PDU            │  MIC  │ CRC │
+│  1 字节   │   4 字节      │ ┌──────┬───────┐│ 4 字节 │3 字节│
+│  明文    │    明文       │ │Header│Payload││       │     │
+│          │              │ │ 明文 │ 密文  ││ 密文  │ 明文 │
+└──────────┴──────────────┴─┴──────┴───────┴─┴───────┴─────┘</pre>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>字段</th><th>加密？</th><th>原因</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Header (LLID/SN/NESN/MD/Length)</td><td>❌ <strong>明文</strong></td><td>链路层必须先解析才能处理（SN/NESN 确认重传、Length 知道后面多长）</td></tr>
+      <tr><td>Payload (L2CAP→ATT/SMP 数据)</td><td>✅ <strong>密文</strong></td><td>AES-CCM CTR 模式加密</td></tr>
+      <tr><td>MIC</td><td>✅ <strong>密文</strong></td><td>AES-CBC-MAC 生成的 4 字节防篡改标签，随 Payload 一起加密</td></tr>
+      <tr><td>CRC</td><td>❌ <strong>明文</strong></td><td>物理层误码检测，和加密无关</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-enc-reconnect">9.5 绑定设备重连 — 跳过 SMP 直接加密</h3>
+
+  <pre class="ascii-diagram">设备A                                    设备B
+  │                                         │
+══╪═══════ 连接建立 ═══════════════════════╪══
+  │                                         │
+  │ LL_ENC_REQ (EDIV+Rand → 查LTK) ───────→│  ← 跳过全部 SMP 配对！
+  │←─────────── LL_ENC_RSP ────────────────│
+  │ LL_START_ENC_REQ ──────────────────────→│
+  │←─────────── LL_START_ENC_RSP ────────── │
+  │                                         │
+══╪══════════ 加密通信 ════════════════════╪══</pre>
+
+  <blockquote class="callout">LL_ENC_REQ 中携带的 EDIV+Rand 相当于"钥匙串编号"——Slave 用它们在自己的绑定表中查找对应的 LTK。找到 → 直接进入加密，不用重新配对。</blockquote>
+
+  <h3 class="section-subtitle" id="sec-enc-errors">9.6 异常情况</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>场景</th><th>触发条件</th><th>后果</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>加密拒绝</strong></td><td>设备不支持加密或密钥缺失</td><td>LL_REJECT_IND (RejectOpcode=0x03)，连接继续(明文)或断开</td></tr>
+      <tr><td><strong>MIC 校验失败</strong></td><td>双方 LTK 不一致（常见：重装APP或清数据后重连）</td><td>包丢弃 → 连续失败 → LL_TERMINATE_IND (ErrorCode=0x05)</td></tr>
+      <tr><td><strong>加密暂停</strong></td><td>BLE 5.1+ 需要更新密钥</td><td>LL_PAUSE_ENC_REQ/RSP → 明文状态下分发新 LTK → 重新 ENC_REQ</td></tr>
+    </tbody>
+  </table>
+
+  <p class="section-text"><strong>MIC 失败排查</strong>：最常见原因是双方 LTK 不一致——例如手机端 removeBond() 删了绑定但设备端还保留旧 LTK。解决：双方都清绑定 → 重新配对。</p>
+
+</section>
+
+<section id="sec-ref" class="main-section">
+
+  <h2 class="section-title">十、综合速查表</h2>
+
+  <div data-component="ref-tables"></div>
+
+  <h3 class="section-subtitle" id="sec-ref-ll">10.1 LL Control PDU Opcode</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Opcode</th><th>PDU</th><th>方向</th><th>用途</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x00</td><td>CONNECTION_UPDATE_REQ</td><td>M→S</td><td>改连接参数</td></tr>
+      <tr><td>0x01</td><td>CHANNEL_MAP_REQ</td><td>M→S</td><td>改信道图</td></tr>
+      <tr><td>0x02</td><td>TERMINATE_IND</td><td>双向</td><td>断开</td></tr>
+      <tr><td>0x03</td><td>ENC_REQ</td><td>M→S</td><td>加密请求</td></tr>
+      <tr><td>0x04</td><td>ENC_RSP</td><td>S→M</td><td>加密响应</td></tr>
+      <tr><td>0x05</td><td>START_ENC_REQ</td><td>M→S</td><td>开始加密(明文)</td></tr>
+      <tr><td>0x06</td><td>START_ENC_RSP</td><td>S→M</td><td>开始加密确认</td></tr>
+      <tr><td>0x07</td><td>UNKNOWN_RSP</td><td>双向</td><td>未知PDU</td></tr>
+      <tr><td>0x08/09</td><td>FEATURE_REQ/RSP</td><td>双向</td><td>特性协商</td></tr>
+      <tr><td>0x0A/0B</td><td>PAUSE_ENC_REQ/RSP</td><td>双向</td><td>暂停加密(5.1)</td></tr>
+      <tr><td>0x0C</td><td>VERSION_IND</td><td>双向</td><td>蓝牙版本</td></tr>
+      <tr><td>0x0D</td><td>REJECT_IND</td><td>双向</td><td>拒绝</td></tr>
+      <tr><td>0x0E</td><td>SLAVE_FEATURE_REQ</td><td>S→M</td><td>从设备特性请求</td></tr>
+      <tr><td>0x14/15</td><td>PHY_REQ/RSP</td><td>双向</td><td>PHY切换(5.0)</td></tr>
+      <tr><td>0x16/17</td><td>LENGTH_REQ/RSP</td><td>双向</td><td>长度扩展(4.2)</td></tr>
+      <tr><td>0x19</td><td>PERIODIC_SYNC_IND</td><td>—</td><td>周期同步(5.0)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-ref-smp">10.2 SMP Code</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Code</th><th>PDU</th><th>用途</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x01/02</td><td>Pairing Req/Rsp</td><td>IO Capabilities 交换</td></tr>
+      <tr><td>0x03/04</td><td>Pairing Confirm/Random</td><td>Legacy 配对验证</td></tr>
+      <tr><td>0x05</td><td>Pairing Failed</td><td>配对失败通知</td></tr>
+      <tr><td>0x06</td><td>Encryption Info</td><td>分发 LTK</td></tr>
+      <tr><td>0x07</td><td>Master ID</td><td>分发 EDIV+Rand</td></tr>
+      <tr><td>0x08/09</td><td>Identity Info/Addr</td><td>分发 IRK+地址</td></tr>
+      <tr><td>0x0A</td><td>Signing Info</td><td>分发 CSRK</td></tr>
+      <tr><td>0x0B</td><td>Security Request</td><td>S请求M启动加密</td></tr>
+      <tr><td>0x0C</td><td>Public Key</td><td>SC: ECDH 公钥(64B)</td></tr>
+      <tr><td>0x0D</td><td>DHKey Check</td><td>SC: DHKey 校验(16B)</td></tr>
+      <tr><td>0x0E</td><td>Keypress Notification</td><td>Passkey 按键确认</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-ref-att">10.3 ATT Opcode</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Opcode</th><th>PDU</th><th>类别</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x01</td><td>Error Response</td><td>错误</td></tr>
+      <tr><td>0x02/03</td><td>Exchange MTU Req/Rsp</td><td>MTU</td></tr>
+      <tr><td>0x04/05</td><td>Find Information Req/Rsp</td><td>读(发现)</td></tr>
+      <tr><td>0x06/07</td><td>Find By Type Value Req/Rsp</td><td>读(发现)</td></tr>
+      <tr><td>0x08/09</td><td>Read By Type Req/Rsp</td><td>读(发现)</td></tr>
+      <tr><td>0x0A/0B</td><td>Read Req/Rsp</td><td>读</td></tr>
+      <tr><td>0x0C/0D</td><td>Read Blob Req/Rsp</td><td>读(长)</td></tr>
+      <tr><td>0x10/11</td><td>Read By Group Type Req/Rsp</td><td>读(发现)</td></tr>
+      <tr><td>0x12/13</td><td>Write Req/Rsp</td><td>写(确认)</td></tr>
+      <tr><td>0x16/17</td><td>Prepare Write Req/Rsp</td><td>写(事务)</td></tr>
+      <tr><td>0x18/19</td><td>Execute Write Req/Rsp</td><td>写(提交)</td></tr>
+      <tr><td><strong>0x1B</strong></td><td><strong>Handle Value Notification</strong></td><td><strong>通知(无确认)</strong></td></tr>
+      <tr><td>0x1D/1E</td><td>Handle Value Ind/Conf</td><td>指示(有确认)</td></tr>
+      <tr><td><strong>0x52</strong></td><td><strong>Write Command</strong></td><td><strong>写(无确认)</strong></td></tr>
+      <tr><td>0xD2</td><td>Signed Write Command</td><td>签名写</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-ref-cid">10.4 L2CAP CID</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>CID</th><th>协议</th><th>走向</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>0x0004</strong></td><td><strong>ATT</strong></td><td>数据——GATT 读写通知</td></tr>
+      <tr><td>0x0005</td><td>L2CAP Signaling</td><td>控制——参数更新请求/响应</td></tr>
+      <tr><td><strong>0x0006</strong></td><td><strong>SMP</strong></td><td>安全——配对/加密/密钥分发</td></tr>
+      <tr><td>0x0020~0x003F</td><td>LE Credit Based</td><td>自定义信道 (4.2+)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle" id="sec-ref-ad">10.5 AD Type（AdvData LTV 常用）</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Type</th><th>名称</th><th>Data格式</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>0x01</strong></td><td>Flags</td><td>1B 位掩码（必须排第一个）</td></tr>
+      <tr><td>0x03</td><td>Complete 16-bit Service UUIDs</td><td>每UUID 2B(小端)</td></tr>
+      <tr><td>0x07</td><td>Complete 128-bit Service UUIDs</td><td>每UUID 16B</td></tr>
+      <tr><td>0x08</td><td>Shortened Local Name</td><td>UTF-8</td></tr>
+      <tr><td><strong>0x09</strong></td><td>Complete Local Name</td><td>UTF-8</td></tr>
+      <tr><td><strong>0x0A</strong></td><td>TX Power Level</td><td>1B 有符号dBm</td></tr>
+      <tr><td>0x16</td><td>Service Data (16-bit)</td><td>UUID(2B) + Data</td></tr>
+      <tr><td><strong>0xFF</strong></td><td>Manufacturer Specific</td><td>Company ID(2B小端) + 自定义</td></tr>
+    </tbody>
+  </table>
+
+</section>
+
+<section id="sec-timeline" class="main-section">
+
+  <h2 class="section-title">附录：典型完整报文序列</h2>
+
+  <p class="section-text">以 OPPO Enco Air2 耳机为例，首次连接 + SC Numeric Comparison + ATT 写 CCCD 的完整报文序列：</p>
+
+  <div data-component="timeline"></div>
+
+  <pre class="ascii-diagram">                                                                    层   信道
+══════════════════════════════════════════════════════════════════════════════
+① ADV_IND ──────────────────────────────────────→                     LL   37/38/39
+   PDU Type=0000, AdvA=MAC_B, AdvData=[Flags][Name][UUIDs]
+
+② (可选) SCAN_REQ ←────────────────────────────                      LL   37/38/39
+   SCAN_RSP  ──────────────────────────────────→
+
+③ CONNECT_IND ←────────────────────────────────                      LL   37/38/39
+   InitA=MAC_A, AdvA=MAC_B, AA=0x????????, Interval=30ms, ...
+
+══╪ Connection ════════════════════════════════════════════════════════════
+④ LL_VERSION_IND ──────────────────────────────→                     LL   0~36
+⑤ LL_FEATURE_REQ/RSP ←────────────────────────→                     LL   0~36
+
+⑥ SMP Pairing Req ─────────────────────────────→                    SMP  (L2CAP CID=0x0006)
+   Code=0x01, IO=KeyboardDisplay, AuthReq=SC+Bonding
+⑦ SMP Pairing Rsp ←────────────────────────────                     SMP
+
+⑧ SMP Public Key ──────────────────────────────→                    SMP
+   Code=0x0C, Pka=P-256(64B)
+⑨ SMP Public Key ←─────────────────────────────                     SMP
+   Code=0x0C, Pkb=P-256(64B)
+
+⑩ SMP: Na ─────────────────────────────────────→                    SMP
+⑪ SMP: Nb ←────────────────────────────────────                     SMP
+   双方屏幕显示 6 位数字，用户肉眼比对确认
+
+⑫ SMP: Confirm ────────────────────────────────→                    SMP
+   (用户确认后发送)
+
+⑬ SMP DHKey Check ─────────────────────────────→                    SMP
+   Code=0x0D, Check=16B
+⑭ SMP DHKey Check ←────────────────────────────                     SMP
+
+⑮ SMP: Encryption Info ────────────────────────→                    SMP
+   LTK (16B)
+⑯ SMP: Encryption Info ←───────────────────────                     SMP
+   LTK + EDIV+Rand + IRK + CSRK + Addr
+
+⑰ LL_ENC_REQ ──────────────────────────────────→                    LL   0~36
+   Opcode=0x03, Rand+EDIV+SKDm+IVm
+⑱ LL_ENC_RSP ←─────────────────────────────────                     LL
+   Opcode=0x04, SKDs+IVs
+
+⑲ LL_START_ENC_REQ ────────────────────────────→                    LL
+   Opcode=0x05 (明文!)
+⑳ LL_START_ENC_RSP ←───────────────────────────                     LL
+   Opcode=0x06 (明文!)
+
+══╪═════ AES-CCM 加密通信 ═══════════════════════════════════════════════════
+㉑ ATT Exchange MTU Req/Rsp ←──────────────────→                    ATT  (L2CAP CID=0x0004)
+㉒ ATT Read By Group Type (Service Discovery)  →                    ATT
+㉓ ATT Read By Type (Characteristic Discovery) →                    ATT
+㉔ ATT Find Information (Descriptor Discovery) →                    ATT
+㉕ ATT Write Request → CCCD=0x0001 (开通知)    →                    ATT
+㉖ ATT Notification ← 数据推送 ←───────────────                     ATT
+...
+㉗ LL_TERMINATE_IND ───────────────────────────→                    LL   0~36
+   Opcode=0x02
+══════════════════════════════════════════════════════════════════════════════</pre>
+
+</section>
+
+</main>
 </div>
 
 <script>
