@@ -220,6 +220,15 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
 
 /* ==================== Placeholder Component Markers ==================== */
 [data-component]{margin:12px 0 16px;min-height:40px;}
+
+/* ==================== Timeline Component ==================== */
+.timeline-btn{
+  padding:5px 14px;border:1px solid var(--border);
+  border-radius:5px;background:var(--bg);color:var(--text);
+  font-size:12px;cursor:pointer;font-family:var(--font);
+  transition:background .15s;
+}
+.timeline-btn:hover{background:var(--surface-hover);}
 </style>
 </head>
 <body>
@@ -2140,6 +2149,215 @@ SKDm/SKDs 每次连接都是全新随机数
     });
   }
 
+  // ==================== Timeline Component Data ====================
+  var TIMING_STEPS = [
+    { id: 1,  from: "B", to: "A", phase: "广播阶段",     channel: "37/38/39", title: "ADV_IND",           layer: "LL",  summary: "PDU Type=0000, AdvA=MAC_B, AdvData=[Flags][Name][UUIDs]" },
+    { id: 2,  from: "A", to: "B", phase: "广播阶段",     channel: "37/38/39", title: "SCAN_REQ (可选)",   layer: "LL",  summary: "PDU Type=0011, ScanA=MAC_A, AdvA=MAC_B" },
+    { id: 3,  from: "B", to: "A", phase: "广播阶段",     channel: "37/38/39", title: "SCAN_RSP (可选)",   layer: "LL",  summary: "PDU Type=0100, AdvA=MAC_B, ScanRspData" },
+    { id: 4,  from: "A", to: "B", phase: "广播阶段",     channel: "37/38/39", title: "CONNECT_IND",       layer: "LL",  summary: "PDU Type=0101, InitA, AdvA, AA=0x????????, Interval=30ms, ChM, Hop..." },
+    { id: 5,  from: "A", to: "B", phase: "连接阶段",     channel: "0~36",  title: "LL_VERSION_IND",     layer: "LL",  summary: "Opcode=0x0C, VersNr, CompId, SubVersNr" },
+    { id: 6,  from: "A", to: "B", phase: "连接阶段",     channel: "0~36",  title: "LL_FEATURE_REQ",     layer: "LL",  summary: "Opcode=0x08, FeatureSet=64-bit 特性位掩码" },
+    { id: 7,  from: "B", to: "A", phase: "连接阶段",     channel: "0~36",  title: "LL_FEATURE_RSP",     layer: "LL",  summary: "Opcode=0x09, FeatureSet=64-bit 特性位掩码" },
+    { id: 8,  from: "A", to: "B", phase: "SMP 配对",    channel: "0~36",  title: "SMP Pairing Request",  layer: "SMP", summary: "Code=0x01, IO=KeyboardDisplay, AuthReq=SC+Bonding, MaxKeySize=16" },
+    { id: 9,  from: "B", to: "A", phase: "SMP 配对",    channel: "0~36",  title: "SMP Pairing Response", layer: "SMP", summary: "Code=0x02, IO=NoInputNoOutput, AuthReq=SC+Bonding" },
+    { id: 10, from: "A", to: "B", phase: "SMP 配对",    channel: "0~36",  title: "SMP Public Key (Master)", layer: "SMP", summary: "Code=0x0C, Pka=P-256 X(32B)+Y(32B)=64B" },
+    { id: 11, from: "B", to: "A", phase: "SMP 配对",    channel: "0~36",  title: "SMP Public Key (Slave)",  layer: "SMP", summary: "Code=0x0C, Pkb=P-256 X(32B)+Y(32B)=64B" },
+    { id: 12, from: "A", to: "B", phase: "SMP 配对",    channel: "0~36",  title: "SMP: Na (随机数)",       layer: "SMP", summary: "128-bit 随机数" },
+    { id: 13, from: "B", to: "A", phase: "SMP 配对",    channel: "0~36",  title: "SMP: Nb (随机数)",       layer: "SMP", summary: "128-bit 随机数。双方用 f4(Pka,Pkb,Na,Nb) 算 6 位数字显示" },
+    { id: 14, from: "A", to: "B", phase: "SMP 配对",    channel: "0~36",  title: "SMP Confirm",             layer: "SMP", summary: "Code=0x03, 用户肉眼比对 6 位数字一致后确认" },
+    { id: 15, from: "A", to: "B", phase: "SMP 配对",    channel: "0~36",  title: "SMP DHKey Check (M)",     layer: "SMP", summary: "Code=0x0D, Check=AES-CMAC(MacKey, DHKey||...) = 16B" },
+    { id: 16, from: "B", to: "A", phase: "SMP 配对",    channel: "0~36",  title: "SMP DHKey Check (S)",     layer: "SMP", summary: "Code=0x0D, Check=16B。验证通过=密钥交换未被篡改" },
+    { id: 17, from: "A", to: "B", phase: "SMP 密钥分发",channel: "0~36",  title: "SMP Encryption Info →",    layer: "SMP", summary: "Code=0x06, LTK (16B)。Master 分发长期密钥" },
+    { id: 18, from: "B", to: "A", phase: "SMP 密钥分发",channel: "0~36",  title: "SMP Encryption Info ←",    layer: "SMP", summary: "Code=0x06~0x0A, LTK + EDIV+Rand + IRK + CSRK + Addr" },
+    { id: 19, from: "A", to: "B", phase: "链路加密",     channel: "0~36",  title: "LL_ENC_REQ",              layer: "LL",  summary: "Opcode=0x03, Rand(8B)+EDIV(2B)+SKDm(8B)+IVm(4B)" },
+    { id: 20, from: "B", to: "A", phase: "链路加密",     channel: "0~36",  title: "LL_ENC_RSP",              layer: "LL",  summary: "Opcode=0x04, SKDs(8B)+IVs(4B)。双方各自算 SessionKey" },
+    { id: 21, from: "A", to: "B", phase: "链路加密",     channel: "0~36",  title: "LL_START_ENC_REQ",        layer: "LL",  summary: "Opcode=0x05 (⚠ 明文！) 对方必须先读到才能切换解密引擎" },
+    { id: 22, from: "B", to: "A", phase: "链路加密",     channel: "0~36",  title: "LL_START_ENC_RSP",        layer: "LL",  summary: "Opcode=0x06 (⚠ 明文！) 此后全部 AES-CCM 加密" },
+    { id: 23, from: "A", to: "B", phase: "ATT 数据交互",channel: "0~36",  title: "ATT Exchange MTU Req/Rsp",  layer: "ATT", summary: "ClientRxMTU=512, ServerRxMTU=251 → 协商 MTU=251" },
+    { id: 24, from: "A", to: "B", phase: "ATT 数据交互",channel: "0~36",  title: "ATT Read By Group Type",    layer: "ATT", summary: "Service Discovery Round 1 → 获取所有 Service UUID + Handle 范围" },
+    { id: 25, from: "A", to: "B", phase: "ATT 数据交互",channel: "0~36",  title: "ATT Read By Type",          layer: "ATT", summary: "Characteristic Discovery Round 2 → 获取 Properties + ValueHandle" },
+    { id: 26, from: "A", to: "B", phase: "ATT 数据交互",channel: "0~36",  title: "ATT Find Information → Write CCCD", layer: "ATT", summary: "Descriptor Discovery → 写 CCCD=0x0001 启用 Notification" },
+    { id: 27, from: "A", to: "B", phase: "断开",         channel: "0~36",  title: "LL_TERMINATE_IND",        layer: "LL",  summary: "Opcode=0x02, ErrorCode=0x13 (Remote User Terminated)" }
+  ];
+
+  // ==================== Timeline Component Renderer ====================
+  function renderTimeline(container) {
+    // Phase background colors
+    var phaseColors = {
+      "广播阶段":     "rgba(59,130,246,0.06)",
+      "连接阶段":     "rgba(16,185,129,0.06)",
+      "SMP 配对":    "rgba(139,92,246,0.06)",
+      "SMP 密钥分发":"rgba(139,92,246,0.06)",
+      "链路加密":     "rgba(239,68,68,0.06)",
+      "ATT 数据交互":"rgba(249,115,22,0.06)",
+      "断开":         "rgba(156,163,175,0.06)"
+    };
+
+    // Build controls bar
+    var controls = document.createElement('div');
+    controls.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:6px;';
+    controls.innerHTML =
+      '<button id="timelinePlay" class="timeline-btn">▶ 自动播放</button>' +
+      '<button id="timelinePause" class="timeline-btn" style="display:none;">⏸ 暂停</button>' +
+      '<button id="timelineReset" class="timeline-btn">↺ 重置</button>' +
+      '<span style="font-size:12px;color:var(--text-secondary);margin-left:8px;">速度:</span>' +
+      '<label style="font-size:12px;cursor:pointer;"><input type="radio" name="speed" value="3000" checked> 1x</label>' +
+      '<label style="font-size:12px;cursor:pointer;"><input type="radio" name="speed" value="1500"> 2x</label>' +
+      '<label style="font-size:12px;cursor:pointer;"><input type="radio" name="speed" value="6000"> 0.5x</label>' +
+      '<span id="timelineStatus" style="font-size:12px;color:var(--text-secondary);margin-left:auto;"></span>';
+    container.appendChild(controls);
+
+    // Build timeline
+    var tl = document.createElement('div');
+    tl.className = 'timeline';
+    tl.style.cssText = 'position:relative;font-family:var(--font-mono);font-size:12px;line-height:1.8;';
+
+    var currentPhase = null;
+    var detailPanel = document.createElement('div');
+    detailPanel.id = 'timelineDetail';
+    detailPanel.style.cssText = 'display:none;margin-top:20px;min-height:100px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px;';
+
+    TIMING_STEPS.forEach(function(step, i) {
+      // Phase separator
+      if (step.phase !== currentPhase) {
+        currentPhase = step.phase;
+        var sep = document.createElement('div');
+        sep.style.cssText =
+          'text-align:center;padding:8px 0;margin:12px 0;font-size:12px;font-weight:700;' +
+          'background:' + (phaseColors[step.phase] || 'transparent') + ';' +
+          'color:var(--text);border-top:1px solid var(--border);border-bottom:1px solid var(--border);';
+        sep.innerHTML = '═══ ' + step.phase + ' (' + step.channel + ') ═══';
+        tl.appendChild(sep);
+      }
+
+      // Step row
+      var row = document.createElement('div');
+      row.setAttribute('data-step', step.id);
+      row.style.cssText =
+        'display:flex;align-items:center;padding:4px 0;cursor:pointer;border-radius:4px;' +
+        'transition:background 0.15s;gap:8px;padding-left:4px;';
+      row.addEventListener('mouseenter', function() { if (!row.classList.contains('active')) row.style.background = 'var(--surface-hover)'; });
+      row.addEventListener('mouseleave', function() { if (!row.classList.contains('active')) row.style.background = ''; });
+
+      // Direction arrow
+      var arrow = step.from === 'B' ? '──→' : '←──';
+      var leftLabel  = step.from === 'B' ? step.title : '';
+      var rightLabel = step.from === 'A' ? step.title : '';
+
+      // Layer badge
+      var badgeColors = { 'LL': '#3B82F6', 'SMP': '#8B5CF6', 'ATT': '#F97316' };
+      var badge = '<span style="display:inline-block;font-size:10px;padding:1px 5px;border-radius:3px;' +
+        'background:' + (badgeColors[step.layer] || '#9CA3AF') + ';color:#fff;min-width:28px;text-align:center;">' +
+        step.layer + '</span>';
+
+      row.innerHTML =
+        '<span style="flex:0 0 200px;text-align:right;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + leftLabel + '</span>' +
+        badge +
+        '<span style="color:var(--text-secondary);margin:0 4px;">' + arrow + '</span>' +
+        '<span style="flex:1;font-weight:600;color:var(--text);">' + rightLabel + '</span>' +
+        '<span style="font-size:10px;color:var(--gray);min-width:24px;text-align:right;">#' + step.id + '</span>';
+
+      // Click to expand detail
+      row.addEventListener('click', function() {
+        // Deactivate all
+        tl.querySelectorAll('[data-step]').forEach(function(r) {
+          r.classList.remove('active');
+          r.style.background = '';
+          r.style.borderLeft = '';
+        });
+        // Activate this
+        row.classList.add('active');
+        row.style.background = 'var(--surface-hover)';
+        row.style.borderLeft = '3px solid var(--blue)';
+
+        // Show detail panel
+        detailPanel.style.display = 'block';
+        detailPanel.innerHTML =
+          '<h4 style="margin-bottom:12px;">#' + step.id + ' — ' + step.title +
+          ' <span style="font-size:12px;color:var(--gray);font-weight:400;">(' + step.layer + ' 层, ' + step.channel + ' 信道)</span></h4>' +
+          '<p style="margin-bottom:12px;font-size:14px;font-family:var(--font);">' + step.summary + '</p>' +
+          '<p style="font-size:12px;color:var(--text-secondary);font-family:var(--font);">方向: 设备' + step.from + ' → 设备' + step.to + '</p>';
+        detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+
+      tl.appendChild(row);
+    });
+
+    container.appendChild(tl);
+    container.appendChild(detailPanel);
+
+    // Auto-play logic
+    var playBtn = document.getElementById('timelinePlay');
+    var pauseBtn = document.getElementById('timelinePause');
+    var resetBtn = document.getElementById('timelineReset');
+    var statusSpan = document.getElementById('timelineStatus');
+    var timer = null;
+    var currentIdx = 0;
+
+    function highlightStep(idx) {
+      var rows = tl.querySelectorAll('[data-step]');
+      rows.forEach(function(r) { r.classList.remove('active'); r.style.background = ''; r.style.borderLeft = ''; });
+      if (idx < rows.length) {
+        var r = rows[idx];
+        r.classList.add('active');
+        r.style.background = 'var(--surface-hover)';
+        r.style.borderLeft = '3px solid var(--blue)';
+        r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        var step = TIMING_STEPS[idx];
+        detailPanel.style.display = 'block';
+        detailPanel.innerHTML =
+          '<h4 style="margin-bottom:12px;">#' + step.id + ' — ' + step.title +
+          ' <span style="font-size:12px;color:var(--gray);font-weight:400;">(' + step.layer + ' 层, ' + step.channel + ' 信道)</span></h4>' +
+          '<p style="margin-bottom:12px;font-size:14px;font-family:var(--font);">' + step.summary + '</p>';
+        statusSpan.textContent = '步骤 ' + (idx + 1) + ' / ' + TIMING_STEPS.length;
+      }
+    }
+
+    function getSpeed() {
+      var checked = document.querySelector('input[name="speed"]:checked');
+      return checked ? parseInt(checked.value) : 3000;
+    }
+
+    playBtn.addEventListener('click', function() {
+      playBtn.style.display = 'none';
+      pauseBtn.style.display = 'inline-block';
+      currentIdx = currentIdx || 0;
+      function advance() {
+        highlightStep(currentIdx);
+        currentIdx++;
+        if (currentIdx >= TIMING_STEPS.length) {
+          clearTimeout(timer);
+          playBtn.style.display = 'inline-block';
+          pauseBtn.style.display = 'none';
+          currentIdx = 0;
+          statusSpan.textContent = '播放完成';
+          return;
+        }
+        timer = setTimeout(advance, getSpeed());
+      }
+      advance();
+    });
+
+    pauseBtn.addEventListener('click', function() {
+      clearTimeout(timer);
+      playBtn.style.display = 'inline-block';
+      pauseBtn.style.display = 'none';
+    });
+
+    resetBtn.addEventListener('click', function() {
+      clearTimeout(timer);
+      currentIdx = 0;
+      playBtn.style.display = 'inline-block';
+      pauseBtn.style.display = 'none';
+      detailPanel.style.display = 'none';
+      statusSpan.textContent = '';
+      tl.querySelectorAll('[data-step]').forEach(function(r) {
+        r.classList.remove('active'); r.style.background = ''; r.style.borderLeft = '';
+      });
+    });
+  }
+
   // ==================== Initialize on DOM Ready ====================
   document.addEventListener('DOMContentLoaded', function() {
     renderTree(TREE, document.getElementById('sidebarContent'));
@@ -2147,6 +2365,9 @@ SKDm/SKDs 每次连接都是全新随机数
     setTimeout(function() {
       document.querySelectorAll('.main-section[id]').forEach(function(s) { observer.observe(s); });
     }, 100);
+    // Initialize timeline
+    var timelineContainer = document.querySelector('[data-component="timeline"]');
+    if (timelineContainer) { renderTimeline(timelineContainer); }
   });
 
 })();
