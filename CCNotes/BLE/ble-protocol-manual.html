@@ -1915,9 +1915,235 @@ SKDm/SKDs 每次连接都是全新随机数
     });
   }, { rootMargin: '-20% 0px -70% 0px' });
 
+  // ==================== Bit Layout Component ====================
+
+  // Inject bit-layout styles
+  (function(){
+    var s = document.createElement('style');
+    s.textContent =
+      '.bit-layout{margin:16px 0 20px;font-size:13px;}' +
+      '.bit-layout__title{font-weight:600;color:var(--text);margin-bottom:8px;font-size:14px;}' +
+      '.bit-layout__bar{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--border);height:40px;margin-bottom:12px;}' +
+      '.bit-layout__segment{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;color:#fff;font-family:var(--font-mono);transition:opacity .15s,box-shadow .15s;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;min-width:0;cursor:pointer;}' +
+      '.bit-layout__segment:hover{opacity:.85;}' +
+      '.bit-layout__segment.is-highlighted{box-shadow:inset 0 0 0 2px rgba(255,255,255,.8);}' +
+      '.bit-layout__seg-label{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 1px;}' +
+      '.bit-layout__seg-bits{font-size:8px;opacity:.75;margin-top:1px;}' +
+      '.bit-layout__table{width:100%;border-collapse:collapse;font-size:13px;}' +
+      '.bit-layout__table th,.bit-layout__table td{border:1px solid var(--border);padding:6px 10px;text-align:left;vertical-align:top;}' +
+      '.bit-layout__table th{background:var(--surface);font-weight:600;color:var(--text);white-space:nowrap;}' +
+      '.bit-layout__table td{color:var(--text-secondary);transition:background .15s;}' +
+      '.bit-layout__table tr{cursor:pointer;transition:background .15s;}' +
+      '.bit-layout__table tr:hover td{background:var(--surface-hover);color:var(--text);}' +
+      '.bit-layout__table tr:hover td:first-child{border-left:3px solid var(--blue);}' +
+      '.bit-layout__table tr.is-highlighted td{background:var(--surface-hover);color:var(--text);}' +
+      '.bit-layout__table tr.is-highlighted td:first-child{border-left:3px solid var(--blue);}' +
+      '.bit-layout__values{font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.6;}' +
+      '.bit-layout__values code{font-family:var(--font-mono);font-size:11px;background:var(--surface-hover);padding:1px 4px;border-radius:2px;color:var(--cyan);white-space:nowrap;}';
+    document.head.appendChild(s);
+  })();
+
+  // --- BIT_LAYOUTS data ---
+  var BIT_LAYOUTS = {
+    'air-frame': {
+      id: 'air-frame',
+      title: 'BLE 完整空中帧结构',
+      bits: 120,
+      fields: [
+        { name: 'Preamble', bits: 8, color: 'var(--blue)', desc: '前导码 0xAA，物理层同步用' },
+        { name: 'Access Address', bits: 32, color: 'var(--cyan)', desc: '广告信道固定 0x8E89BED6；数据信道每连接随机 32 位值' },
+        { name: 'LL Header', bits: 16, color: 'var(--purple)', desc: '2 字节链路层头：含 PDU Type/LLID/Length/SN/NESN/MD 等' },
+        { name: 'Payload', bits: 8, color: 'var(--orange)', desc: '承载数据 (0~251 字节)，可变长度；此处展示最小 1 字节' },
+        { name: 'MIC', bits: 32, color: 'var(--gray)', desc: '消息完整性校验 (仅加密包有，4 字节)' },
+        { name: 'CRC', bits: 24, color: 'var(--green)', desc: '循环冗余校验 (3 字节)，所有包都有' }
+      ]
+    },
+    'adv-pdu-header': {
+      id: 'adv-pdu-header',
+      title: '广告信道 PDU Header (16 bit)',
+      bits: 16,
+      fields: [
+        { name: 'Length', bits: 8, color: 'var(--blue)', desc: 'Payload 字节数 (6~37)' },
+        { name: 'RxAdd', bits: 1, color: 'var(--gray)', desc: '目标地址类型：0=Public, 1=Random' },
+        { name: 'TxAdd', bits: 1, color: 'var(--purple)', desc: '发送方地址类型：0=Public, 1=Random' },
+        { name: 'ChSel', bits: 1, color: 'var(--orange)', desc: '信道选择算法：0=Algorithm#1, 1=Algorithm#2' },
+        { name: 'RFU', bits: 1, color: 'var(--gray)', desc: '保留位 (Reserved for Future Use)' },
+        { name: 'PDU Type', bits: 4, color: 'var(--green)', desc: 'PDU 类型标识',
+          values: { '0000': 'ADV_IND', '0001': 'ADV_DIRECT_IND', '0010': 'ADV_NONCONN_IND', '0011': 'SCAN_REQ', '0100': 'SCAN_RSP', '0101': 'CONNECT_IND', '0110': 'ADV_SCAN_IND' }
+        }
+      ]
+    },
+    'data-pdu-header': {
+      id: 'data-pdu-header',
+      title: '数据信道 PDU Header (16 bit)',
+      bits: 16,
+      fields: [
+        { name: 'Length', bits: 8, color: 'var(--blue)', desc: 'Payload 字节数 (0~251)' },
+        { name: 'RFU', bits: 2, color: 'var(--gray)', desc: '保留位 (Reserved for Future Use)' },
+        { name: 'CP', bits: 1, color: 'var(--cyan)', desc: 'Coded PHY 指示 (BLE 5.0)：0=非Coded, 1=Coded' },
+        { name: 'MD', bits: 1, color: 'var(--orange)', desc: 'More Data——本连接事件内还有更多数据要发' },
+        { name: 'SN', bits: 1, color: 'var(--purple)', desc: 'Sequence Number——0/1 翻转=新包, 相同=重传' },
+        { name: 'NESN', bits: 1, color: 'var(--green)', desc: 'Next Expected SN——确认对方上一包已收' },
+        { name: 'LLID', bits: 2, color: 'var(--red)', desc: 'LLID 标识 PDU 类型',
+          values: { '01': 'LL Data PDU (续传/空包)', '10': 'LL Data PDU (起始片段)', '11': 'LL Control PDU' }
+        }
+      ]
+    },
+    'connect-ind-payload': {
+      id: 'connect-ind-payload',
+      title: 'CONNECT_IND PDU Payload (34 字节 = 272 bit)',
+      bits: 272,
+      fields: [
+        { name: 'InitA', bits: 48, color: 'var(--blue)', desc: '发起方 MAC 地址 (6 字节)' },
+        { name: 'AdvA', bits: 48, color: 'var(--purple)', desc: '广播方 MAC 地址 (6 字节)' },
+        { name: 'AA', bits: 32, color: 'var(--cyan)', desc: 'Access Address——后续所有数据包用此 32 位值标识连接' },
+        { name: 'CRCInit', bits: 24, color: 'var(--orange)', desc: 'CRC 计算初始值 (3 字节)' },
+        { name: 'WinSize', bits: 8, color: 'var(--gray)', desc: '传输窗口 = 1.25ms × WinSize' },
+        { name: 'WinOffset', bits: 16, color: 'var(--green)', desc: '首次连接事件偏移 = 1.25ms × WinOffset' },
+        { name: 'Interval', bits: 16, color: 'var(--blue)', desc: '连接间隔 = 1.25ms × Interval (7.5ms~4s)' },
+        { name: 'Latency', bits: 16, color: 'var(--purple)', desc: '从设备可跳过的连接事件次数 (0~499)' },
+        { name: 'Timeout', bits: 16, color: 'var(--green)', desc: '监督超时 = 10ms × Timeout (100ms~32s)' },
+        { name: 'ChM', bits: 40, color: 'var(--orange)', desc: '37 位信道图：bit=1 表示可用 (5 字节)' },
+        { name: 'Hop', bits: 5, color: 'var(--cyan)', desc: '跳频增量 (5~16，须与 37 互质)' },
+        { name: 'SCA', bits: 3, color: 'var(--red)', desc: '睡眠时钟精度 (0~7，ppm 等级)' }
+      ]
+    },
+    'ltv-structure': {
+      id: 'ltv-structure',
+      title: 'AD Structure — LTV 格式',
+      bits: 24,
+      fields: [
+        { name: 'Length', bits: 8, color: 'var(--blue)', desc: 'Type+Data 总长度 (不含自身)，0 表示 AD 列表结束' },
+        { name: 'AD Type', bits: 8, color: 'var(--green)', desc: '蓝牙 SIG 统一分配的 AD Type 编号' },
+        { name: 'AD Data', bits: 8, color: 'var(--orange)', desc: '实际数据，长度 = Length-1 字节；格式取决于 AD Type；此处展示最小 1 字节' }
+      ]
+    }
+  };
+
+  // --- Render a single bit layout ---
+  function renderBitLayout(layoutDef) {
+    var container = document.createElement('div');
+    container.className = 'bit-layout';
+
+    // Title
+    var title = document.createElement('div');
+    title.className = 'bit-layout__title';
+    title.textContent = layoutDef.title;
+    container.appendChild(title);
+
+    // Color bar
+    var bar = document.createElement('div');
+    bar.className = 'bit-layout__bar';
+    var total = layoutDef.bits;
+
+    layoutDef.fields.forEach(function(field, idx) {
+      var seg = document.createElement('div');
+      seg.className = 'bit-layout__segment';
+      seg.setAttribute('data-field', idx);
+      seg.style.cssText = 'flex:' + field.bits + ';background:' + field.color + ';';
+
+      var label = document.createElement('span');
+      label.className = 'bit-layout__seg-label';
+      label.textContent = field.name;
+      seg.appendChild(label);
+
+      var bitsLabel = document.createElement('span');
+      bitsLabel.className = 'bit-layout__seg-bits';
+      bitsLabel.textContent = field.bits + 'b';
+      seg.appendChild(bitsLabel);
+
+      bar.appendChild(seg);
+    });
+    container.appendChild(bar);
+
+    // Detail table
+    var table = document.createElement('table');
+    table.className = 'bit-layout__table';
+    var thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>字段</th><th>位宽</th><th>位范围</th><th>说明</th></tr>';
+    table.appendChild(thead);
+
+    var tbody = document.createElement('tbody');
+    var cumBits = 0;
+
+    layoutDef.fields.forEach(function(field, idx) {
+      var row = document.createElement('tr');
+      row.setAttribute('data-field', idx);
+
+      var highBit = total - cumBits - 1;
+      var lowBit = total - cumBits - field.bits;
+      cumBits += field.bits;
+
+      var rangeStr = (highBit === lowBit) ? '[' + highBit + ']' : '[' + highBit + ':' + lowBit + ']';
+
+      var bitsStr = field.bits + ' bit';
+      if (field.bits >= 8) {
+        bitsStr += ' (' + (field.bits / 8) + ' B)';
+      }
+
+      var descHtml = field.desc;
+      if (field.values) {
+        descHtml += '<div class="bit-layout__values">';
+        var keys = Object.keys(field.values);
+        for (var k = 0; k < keys.length; k++) {
+          descHtml += '<code>' + keys[k] + '</code> = ' + field.values[keys[k]];
+          if (k < keys.length - 1) descHtml += '<br>';
+        }
+        descHtml += '</div>';
+      }
+
+      row.innerHTML =
+        '<td style="border-left:3px solid ' + field.color + ';"><strong>' + field.name + '</strong></td>' +
+        '<td>' + bitsStr + '</td>' +
+        '<td><code>' + rangeStr + '</code></td>' +
+        '<td>' + descHtml + '</td>';
+      tbody.appendChild(row);
+    });
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+
+    // Hover linkage: bar segments <-> table rows
+    var segments = container.querySelectorAll('.bit-layout__segment');
+    var rows = container.querySelectorAll('.bit-layout__table tbody tr');
+
+    function highlight(idx) {
+      if (segments[idx]) segments[idx].classList.add('is-highlighted');
+      if (rows[idx]) rows[idx].classList.add('is-highlighted');
+    }
+    function unhighlight(idx) {
+      if (segments[idx]) segments[idx].classList.remove('is-highlighted');
+      if (rows[idx]) rows[idx].classList.remove('is-highlighted');
+    }
+
+    segments.forEach(function(seg, i) {
+      seg.addEventListener('mouseenter', function() { highlight(i); });
+      seg.addEventListener('mouseleave', function() { unhighlight(i); });
+    });
+    rows.forEach(function(row, i) {
+      row.addEventListener('mouseenter', function() { highlight(i); });
+      row.addEventListener('mouseleave', function() { unhighlight(i); });
+    });
+
+    return container;
+  }
+
+  // --- Render all bit-layout placeholders ---
+  function renderAllBitLayouts() {
+    var placeholders = document.querySelectorAll('[data-component="bit-layout"]');
+    placeholders.forEach(function(el) {
+      var id = el.getAttribute('data-id');
+      var layoutDef = BIT_LAYOUTS[id];
+      if (!layoutDef) return;
+      var rendered = renderBitLayout(layoutDef);
+      el.parentNode.replaceChild(rendered, el);
+    });
+  }
+
   // ==================== Initialize on DOM Ready ====================
   document.addEventListener('DOMContentLoaded', function() {
     renderTree(TREE, document.getElementById('sidebarContent'));
+    renderAllBitLayouts();
     setTimeout(function() {
       document.querySelectorAll('.main-section[id]').forEach(function(s) { observer.observe(s); });
     }, 100);
