@@ -249,6 +249,46 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
   transition:background .15s;
 }
 .timeline-btn:hover{background:var(--surface-hover);}
+
+/* ==================== Protocol Stack (Task 7) ==================== */
+.protocol-stack{display:flex;flex-direction:column;gap:8px;margin:12px 0 16px;max-width:320px;}
+.stack-layer{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:12px 16px;border-radius:8px;cursor:pointer;transition:transform .15s,box-shadow .15s;color:#fff;min-height:48px;}
+.stack-layer:hover{transform:translateX(4px);box-shadow:0 2px 12px rgba(0,0,0,.15);}
+.stack-layer__name{font-size:14px;font-weight:700;}
+.stack-layer__tag{font-size:11px;opacity:.9;margin-top:2px;}
+
+/* ==================== Flowchart — Pairing Phases (Task 7) ==================== */
+.flowchart{display:flex;flex-direction:column;align-items:center;gap:0;margin:12px 0 16px;width:100%;max-width:540px;}
+.flow-node{width:100%;border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,margin .15s;background:var(--bg);}
+.flow-node:hover{box-shadow:0 2px 12px rgba(0,0,0,.08);}
+.flow-node__header{padding:10px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--text);flex-wrap:wrap;}
+.flow-node__header-icon{flex-shrink:0;width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;}
+.flow-node__detail{padding:10px 16px;font-size:12px;color:var(--text-secondary);line-height:1.7;border-top:1px solid var(--border);display:none;}
+.flow-node.expanded .flow-node__detail{display:block;}
+.flow-arrow{display:flex;flex-direction:column;align-items:center;padding:4px 0;color:var(--text-secondary);font-size:11px;}
+.flow-arrow__line{width:2px;height:20px;background:var(--border);}
+.flow-arrow__arrowhead{font-size:10px;margin-top:-2px;}
+
+/* ==================== Flowchart — Auth Branch Columns (Task 7) ==================== */
+.flow-branch{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:12px 0 16px;}
+@media(max-width:700px){.flow-branch{grid-template-columns:repeat(2,1fr);}}
+.flow-branch-col{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface);}
+.flow-branch-col__header{padding:10px 12px;font-size:13px;font-weight:600;text-align:center;color:#fff;}
+.flow-branch-col__body{padding:10px 12px;font-size:12px;color:var(--text-secondary);line-height:1.7;}
+
+/* ==================== Encryption Range Bar (Task 7) ==================== */
+.enc-range{margin:12px 0 16px;max-width:600px;}
+.enc-range__bar{display:flex;height:48px;border-radius:6px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px;}
+.enc-range__seg{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:600;transition:opacity .15s;position:relative;min-width:0;}
+.enc-range__seg:hover{opacity:.85;}
+.enc-range__seg.plaintext{background:var(--green);}
+.enc-range__seg.ciphertext{background:var(--red);}
+.enc-range__seg-name{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 2px;text-align:center;line-height:1.3;}
+.enc-range__seg-pct{font-size:8px;opacity:.8;}
+.enc-range__seg-note{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:8px;white-space:nowrap;color:var(--orange);font-weight:700;}
+.enc-range__legend{margin-top:16px;font-size:12px;color:var(--text-secondary);line-height:1.7;}
+.enc-range__legend-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;}
+.enc-range__legend-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0;border:1px solid var(--border);margin-top:3px;}
 </style>
 </head>
 <body>
@@ -2462,6 +2502,217 @@ SKDm/SKDs 每次连接都是全新随机数
     renderTable(REF_TABLES[0], '');
   }
 
+  // ==================== Protocol Stack Component (Task 7) ====================
+  function renderProtocolStack(container) {
+    var layers = [
+      { name: '应用层', tag: '发起 GATT 操作，处理用户数据', color: '#6366F1', anchor: 'sec-att' },
+      { name: 'SMP', tag: '安全管理器，配对待加密', color: 'var(--purple)', anchor: 'sec-smp' },
+      { name: 'ATT', tag: '属性协议，数据读写通知', color: 'var(--purple)', anchor: 'sec-att' },
+      { name: 'L2CAP', tag: '协议复用（CID）+ 分片重组', color: 'var(--cyan)', anchor: 'sec-l2cap' },
+      { name: 'HCI', tag: 'Host↔Controller 内部接口', color: 'var(--gray)', anchor: 'sec-hci' },
+      { name: '链路层', tag: '广播/连接/跳频/加密', color: 'var(--blue)', anchor: 'sec-ll-adv' },
+      { name: '物理层', tag: '2.4GHz GFSK 调制', color: '#EC4899', anchor: 'sec-phy' }
+    ];
+
+    var wrapper = document.createElement('div');
+    wrapper.className = 'protocol-stack';
+
+    layers.forEach(function(layer) {
+      var el = document.createElement('div');
+      el.className = 'stack-layer';
+      el.style.background = layer.color;
+      el.innerHTML = '<span class="stack-layer__name">' + layer.name + '</span><span class="stack-layer__tag">' + layer.tag + '</span>';
+      el.addEventListener('click', function() { scrollToSection(layer.anchor); });
+      wrapper.appendChild(el);
+    });
+
+    container.parentNode.replaceChild(wrapper, container);
+  }
+
+  // ==================== Flowchart Component — Pairing Phases (Task 7) ====================
+  var FLOWCHART_DATA = {
+    'pairing-phases': {
+      title: '配对四阶段流程',
+      nodes: [
+        { id: 'p1', label: 'Phase 1', title: '配对特征交换', summary: 'IO Cap / AuthReq 交换',
+          detail: '双方交换 Pairing Request/Response，协商配对参数：IO Capability（决定后续认证方式）、AuthReq（Bonding/MITM/SC 标志）、Key Distribution（要分发的密钥类型）。<br>此阶段完成后确定使用 Just Works / Numeric Comparison / Passkey Entry 哪种认证方式。',
+          icon: '1', iconColor: '#3B82F6' },
+        { id: 'p2', label: 'Phase 2', title: '密钥交换', summary: 'SC: ECDH; Legacy: Confirm+Random',
+          detail: '<strong>SC 模式：</strong>双方交换 ECDH P-256 公钥（SMP Public Key, Code=0x0C, 64 字节）。各自计算 DHKey = ECDH(私钥, 对方公钥)。<br><strong>Legacy 模式：</strong>交换 Pairing Confirm (Code=0x03) 和 Pairing Random (Code=0x04)，各 16 字节。基于 TK（Just Works 时 TK=0）计算 STK。',
+          icon: '2', iconColor: '#8B5CF6' },
+        { id: 'p3', label: 'Phase 3', title: '认证', summary: 'NumComp / JustWorks / Passkey / Legacy',
+          detail: '<strong>Numeric Comparison：</strong>双方 f4 计算 6 位数字，用户肉眼比对确认（最安全，防 MITM）。<br><strong>Just Works（SC）：</strong>跳过验证，密钥 128 位但不防主动 MITM。<br><strong>Passkey Entry：</strong>一方显示 6 位 PIN，用户在另一方输入，PIN 参与 f4 计算。<br><strong>Legacy：</strong>基于 TK 的安全强度，TK=0（Just Works）或 6 位 PIN（Passkey）。',
+          icon: '3', iconColor: '#F97316' },
+        { id: 'p4', label: 'Phase 4', title: 'DHKey 校验 → 密钥分发', summary: '派生 LTK → 分发长期密钥',
+          detail: '<strong>DHKey Check（仅 SC）：</strong>双方交换 AES-CMAC 校验值，验证 ECDH 密钥交换未被篡改。<br><strong>密钥派生：</strong>f5 函数从 DHKey 派生出 LTK（128 位）和 MacKey。<br><strong>密钥分发：</strong>加密隧道建立后，分发 LTK、EDIV+Rand、IRK、CSRK、身份地址。下次重连时用 EDIV+Rand 查找 LTK，跳过 SMP 直接加密。',
+          icon: '4', iconColor: '#10B981' }
+      ]
+    }
+  };
+
+  function renderFlowchart(container, id) {
+    var data = FLOWCHART_DATA[id];
+    if (!data) return;
+
+    var wrapper = document.createElement('div');
+    wrapper.className = 'flowchart';
+
+    data.nodes.forEach(function(node, idx) {
+      var nodeEl = document.createElement('div');
+      nodeEl.className = 'flow-node';
+
+      var header = document.createElement('div');
+      header.className = 'flow-node__header';
+      header.innerHTML =
+        '<span class="flow-node__header-icon" style="background:' + node.iconColor + ';">' + node.icon + '</span>' +
+        '<span>' + node.label + '：<strong>' + node.title + '</strong></span>' +
+        '<span style="font-weight:400;font-size:12px;color:var(--text-secondary);">— ' + node.summary + '</span>' +
+        '<span style="margin-left:auto;font-size:11px;color:var(--text-secondary);">&#9660;</span>';
+
+      header.addEventListener('click', function() { nodeEl.classList.toggle('expanded'); });
+      nodeEl.appendChild(header);
+
+      var detail = document.createElement('div');
+      detail.className = 'flow-node__detail';
+      detail.innerHTML = node.detail;
+      nodeEl.appendChild(detail);
+
+      wrapper.appendChild(nodeEl);
+
+      if (idx < data.nodes.length - 1) {
+        var arrow = document.createElement('div');
+        arrow.className = 'flow-arrow';
+        arrow.innerHTML = '<div class="flow-arrow__line"></div><div class="flow-arrow__arrowhead">&#9660;</div>';
+        wrapper.appendChild(arrow);
+      }
+    });
+
+    container.parentNode.replaceChild(wrapper, container);
+  }
+
+  // ==================== Auth Paths Branch Component (Task 7) ====================
+  function renderAuthPaths(container) {
+    var cols = [
+      {
+        header: 'Numeric Comparison', headerColor: '#3B82F6',
+        condition: 'SC + 双方都有显示能力',
+        desc: '双方屏幕显示 6 位数字，用户肉眼比对后确认。密钥 128 位 ECDH，攻击者替换公钥会导致数字不一致。',
+        mitm: '防 MITM',
+        security: '最安全'
+      },
+      {
+        header: 'Just Works (SC)', headerColor: '#8B5CF6',
+        condition: 'SC + 一方无显示 / Legacy NoInputNoOutput',
+        desc: '跳过 Phase 3 数字比对。密钥 128 位 ECDH，防被动窃听但不防主动 MITM。攻击者可拦截并替换公钥。',
+        mitm: 'MITM 可能',
+        security: '中等'
+      },
+      {
+        header: 'Passkey Entry', headerColor: '#F97316',
+        condition: 'SC + 一方显示 + 一方键盘',
+        desc: '一方显示 6 位 PIN，用户在另一方输入。PIN 参与认证码计算，只有输入相同 PIN 的双方才能通过验证。',
+        mitm: '防 MITM',
+        security: '较安全'
+      },
+      {
+        header: 'Legacy', headerColor: '#EF4444',
+        condition: 'Legacy 设备 (BLE 4.0/4.1)',
+        desc: 'Just Works 时 TK=0，旁听即可破解。Passkey 时 TK=6 位 PIN，20-bit 安全强度，可暴力破解。',
+        mitm: 'MITM 危险',
+        security: '不安全'
+      }
+    ];
+
+    var wrapper = document.createElement('div');
+    wrapper.className = 'flow-branch';
+
+    cols.forEach(function(col) {
+      var colEl = document.createElement('div');
+      colEl.className = 'flow-branch-col';
+
+      var header = document.createElement('div');
+      header.className = 'flow-branch-col__header';
+      header.style.background = col.headerColor;
+      header.textContent = col.header;
+      colEl.appendChild(header);
+
+      var body = document.createElement('div');
+      body.className = 'flow-branch-col__body';
+      body.innerHTML =
+        '<p><strong>条件：</strong>' + col.condition + '</p>' +
+        '<p style="margin-top:8px;">' + col.desc + '</p>' +
+        '<p style="margin-top:8px;color:var(--text);"><strong>' + col.mitm + '</strong> — ' + col.security + '</p>';
+      colEl.appendChild(body);
+
+      wrapper.appendChild(colEl);
+    });
+
+    container.parentNode.replaceChild(wrapper, container);
+  }
+
+  // ==================== Encryption Range Component (Task 7) ====================
+  function renderEncRange(container) {
+    var segs = [
+      { name: 'Preamble', pct: 7, type: 'plaintext', desc: '前导码 0xAA，物理层同步用' },
+      { name: 'Access Address', pct: 20, type: 'plaintext', desc: '连接标识，硬件过滤用' },
+      { name: 'LL Header', pct: 14, type: 'plaintext', desc: 'LLID/SN/NESN/MD/Length', note: '⚠ 必须先解析' },
+      { name: 'Payload', pct: 39, type: 'ciphertext', desc: 'L2CAP→ATT/SMP 数据，AES-CCM 加密' },
+      { name: 'MIC', pct: 13, type: 'ciphertext', desc: '4 字节消息完整性校验，防篡改' },
+      { name: 'CRC', pct: 7, type: 'plaintext', desc: '3 字节循环冗余校验，防误码' }
+    ];
+
+    var wrapper = document.createElement('div');
+    wrapper.className = 'enc-range';
+
+    var title = document.createElement('div');
+    title.style.cssText = 'font-weight:600;color:var(--text);margin-bottom:8px;font-size:14px;';
+    title.textContent = '加密范围（加密后的 Data PDU）';
+    wrapper.appendChild(title);
+
+    var bar = document.createElement('div');
+    bar.className = 'enc-range__bar';
+
+    segs.forEach(function(seg) {
+      var el = document.createElement('div');
+      el.className = 'enc-range__seg ' + seg.type;
+      el.style.flex = seg.pct;
+      el.title = seg.desc;
+
+      if (seg.note) {
+        var note = document.createElement('span');
+        note.className = 'enc-range__seg-note';
+        note.textContent = seg.note;
+        el.appendChild(note);
+      }
+
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'enc-range__seg-name';
+      nameSpan.textContent = seg.name;
+      el.appendChild(nameSpan);
+
+      var pctSpan = document.createElement('span');
+      pctSpan.className = 'enc-range__seg-pct';
+      pctSpan.textContent = seg.pct + '%';
+      el.appendChild(pctSpan);
+
+      bar.appendChild(el);
+    });
+
+    wrapper.appendChild(bar);
+
+    var legend = document.createElement('div');
+    legend.className = 'enc-range__legend';
+    legend.innerHTML =
+      '<div class="enc-range__legend-item"><span class="enc-range__legend-swatch" style="background:var(--green);"></span> 明文 — 空中可读（硬件 / 链路层必需）</div>' +
+      '<div class="enc-range__legend-item"><span class="enc-range__legend-swatch" style="background:var(--red);"></span> 密文 — AES-CCM 加密（保护数据内容与完整性）</div>' +
+      '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0;">' +
+      '<p><strong>为什么 LL Header 是明文？</strong>链路层必须先解析 LLID/SN/NESN/Length 才能处理包——SN 确认重传、Length 决定 Payload 长度。必须先读 Header，再决定是否解密 Payload。</p>' +
+      '<p style="margin-top:6px;"><strong>为什么 CRC 是明文？</strong>CRC 是物理层误码检测，和加密无关。接收方链路层先检查 CRC 判断包是否完好，完好再解密。如果 CRC 加密了，接收方无法在解密前判断包是否损坏。</p>';
+    wrapper.appendChild(legend);
+
+    container.parentNode.replaceChild(wrapper, container);
+  }
+
   // ==================== Initialize on DOM Ready ====================
   document.addEventListener('DOMContentLoaded', function() {
     renderTree(TREE, document.getElementById('sidebarContent'));
@@ -2475,6 +2726,16 @@ SKDm/SKDs 每次连接都是全新随机数
     // Initialize ref-tables (Task 6)
     var refTablesContainer = document.querySelector('[data-component="ref-tables"]');
     if (refTablesContainer) { renderRefTables(refTablesContainer); }
+    // Initialize protocol stack (Task 7)
+    var psContainer = document.querySelector('[data-component="protocol-stack"]');
+    if (psContainer) { renderProtocolStack(psContainer); }
+    // Initialize flowcharts (Task 7)
+    document.querySelectorAll('[data-component="flowchart"]').forEach(function(el) {
+      var fid = el.getAttribute('data-id');
+      if (fid === 'pairing-phases') { renderFlowchart(el, fid); }
+      else if (fid === 'auth-paths') { renderAuthPaths(el); }
+      else if (fid === 'enc-range') { renderEncRange(el); }
+    });
   });
 
 })();
