@@ -220,6 +220,75 @@ body{
 (function(){
   'use strict';
 
+  // ==================== Navigation Tree Data ====================
+  var TREE = [
+    { id: "ch1", label: "一、协议栈总览与阅读路线", anchor: "sec-overview", type: "chapter" },
+    { id: "ch2", label: "二、物理层 — 空中帧结构", anchor: "sec-phy", type: "chapter",
+      children: [
+        { id: "ch2-1", label: "2.1 完整空中帧", anchor: "sec-phy-frame" },
+        { id: "ch2-2", label: "2.2 Access Address", anchor: "sec-phy-aa" },
+        { id: "ch2-3", label: "2.3 MIC 与 CRC", anchor: "sec-phy-mic-crc" }
+      ]
+    },
+    { id: "ch3", label: "三、链路层 — 广播阶段", anchor: "sec-ll-adv", type: "chapter",
+      children: [
+        { id: "ch3-1", label: "3.1 广告信道 PDU Header", anchor: "sec-adv-header" },
+        { id: "ch3-2", label: "3.2 Payload 结构", anchor: "sec-adv-payload" },
+        { id: "ch3-3", label: "3.3 AD Structure LTV", anchor: "sec-ltv" },
+        { id: "ch3-4", label: "3.4 广播→连接流程", anchor: "sec-adv-conn" },
+        { id: "ch3-5", label: "3.5 PDU 类型决策", anchor: "sec-adv-decision" }
+      ]
+    },
+    { id: "ch4", label: "四、链路层 — 连接阶段", anchor: "sec-ll-conn", type: "chapter",
+      children: [
+        { id: "ch4-1", label: "4.1 数据信道 PDU Header", anchor: "sec-data-header" },
+        { id: "ch4-2", label: "4.2 LLID 与 PDU 类型", anchor: "sec-llid" },
+        { id: "ch4-3", label: "4.3 LL Data PDU 结构", anchor: "sec-ll-data" },
+        { id: "ch4-4", label: "4.4 LL Control PDU 结构", anchor: "sec-ll-control" },
+        { id: "ch4-5", label: "4.5 Control PDU Payload 详解", anchor: "sec-ll-control-payload" }
+      ]
+    },
+    { id: "ch5", label: "五、HCI — 主机控制器接口", anchor: "sec-hci", type: "chapter" },
+    { id: "ch6", label: "六、L2CAP", anchor: "sec-l2cap", type: "chapter",
+      children: [
+        { id: "ch6-1", label: "6.1 L2CAP 包格式", anchor: "sec-l2cap-fmt" },
+        { id: "ch6-2", label: "6.2 CID 全集", anchor: "sec-l2cap-cid" },
+        { id: "ch6-3", label: "6.3 L2CAP Signaling", anchor: "sec-l2cap-sig" }
+      ]
+    },
+    { id: "ch7", label: "七、SMP — 安全管理器", anchor: "sec-smp", type: "chapter",
+      children: [
+        { id: "ch7-1", label: "7.1 SMP PDU 格式与 Code 全集", anchor: "sec-smp-format" },
+        { id: "ch7-2", label: "7.2 配对完整四阶段流程", anchor: "sec-smp-phases" },
+        { id: "ch7-3", label: "7.3 Phase 1: 配对特征交换", anchor: "sec-smp-phase1" },
+        { id: "ch7-4", label: "7.4 Phase 2: 密钥交换", anchor: "sec-smp-phase2" },
+        { id: "ch7-5", label: "7.5 Phase 3: 认证", anchor: "sec-smp-phase3" },
+        { id: "ch7-6", label: "7.6 Phase 4: DHKey 校验与密钥分发", anchor: "sec-smp-phase4" }
+      ]
+    },
+    { id: "ch8", label: "八、ATT / GATT", anchor: "sec-att", type: "chapter",
+      children: [
+        { id: "ch8-1", label: "8.1 ATT PDU 通用格式", anchor: "sec-att-format" },
+        { id: "ch8-2", label: "8.2 ATT Opcode 全集", anchor: "sec-att-opcode" },
+        { id: "ch8-3", label: "8.3 GATT 数据组织", anchor: "sec-gatt" },
+        { id: "ch8-4", label: "8.4 服务发现流程", anchor: "sec-discovery" },
+        { id: "ch8-5", label: "8.5 MTU 协商", anchor: "sec-mtu" }
+      ]
+    },
+    { id: "ch9", label: "九、加密完整流程", anchor: "sec-encrypt", type: "chapter",
+      children: [
+        { id: "ch9-1", label: "9.1 分层总览", anchor: "sec-enc-overview" },
+        { id: "ch9-2", label: "9.2 首次加密：三次握手", anchor: "sec-enc-handshake" },
+        { id: "ch9-3", label: "9.3 Session Key 派生", anchor: "sec-enc-sessionkey" },
+        { id: "ch9-4", label: "9.4 加密范围", anchor: "sec-enc-range" },
+        { id: "ch9-5", label: "9.5 绑定设备重连", anchor: "sec-enc-reconnect" },
+        { id: "ch9-6", label: "9.6 异常情况", anchor: "sec-enc-errors" }
+      ]
+    },
+    { id: "ch10", label: "十、综合速查表", anchor: "sec-ref", type: "chapter" },
+    { id: "appendix", label: "附录：典型完整报文序列", anchor: "sec-timeline", type: "chapter" }
+  ];
+
   // ==================== Theme Toggle ====================
   (function initTheme(){
     var html = document.documentElement;
@@ -287,6 +356,97 @@ body{
       prevWidth = cur;
     });
   })();
+
+  // ==================== Sidebar Rendering ====================
+  function renderTree(nodes, container) {
+    var ul = document.createElement('ul');
+    ul.style.cssText = 'list-style:none;padding:0;margin:0;';
+    nodes.forEach(function(node) {
+      var li = document.createElement('li');
+      li.style.cssText = 'margin:0;';
+
+      var a = document.createElement('a');
+      a.textContent = node.label;
+      a.href = '#' + node.anchor;
+      a.setAttribute('data-anchor', node.anchor);
+      a.style.cssText =
+        'display:block;padding:6px 16px;font-size:13px;color:var(--text-secondary);' +
+        'text-decoration:none;cursor:pointer;transition:background 0.15s,color 0.15s;' +
+        'border-left:3px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+      if (node.type === 'chapter') {
+        a.style.cssText += 'font-weight:600;color:var(--text);padding-top:8px;padding-bottom:8px;';
+        a.classList.add('chapter-link');
+      } else {
+        a.style.cssText += 'padding-left:28px;';
+      }
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        scrollToSection(node.anchor);
+        document.getElementById('sidebarContent').classList.remove('open');
+      });
+      a.addEventListener('mouseenter', function() { a.style.background = 'var(--surface-hover)'; });
+      a.addEventListener('mouseleave', function() { a.style.background = ''; });
+      li.appendChild(a);
+
+      if (node.children && node.children.length > 0) {
+        var subUl = document.createElement('ul');
+        subUl.style.cssText = 'list-style:none;padding:0;margin:0;';
+        node.children.forEach(function(child) {
+          var subLi = document.createElement('li');
+          var subA = document.createElement('a');
+          subA.textContent = child.label;
+          subA.href = '#' + child.anchor;
+          subA.setAttribute('data-anchor', child.anchor);
+          subA.style.cssText =
+            'display:block;padding:4px 16px 4px 28px;font-size:12px;color:var(--text-secondary);' +
+            'text-decoration:none;cursor:pointer;transition:background 0.15s,color 0.15s;' +
+            'border-left:3px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+          subA.addEventListener('click', function(e) {
+            e.preventDefault();
+            scrollToSection(child.anchor);
+            document.getElementById('sidebarContent').classList.remove('open');
+          });
+          subA.addEventListener('mouseenter', function() { subA.style.background = 'var(--surface-hover)'; });
+          subA.addEventListener('mouseleave', function() { subA.style.background = ''; });
+          subLi.appendChild(subA);
+          subUl.appendChild(subLi);
+        });
+        li.appendChild(subUl);
+      }
+      ul.appendChild(li);
+    });
+    container.appendChild(ul);
+  }
+
+  function scrollToSection(anchor) {
+    var el = document.getElementById(anchor);
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }
+
+  // ==================== Active Section Tracking ====================
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        document.querySelectorAll('.sidebar a').forEach(function(a) {
+          a.style.borderLeftColor = 'transparent';
+          a.style.color = a.classList.contains('chapter-link') ? 'var(--text)' : 'var(--text-secondary)';
+        });
+        var active = document.querySelector('.sidebar a[data-anchor="' + entry.target.id + '"]');
+        if (active) {
+          active.style.borderLeftColor = 'var(--blue)';
+          active.style.color = 'var(--blue)';
+        }
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  // ==================== Initialize on DOM Ready ====================
+  document.addEventListener('DOMContentLoaded', function() {
+    renderTree(TREE, document.getElementById('sidebarContent'));
+    setTimeout(function() {
+      document.querySelectorAll('.main-section[id]').forEach(function(s) { observer.observe(s); });
+    }, 100);
+  });
 
 })();
 </script>
