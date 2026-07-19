@@ -191,6 +191,9 @@ body{
   .topbar__search-input{width:140px;}
   .topbar__title{font-size:13px;}
   .main{padding:20px 16px;}
+  .data-table{display:block;overflow-x:auto;white-space:nowrap;}
+  .bit-layout__bar{height:40px!important;}
+  .bit-layout__segment{font-size:9px!important;}
 }
 
 /* ==================== Content Typography ==================== */
@@ -289,6 +292,13 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
 .enc-range__legend{margin-top:16px;font-size:12px;color:var(--text-secondary);line-height:1.7;}
 .enc-range__legend-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;}
 .enc-range__legend-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0;border:1px solid var(--border);margin-top:3px;}
+
+/* ==================== Search Highlight (Task 8) ==================== */
+.search-highlight{background:rgba(251,191,36,0.15);outline:2px solid rgba(251,191,36,0.4);outline-offset:2px;border-radius:3px;}
+
+/* ==================== Sidebar Scrim / Backdrop (Task 8) ==================== */
+.sidebar-scrim{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);z-index:85;opacity:0;pointer-events:none;transition:opacity .28s cubic-bezier(.4,0,.2,1);}
+.sidebar-scrim.open{opacity:1;pointer-events:auto;}
 </style>
 </head>
 <body>
@@ -301,7 +311,7 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
   <div class="topbar__spacer"></div>
   <div class="topbar__search">
     <span class="topbar__search-icon">🔍</span>
-    <input class="topbar__search-input" type="text" placeholder="搜索..." aria-label="搜索">
+    <input class="topbar__search-input" id="searchInput" type="text" placeholder="搜索..." aria-label="搜索">
   </div>
 </header>
 
@@ -309,6 +319,7 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
 <div class="layout">
   <!-- Sidebar Navigation -->
   <nav class="sidebar" id="sidebarContent"></nav>
+  <div class="sidebar-scrim" id="sidebarScrim"></div>
   <!-- Main Content Area -->
   <main class="main" id="mainContent">
 
@@ -1769,19 +1780,32 @@ SKDm/SKDs 每次连接都是全新随机数
   (function initSidebar(){
     var hamburger = document.getElementById('hamburgerBtn');
     var sidebar = document.getElementById('sidebarContent');
+    var scrim = document.getElementById('sidebarScrim');
     var main = document.getElementById('mainContent');
     if(!hamburger || !sidebar) return;
 
+    function toggleSidebar(open) {
+      sidebar.classList.toggle('open', open);
+      if(scrim) scrim.classList.toggle('open', open);
+    }
+
     hamburger.addEventListener('click', function(e){
       e.stopPropagation();
-      sidebar.classList.toggle('open');
+      toggleSidebar(!sidebar.classList.contains('open'));
     });
+
+    // Scrim click closes sidebar
+    if(scrim){
+      scrim.addEventListener('click', function(){
+        toggleSidebar(false);
+      });
+    }
 
     // Clicking main content closes sidebar on mobile
     if(main){
       main.addEventListener('click', function(){
         if(window.innerWidth <= 900){
-          sidebar.classList.remove('open');
+          toggleSidebar(false);
         }
       });
     }
@@ -1791,7 +1815,7 @@ SKDm/SKDs 每次连接都是全新随机数
     window.addEventListener('resize', function(){
       var cur = window.innerWidth;
       if(prevWidth <= 900 && cur > 900){
-        sidebar.classList.remove('open');
+        toggleSidebar(false);
       }
       prevWidth = cur;
     });
@@ -1823,6 +1847,8 @@ SKDm/SKDs 每次连接都是全新随机数
         e.preventDefault();
         scrollToSection(node.anchor);
         document.getElementById('sidebarContent').classList.remove('open');
+        var sc = document.getElementById('sidebarScrim');
+        if(sc) sc.classList.remove('open');
       });
       a.addEventListener('mouseenter', function() { a.style.background = 'var(--surface-hover)'; });
       a.addEventListener('mouseleave', function() { a.style.background = ''; });
@@ -1845,6 +1871,8 @@ SKDm/SKDs 每次连接都是全新随机数
             e.preventDefault();
             scrollToSection(child.anchor);
             document.getElementById('sidebarContent').classList.remove('open');
+            var sc = document.getElementById('sidebarScrim');
+            if(sc) sc.classList.remove('open');
           });
           subA.addEventListener('mouseenter', function() { subA.style.background = 'var(--surface-hover)'; });
           subA.addEventListener('mouseleave', function() { subA.style.background = ''; });
@@ -2201,7 +2229,7 @@ SKDm/SKDs 每次连接都是全新随机数
       var rightLabel = step.from === 'A' ? step.title : '';
 
       // Layer badge
-      var badgeColors = { 'LL': '#3B82F6', 'SMP': '#8B5CF6', 'ATT': '#F97316' };
+      var badgeColors = { 'LL': 'var(--blue)', 'SMP': 'var(--purple)', 'ATT': 'var(--orange)' };
       var badge = '<span style="display:inline-block;font-size:10px;padding:1px 5px;border-radius:3px;' +
         'background:' + (badgeColors[step.layer] || '#9CA3AF') + ';color:#fff;min-width:28px;text-align:center;">' +
         step.layer + '</span>';
@@ -2594,28 +2622,28 @@ SKDm/SKDs 每次连接都是全新随机数
   function renderAuthPaths(container) {
     var cols = [
       {
-        header: 'Numeric Comparison', headerColor: '#3B82F6',
+        header: 'Numeric Comparison', headerColor: 'var(--blue)',
         condition: 'SC + 双方都有显示能力',
         desc: '双方屏幕显示 6 位数字，用户肉眼比对后确认。密钥 128 位 ECDH，攻击者替换公钥会导致数字不一致。',
         mitm: '防 MITM',
         security: '最安全'
       },
       {
-        header: 'Just Works (SC)', headerColor: '#8B5CF6',
+        header: 'Just Works (SC)', headerColor: 'var(--purple)',
         condition: 'SC + 一方无显示 / Legacy NoInputNoOutput',
         desc: '跳过 Phase 3 数字比对。密钥 128 位 ECDH，防被动窃听但不防主动 MITM。攻击者可拦截并替换公钥。',
         mitm: 'MITM 可能',
         security: '中等'
       },
       {
-        header: 'Passkey Entry', headerColor: '#F97316',
+        header: 'Passkey Entry', headerColor: 'var(--orange)',
         condition: 'SC + 一方显示 + 一方键盘',
         desc: '一方显示 6 位 PIN，用户在另一方输入。PIN 参与认证码计算，只有输入相同 PIN 的双方才能通过验证。',
         mitm: '防 MITM',
         security: '较安全'
       },
       {
-        header: 'Legacy', headerColor: '#EF4444',
+        header: 'Legacy', headerColor: 'var(--red)',
         condition: 'Legacy 设备 (BLE 4.0/4.1)',
         desc: 'Just Works 时 TK=0，旁听即可破解。Passkey 时 TK=6 位 PIN，20-bit 安全强度，可暴力破解。',
         mitm: 'MITM 危险',
@@ -2713,6 +2741,54 @@ SKDm/SKDs 每次连接都是全新随机数
     container.parentNode.replaceChild(wrapper, container);
   }
 
+  // ==================== Global Search (Task 8) ====================
+  function initGlobalSearch() {
+    var input = document.getElementById('searchInput');
+    if (!input) return;
+
+    var timer = null;
+
+    function removeHighlights() {
+      document.querySelectorAll('.search-highlight').forEach(function(el) {
+        el.classList.remove('search-highlight');
+      });
+    }
+
+    function performSearch(query) {
+      removeHighlights();
+      if (!query || !query.trim()) return;
+
+      var q = query.toLowerCase().trim();
+      var selectors = '.section-title, .section-subtitle, .section-text, .data-table tr';
+      var targets = document.querySelectorAll(selectors);
+      var firstMatch = null;
+
+      targets.forEach(function(el) {
+        if (el.textContent.toLowerCase().indexOf(q) !== -1) {
+          el.classList.add('search-highlight');
+          if (!firstMatch) firstMatch = el;
+        }
+      });
+
+      if (firstMatch) {
+        firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    input.addEventListener('input', function() {
+      clearTimeout(timer);
+      var val = this.value;
+      timer = setTimeout(function() { performSearch(val); }, 200);
+    });
+
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        this.value = '';
+        removeHighlights();
+      }
+    });
+  }
+
   // ==================== Initialize on DOM Ready ====================
   document.addEventListener('DOMContentLoaded', function() {
     renderTree(TREE, document.getElementById('sidebarContent'));
@@ -2720,6 +2796,8 @@ SKDm/SKDs 每次连接都是全新随机数
     setTimeout(function() {
       document.querySelectorAll('.main-section[id]').forEach(function(s) { observer.observe(s); });
     }, 100);
+    // Initialize global search (Task 8)
+    initGlobalSearch();
     // Initialize timeline
     var timelineContainer = document.querySelector('[data-component="timeline"]');
     if (timelineContainer) { renderTimeline(timelineContainer); }

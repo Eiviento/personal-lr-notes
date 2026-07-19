@@ -3,8 +3,9 @@
 ## Session: 2026-07-12
 
 ### Phase 1: Prompt Engineering 基本功
-- **Status:** in_progress
+- **Status:** complete
 - **Started:** 2026-07-12
+- **Completed:** 2026-07-19
 - Actions taken:
   - 完成用户背景调研（技术栈、LLM 经验、学习目标、使用场景）
   - 产出 3 种学习路径方案并确定方案二 + 方案三组合
@@ -14,6 +15,7 @@
   - 完成 1.2 Few-shot Prompting 教学（示例模板待用户补充）
   - 完成 1.3 结构化输出控制教学（三种方式 + Python 容错代码）
   - 创建 HANDOFF.md 交接文档
+  - 完成 1.4 实操：用 DeepSeek API + OpenAI SDK 调通"需求 → 协议字段表"脚本
 - Files created/modified:
   - task_plan.md (created)
   - findings.md (created)
