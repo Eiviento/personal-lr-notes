@@ -135,8 +135,8 @@ body{
 .topbar__search-input:focus{border-color:var(--blue);}
 .topbar__search-input::placeholder{color:var(--text-secondary);}
 
-/* ==================== App Layout ==================== */
-.app-layout{
+/* ==================== Layout ==================== */
+.layout{
   display:flex;
   flex:1;
   margin-top:var(--topbar-height);
@@ -208,8 +208,8 @@ body{
   </div>
 </header>
 
-<!-- ==================== App Layout ==================== -->
-<div class="app-layout">
+<!-- ==================== Layout ==================== -->
+<div class="layout">
   <!-- Sidebar Navigation -->
   <nav class="sidebar" id="sidebarContent"></nav>
   <!-- Main Content Area -->
@@ -235,31 +235,19 @@ body{
       btn.textContent = theme === 'dark' ? '\u{1F319}' : '\u{2600}\u{FE0F}';
     }
 
-    // Restore saved preference, else detect system
-    var saved;
-    try { saved = localStorage.getItem('ble-manual-theme'); } catch(e){}
-    if(saved === 'dark' || saved === 'light'){
-      setTheme(saved);
-    } else {
-      setTheme(getPreferred());
-    }
+    // Only from system preference -- no localStorage
+    setTheme(getPreferred());
 
     // Toggle on click
     btn.addEventListener('click', function(){
       var current = html.getAttribute('data-theme');
-      var next = current === 'dark' ? 'light' : 'dark';
-      setTheme(next);
-      try { localStorage.setItem('ble-manual-theme', next); } catch(e){}
+      setTheme(current === 'dark' ? 'light' : 'dark');
     });
 
-    // React to OS theme changes (only if user hasn't overridden)
+    // React to OS theme changes
     var mq = window.matchMedia('(prefers-color-scheme: dark)');
     function onSystemChange(e){
-      var stored;
-      try { stored = localStorage.getItem('ble-manual-theme'); } catch(ex){}
-      if(!stored){
-        setTheme(e.matches ? 'dark' : 'light');
-      }
+      setTheme(e.matches ? 'dark' : 'light');
     }
     if(mq.addEventListener){
       mq.addEventListener('change', onSystemChange);
