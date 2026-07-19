@@ -221,6 +221,26 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
 /* ==================== Placeholder Component Markers ==================== */
 [data-component]{margin:12px 0 16px;min-height:40px;}
 
+/* ==================== Ref-Tables Component (Task 6) ==================== */
+.ref-tables-container{font-size:13px;}
+.ref-tab-bar{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:12px;flex-wrap:wrap;}
+.ref-tab-btn{padding:7px 18px;border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;background:var(--surface);color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);transition:background .15s,color .15s;margin-right:3px;position:relative;top:1px;}
+.ref-tab-btn:hover{background:var(--surface-hover);color:var(--text);}
+.ref-tab-btn.active{background:var(--bg);color:var(--blue);border-color:var(--blue);font-weight:600;}
+.ref-tab-btn.active::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:var(--bg);}
+.ref-search{margin-bottom:12px;}
+.ref-search-input{width:100%;max-width:360px;height:32px;padding:0 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;outline:none;transition:border-color .2s;}
+.ref-search-input:focus{border-color:var(--blue);}
+.ref-search-input::placeholder{color:var(--text-secondary);}
+.ref-table{width:100%;border-collapse:collapse;margin:0;font-size:13px;}
+.ref-table th,.ref-table td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top;}
+.ref-table th{background:var(--surface);font-weight:600;color:var(--text);white-space:nowrap;}
+.ref-table td{color:var(--text-secondary);}
+.ref-table tr:nth-child(even) td{background:var(--surface);}
+.ref-table code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover);padding:1px 5px;border-radius:3px;color:var(--cyan);}
+.ref-table tr.ref-hidden{display:none;}
+.ref-count{font-size:12px;color:var(--text-secondary);margin-top:6px;}
+
 /* ==================== Timeline Component ==================== */
 .timeline-btn{
   padding:5px 14px;border:1px solid var(--border);
@@ -1519,110 +1539,6 @@ SKDm/SKDs 每次连接都是全新随机数
 
   <div data-component="ref-tables"></div>
 
-  <h3 class="section-subtitle" id="sec-ref-ll">10.1 LL Control PDU Opcode</h3>
-
-  <table class="data-table">
-    <thead>
-      <tr><th>Opcode</th><th>PDU</th><th>方向</th><th>用途</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>0x00</td><td>CONNECTION_UPDATE_REQ</td><td>M→S</td><td>改连接参数</td></tr>
-      <tr><td>0x01</td><td>CHANNEL_MAP_REQ</td><td>M→S</td><td>改信道图</td></tr>
-      <tr><td>0x02</td><td>TERMINATE_IND</td><td>双向</td><td>断开</td></tr>
-      <tr><td>0x03</td><td>ENC_REQ</td><td>M→S</td><td>加密请求</td></tr>
-      <tr><td>0x04</td><td>ENC_RSP</td><td>S→M</td><td>加密响应</td></tr>
-      <tr><td>0x05</td><td>START_ENC_REQ</td><td>M→S</td><td>开始加密(明文)</td></tr>
-      <tr><td>0x06</td><td>START_ENC_RSP</td><td>S→M</td><td>开始加密确认</td></tr>
-      <tr><td>0x07</td><td>UNKNOWN_RSP</td><td>双向</td><td>未知PDU</td></tr>
-      <tr><td>0x08/09</td><td>FEATURE_REQ/RSP</td><td>双向</td><td>特性协商</td></tr>
-      <tr><td>0x0A/0B</td><td>PAUSE_ENC_REQ/RSP</td><td>双向</td><td>暂停加密(5.1)</td></tr>
-      <tr><td>0x0C</td><td>VERSION_IND</td><td>双向</td><td>蓝牙版本</td></tr>
-      <tr><td>0x0D</td><td>REJECT_IND</td><td>双向</td><td>拒绝</td></tr>
-      <tr><td>0x0E</td><td>SLAVE_FEATURE_REQ</td><td>S→M</td><td>从设备特性请求</td></tr>
-      <tr><td>0x14/15</td><td>PHY_REQ/RSP</td><td>双向</td><td>PHY切换(5.0)</td></tr>
-      <tr><td>0x16/17</td><td>LENGTH_REQ/RSP</td><td>双向</td><td>长度扩展(4.2)</td></tr>
-      <tr><td>0x19</td><td>PERIODIC_SYNC_IND</td><td>—</td><td>周期同步(5.0)</td></tr>
-    </tbody>
-  </table>
-
-  <h3 class="section-subtitle" id="sec-ref-smp">10.2 SMP Code</h3>
-
-  <table class="data-table">
-    <thead>
-      <tr><th>Code</th><th>PDU</th><th>用途</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>0x01/02</td><td>Pairing Req/Rsp</td><td>IO Capabilities 交换</td></tr>
-      <tr><td>0x03/04</td><td>Pairing Confirm/Random</td><td>Legacy 配对验证</td></tr>
-      <tr><td>0x05</td><td>Pairing Failed</td><td>配对失败通知</td></tr>
-      <tr><td>0x06</td><td>Encryption Info</td><td>分发 LTK</td></tr>
-      <tr><td>0x07</td><td>Master ID</td><td>分发 EDIV+Rand</td></tr>
-      <tr><td>0x08/09</td><td>Identity Info/Addr</td><td>分发 IRK+地址</td></tr>
-      <tr><td>0x0A</td><td>Signing Info</td><td>分发 CSRK</td></tr>
-      <tr><td>0x0B</td><td>Security Request</td><td>S请求M启动加密</td></tr>
-      <tr><td>0x0C</td><td>Public Key</td><td>SC: ECDH 公钥(64B)</td></tr>
-      <tr><td>0x0D</td><td>DHKey Check</td><td>SC: DHKey 校验(16B)</td></tr>
-      <tr><td>0x0E</td><td>Keypress Notification</td><td>Passkey 按键确认</td></tr>
-    </tbody>
-  </table>
-
-  <h3 class="section-subtitle" id="sec-ref-att">10.3 ATT Opcode</h3>
-
-  <table class="data-table">
-    <thead>
-      <tr><th>Opcode</th><th>PDU</th><th>类别</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>0x01</td><td>Error Response</td><td>错误</td></tr>
-      <tr><td>0x02/03</td><td>Exchange MTU Req/Rsp</td><td>MTU</td></tr>
-      <tr><td>0x04/05</td><td>Find Information Req/Rsp</td><td>读(发现)</td></tr>
-      <tr><td>0x06/07</td><td>Find By Type Value Req/Rsp</td><td>读(发现)</td></tr>
-      <tr><td>0x08/09</td><td>Read By Type Req/Rsp</td><td>读(发现)</td></tr>
-      <tr><td>0x0A/0B</td><td>Read Req/Rsp</td><td>读</td></tr>
-      <tr><td>0x0C/0D</td><td>Read Blob Req/Rsp</td><td>读(长)</td></tr>
-      <tr><td>0x10/11</td><td>Read By Group Type Req/Rsp</td><td>读(发现)</td></tr>
-      <tr><td>0x12/13</td><td>Write Req/Rsp</td><td>写(确认)</td></tr>
-      <tr><td>0x16/17</td><td>Prepare Write Req/Rsp</td><td>写(事务)</td></tr>
-      <tr><td>0x18/19</td><td>Execute Write Req/Rsp</td><td>写(提交)</td></tr>
-      <tr><td><strong>0x1B</strong></td><td><strong>Handle Value Notification</strong></td><td><strong>通知(无确认)</strong></td></tr>
-      <tr><td>0x1D/1E</td><td>Handle Value Ind/Conf</td><td>指示(有确认)</td></tr>
-      <tr><td><strong>0x52</strong></td><td><strong>Write Command</strong></td><td><strong>写(无确认)</strong></td></tr>
-      <tr><td>0xD2</td><td>Signed Write Command</td><td>签名写</td></tr>
-    </tbody>
-  </table>
-
-  <h3 class="section-subtitle" id="sec-ref-cid">10.4 L2CAP CID</h3>
-
-  <table class="data-table">
-    <thead>
-      <tr><th>CID</th><th>协议</th><th>走向</th></tr>
-    </thead>
-    <tbody>
-      <tr><td><strong>0x0004</strong></td><td><strong>ATT</strong></td><td>数据——GATT 读写通知</td></tr>
-      <tr><td>0x0005</td><td>L2CAP Signaling</td><td>控制——参数更新请求/响应</td></tr>
-      <tr><td><strong>0x0006</strong></td><td><strong>SMP</strong></td><td>安全——配对/加密/密钥分发</td></tr>
-      <tr><td>0x0020~0x003F</td><td>LE Credit Based</td><td>自定义信道 (4.2+)</td></tr>
-    </tbody>
-  </table>
-
-  <h3 class="section-subtitle" id="sec-ref-ad">10.5 AD Type（AdvData LTV 常用）</h3>
-
-  <table class="data-table">
-    <thead>
-      <tr><th>Type</th><th>名称</th><th>Data格式</th></tr>
-    </thead>
-    <tbody>
-      <tr><td><strong>0x01</strong></td><td>Flags</td><td>1B 位掩码（必须排第一个）</td></tr>
-      <tr><td>0x03</td><td>Complete 16-bit Service UUIDs</td><td>每UUID 2B(小端)</td></tr>
-      <tr><td>0x07</td><td>Complete 128-bit Service UUIDs</td><td>每UUID 16B</td></tr>
-      <tr><td>0x08</td><td>Shortened Local Name</td><td>UTF-8</td></tr>
-      <tr><td><strong>0x09</strong></td><td>Complete Local Name</td><td>UTF-8</td></tr>
-      <tr><td><strong>0x0A</strong></td><td>TX Power Level</td><td>1B 有符号dBm</td></tr>
-      <tr><td>0x16</td><td>Service Data (16-bit)</td><td>UUID(2B) + Data</td></tr>
-      <tr><td><strong>0xFF</strong></td><td>Manufacturer Specific</td><td>Company ID(2B小端) + 自定义</td></tr>
-    </tbody>
-  </table>
-
 </section>
 
 <section id="sec-timeline" class="main-section">
@@ -2358,6 +2274,194 @@ SKDm/SKDs 每次连接都是全新随机数
     });
   }
 
+  // ==================== REF_TABLES Data (Task 6) ====================
+  var REF_TABLES = [
+    {
+      id: 'll-control', label: 'LL Control',
+      headers: ['Opcode', 'PDU 名称', '方向', '说明'],
+      rows: [
+        ['0x00', 'LL_CONNECTION_UPDATE_REQ', 'M→S', '更新连接参数（Interval/Latency/Timeout），Instant 时刻生效'],
+        ['0x01', 'LL_CHANNEL_MAP_REQ', 'M→S', '更新信道图（5 字节 ChM + Instant）'],
+        ['0x02', 'LL_TERMINATE_IND', '双向', '断开连接（带 ErrorCode）'],
+        ['0x03', 'LL_ENC_REQ', 'M→S', '加密请求（Rand+EDIV+SKDm+IVm）'],
+        ['0x04', 'LL_ENC_RSP', 'S→M', '加密响应（SKDs+IVs）'],
+        ['0x05', 'LL_START_ENC_REQ', 'M→S', '<strong>开始加密 ⚠ 本身明文！</strong>'],
+        ['0x06', 'LL_START_ENC_RSP', 'S→M', '<strong>开始加密确认 ⚠ 本身明文！</strong>'],
+        ['0x07', 'LL_UNKNOWN_RSP', '双向', '收到未知 Control PDU（回显 Opcode + ErrorCode）'],
+        ['0x08', 'LL_FEATURE_REQ', '双向', '特性交换请求（8 字节 FeatureSet 位掩码）'],
+        ['0x09', 'LL_FEATURE_RSP', '双向', '特性交换响应'],
+        ['0x0A', 'LL_PAUSE_ENC_REQ', '双向', '暂停加密（BLE 5.1+）'],
+        ['0x0B', 'LL_PAUSE_ENC_RSP', '双向', '暂停加密确认'],
+        ['0x0C', 'LL_VERSION_IND', '双向', '版本通知（VersNr + CompId + SubVersNr）'],
+        ['0x0D', 'LL_REJECT_IND', '双向', '拒绝不支持的 Control PDU（回显被拒 Opcode）'],
+        ['0x0E', 'LL_SLAVE_FEATURE_REQ', 'S→M', '从设备主动特性请求（BLE 4.2+）'],
+        ['0x14', 'LL_PHY_REQ', '双向', 'PHY 更新请求（BLE 5.0，TX_PHYS + RX_PHYS）'],
+        ['0x15', 'LL_PHY_RSP', '双向', 'PHY 更新响应'],
+        ['0x16', 'LL_LENGTH_REQ', '双向', '数据长度扩展请求（BLE 4.2，MaxRx/TxOctets+Time）'],
+        ['0x17', 'LL_LENGTH_RSP', '双向', '数据长度扩展响应'],
+        ['0x19', 'LL_PERIODIC_SYNC_IND', '—', '周期广播同步（BLE 5.0）']
+      ]
+    },
+    {
+      id: 'smp', label: 'SMP',
+      headers: ['Code', 'PDU 名称', '方向', '说明'],
+      rows: [
+        ['0x01', 'Pairing Request', '双向', '配对特征交换（IO Capability / AuthReq / Key Dist）'],
+        ['0x02', 'Pairing Response', '双向', '配对特征响应'],
+        ['0x03', 'Pairing Confirm', '双向', '<strong>Legacy:</strong> 配对确认值 16B（AES-CMAC 计算结果）；<strong>SC:</strong> Numeric Comparison 用户肉眼比对后发送'],
+        ['0x04', 'Pairing Random', '双向', 'Legacy 配对随机数 16B'],
+        ['0x05', 'Pairing Failed', '双向', '配对失败通知（带 Reason Code）'],
+        ['0x06', 'Encryption Information', '双向', '分发 LTK（16 字节长期密钥）'],
+        ['0x07', 'Master Identification', '双向', '分发 EDIV(2B) + Rand(8B) — 下次重连查找 LTK 的索引'],
+        ['0x08', 'Identity Information', '双向', '分发 IRK（16 字节身份解析密钥）'],
+        ['0x09', 'Identity Address Information', '双向', '分发身份地址（1B AddrType + 6B Addr）'],
+        ['0x0A', 'Signing Information', '双向', '分发 CSRK（16 字节连接签名密钥）'],
+        ['0x0B', 'Security Request', 'S→M', '从设备请求 Master 启动加密'],
+        ['0x0C', 'Pairing Public Key', '双向', '<strong>SC:</strong> ECDH P-256 公钥（X 32B + Y 32B = 64 字节）'],
+        ['0x0D', 'Pairing DHKey Check', '双向', '<strong>SC:</strong> DHKey 一致性校验值 16B（AES-CMAC）'],
+        ['0x0E', 'Pairing Keypress Notification', '双向', 'Passkey Entry 按键通知（按键状态）']
+      ]
+    },
+    {
+      id: 'att', label: 'ATT',
+      headers: ['Opcode', 'PDU 名称', '类别', '说明'],
+      rows: [
+        ['0x01', 'Error Response', '错误', '错误响应（回显请求 Opcode + 错误码 + Handle）'],
+        ['0x02', 'Exchange MTU Request', 'MTU', '协商 ATT MTU（Client 告知其接收能力）'],
+        ['0x03', 'Exchange MTU Response', 'MTU', 'Server 返回其 MTU 值'],
+        ['0x04', 'Find Information Request', '发现', '范围内发现所有属性 Handle+UUID'],
+        ['0x05', 'Find Information Response', '发现', '返回 [Handle(2B)+UUID(2/16B)] 列表'],
+        ['0x06', 'Find By Type Value Request', '发现', '按类型+值搜索属性'],
+        ['0x07', 'Find By Type Value Response', '发现', '返回匹配的 Handle 范围列表'],
+        ['0x08', 'Read By Type Request', '发现', '范围内搜索同类型属性（发现 Characteristic）'],
+        ['0x09', 'Read By Type Response', '发现', '返回 [Handle(2B)+Value] 列表'],
+        ['0x0A', 'Read Request', '读', '读取指定 Handle 的值'],
+        ['0x0B', 'Read Response', '读', '返回读取的数据（变长）'],
+        ['0x0C', 'Read Blob Request', '读(长)', '长数据分段续读（Handle + Offset）'],
+        ['0x0D', 'Read Blob Response', '读(长)', '返回一段数据'],
+        ['0x10', 'Read By Group Type Request', '发现', '范围内搜索组类型属性（发现 Service）'],
+        ['0x11', 'Read By Group Type Response', '发现', '返回 Service 列表 [StartHandle+EndHandle+UUID]'],
+        ['0x12', 'Write Request', '写(确认)', '带确认写（等 Response）'],
+        ['0x13', 'Write Response', '写(确认)', '写确认回复（空 Payload）'],
+        ['0x16', 'Prepare Write Request', '写(事务)', '长写准备阶段（Handle + Offset + PartValue）'],
+        ['0x17', 'Prepare Write Response', '写(事务)', '回显准备的内容'],
+        ['0x18', 'Execute Write Request', '写(提交)', '提交(0x01)或取消(0x00)所有 Prepare Write'],
+        ['0x19', 'Execute Write Response', '写(提交)', '提交确认'],
+        ['0x1B', 'Handle Value Notification', '通知', '通知推送（无确认，快但不可靠）'],
+        ['0x1D', 'Handle Value Indication', '指示', '指示推送（需确认，慢但可靠）'],
+        ['0x1E', 'Handle Value Confirmation', '指示', '指示确认回复（空 Payload）'],
+        ['0x52', 'Write Command', '写(无确认)', '无确认快速写（bit6=1 → 0x12|0x40=0x52）'],
+        ['0xD2', 'Signed Write Command', '写(签名)', '带 CSRK 签名的无确认写（12B 签名）']
+      ]
+    },
+    {
+      id: 'cid', label: 'CID',
+      headers: ['CID', '协议', '说明'],
+      rows: [
+        ['<strong>0x0004</strong>', '<strong>ATT</strong>', '属性协议 — GATT 读写通知走此信道（CID 固定）'],
+        ['0x0005', 'L2CAP Signaling', 'L2CAP 层控制 — 连接参数更新请求/响应'],
+        ['<strong>0x0006</strong>', '<strong>SMP</strong>', '安全管理器 — 配对/加密/密钥分发'],
+        ['0x0020~0x003F', 'LE Credit Based', '面向连接的自定义信道（BLE 4.2+）']
+      ]
+    },
+    {
+      id: 'ad-type', label: 'AD Type',
+      headers: ['Type', '名称', 'Data 格式', '说明'],
+      rows: [
+        ['<strong>0x01</strong>', 'Flags', '1 字节位掩码', '<strong>必须排第一个。</strong>bit0=LE Limited Discoverable, bit1=LE General Discoverable, bit2=BR/EDR Not Supported'],
+        ['0x03', 'Complete 16-bit Service UUIDs', '每 UUID 2 字节（小端）', '完整的 16-bit 服务 UUID 列表'],
+        ['0x07', 'Complete 128-bit Service UUIDs', '每 UUID 16 字节', '完整的 128-bit 服务 UUID 列表'],
+        ['0x08', 'Shortened Local Name', 'UTF-8 字符串', '设备简称（放不下全名时）'],
+        ['<strong>0x09</strong>', 'Complete Local Name', 'UTF-8 字符串', '设备全名（如 "FLOWMETER"）'],
+        ['<strong>0x0A</strong>', 'TX Power Level', '1 字节有符号整数', '发射功率 dBm（用于距离估算）'],
+        ['0x16', 'Service Data (16-bit UUID)', 'UUID(2B) + Data', '服务关联数据'],
+        ['<strong>0xFF</strong>', 'Manufacturer Specific Data', 'Company ID(2B 小端) + 自定义', '厂商自定义数据（如 iBeacon）']
+      ]
+    }
+  ];
+
+  // ==================== renderRefTables (Task 6) ====================
+  function renderRefTables(container) {
+    container.className += ' ref-tables-container';
+
+    // ---- Tab bar ----
+    var tabBar = document.createElement('div');
+    tabBar.className = 'ref-tab-bar';
+    container.appendChild(tabBar);
+
+    // ---- Search input ----
+    var searchWrap = document.createElement('div');
+    searchWrap.className = 'ref-search';
+    var searchInput = document.createElement('input');
+    searchInput.className = 'ref-search-input';
+    searchInput.type = 'text';
+    searchInput.placeholder = '搜索当前表...';
+    searchWrap.appendChild(searchInput);
+    container.appendChild(searchWrap);
+
+    // ---- Table wrapper ----
+    var tableWrapper = document.createElement('div');
+    tableWrapper.className = 'ref-table-wrapper';
+    container.appendChild(tableWrapper);
+
+    // ---- Count display ----
+    var countEl = document.createElement('div');
+    countEl.className = 'ref-count';
+    container.appendChild(countEl);
+
+    // ---- State ----
+    var currentId = REF_TABLES[0].id;
+    var filterText = '';
+
+    // ---- Build tabs ----
+    REF_TABLES.forEach(function(t) {
+      var btn = document.createElement('button');
+      btn.className = 'ref-tab-btn' + (t.id === currentId ? ' active' : '');
+      btn.textContent = t.label;
+      btn.addEventListener('click', function() {
+        tabBar.querySelectorAll('.ref-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentId = t.id;
+        renderTable(t, filterText);
+      });
+      tabBar.appendChild(btn);
+    });
+
+    // ---- Render function ----
+    function renderTable(table, filter) {
+      filter = filter.toLowerCase().trim();
+      var filteredRows = [];
+      table.rows.forEach(function(row) {
+        var match = !filter ||
+          row.some(function(cell) { return cell.toLowerCase().indexOf(filter) !== -1; }) ||
+          (table.id === 'll-control' && row[0].toLowerCase().indexOf(filter) !== -1);
+        if (match) { filteredRows.push(row); }
+      });
+
+      var html = '<table class="ref-table"><thead><tr>';
+      table.headers.forEach(function(h) { html += '<th>' + h + '</th>'; });
+      html += '</tr></thead><tbody>';
+      filteredRows.forEach(function(row) {
+        html += '<tr>';
+        row.forEach(function(cell) { html += '<td>' + cell + '</td>'; });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      tableWrapper.innerHTML = html;
+      countEl.textContent = '显示 ' + filteredRows.length + ' / ' + table.rows.length + ' 条';
+    }
+
+    // ---- Search handler ----
+    searchInput.addEventListener('input', function() {
+      filterText = this.value;
+      var table = REF_TABLES.filter(function(t) { return t.id === currentId; })[0];
+      renderTable(table, filterText);
+    });
+
+    // ---- Initial render ----
+    renderTable(REF_TABLES[0], '');
+  }
+
   // ==================== Initialize on DOM Ready ====================
   document.addEventListener('DOMContentLoaded', function() {
     renderTree(TREE, document.getElementById('sidebarContent'));
@@ -2368,6 +2472,9 @@ SKDm/SKDs 每次连接都是全新随机数
     // Initialize timeline
     var timelineContainer = document.querySelector('[data-component="timeline"]');
     if (timelineContainer) { renderTimeline(timelineContainer); }
+    // Initialize ref-tables (Task 6)
+    var refTablesContainer = document.querySelector('[data-component="ref-tables"]');
+    if (refTablesContainer) { renderRefTables(refTablesContainer); }
   });
 
 })();
