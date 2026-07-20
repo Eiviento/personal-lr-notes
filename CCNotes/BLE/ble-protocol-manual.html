@@ -299,6 +299,35 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
 /* ==================== Sidebar Scrim / Backdrop (Task 8) ==================== */
 .sidebar-scrim{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);z-index:85;opacity:0;pointer-events:none;transition:opacity .28s cubic-bezier(.4,0,.2,1);}
 .sidebar-scrim.open{opacity:1;pointer-events:auto;}
+
+/* ==================== Frame View — 完整空中帧可视化 ==================== */
+.frame-view{margin:16px 0 20px;font-size:13px;}
+.frame-view__title{font-weight:600;color:var(--text);margin-bottom:8px;font-size:14px;}
+.frame-view__bar{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--border);height:44px;margin-bottom:10px;}
+.frame-view__seg{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;color:#fff;font-family:var(--font-mono);transition:opacity .2s,box-shadow .2s;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;min-width:0;cursor:pointer;position:relative;}
+.frame-view__seg:hover{opacity:.88;}
+.frame-view__seg--highlighted{box-shadow:inset 0 0 0 3px rgba(255,255,255,.9), 0 0 12px rgba(255,255,255,.3);z-index:1;transform:scaleY(1.08);}
+.frame-view__seg--dimmed{opacity:.38;}
+.frame-view__seg-label{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 1px;font-weight:600;}
+.frame-view__seg-size{font-size:7px;opacity:.75;margin-top:1px;}
+.frame-view__legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--text-secondary);line-height:1.6;}
+.frame-view__legend-item{display:flex;align-items:center;gap:5px;}
+.frame-view__legend-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+
+/* ==================== Field Detail — 可折叠字段详释 ==================== */
+.field-detail{margin-top:6px;}
+.field-detail__toggle{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--blue);cursor:pointer;user-select:none;padding:2px 6px;border-radius:4px;transition:background .15s;font-family:var(--font);}
+.field-detail__toggle:hover{background:var(--surface-hover);}
+.field-detail__toggle-icon{display:inline-block;font-size:9px;transition:transform .2s;width:12px;text-align:center;flex-shrink:0;}
+.field-detail__toggle.expanded .field-detail__toggle-icon{transform:rotate(90deg);}
+.field-detail__body{display:none;margin-top:6px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text-secondary);line-height:1.8;}
+.field-detail__body pre{font-family:var(--font-mono);font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;margin:6px 0;overflow-x:auto;white-space:pre;color:var(--text);}
+.field-detail__body code{font-family:var(--font-mono);font-size:11px;background:var(--surface-hover);padding:1px 4px;border-radius:2px;color:var(--cyan);}
+.field-detail__body p{margin-bottom:6px;}
+.field-detail__body table{width:100%;border-collapse:collapse;margin:6px 0;font-size:11px;}
+.field-detail__body table th,.field-detail__body table td{border:1px solid var(--border);padding:4px 8px;text-align:left;vertical-align:top;font-size:11px;}
+.field-detail__body table th{background:var(--surface);font-weight:600;color:var(--text);white-space:nowrap;}
+.field-detail__body table tr:nth-child(even) td{background:var(--surface);}
 </style>
 </head>
 <body>
@@ -470,6 +499,11 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
 
   <h3 class="section-subtitle" id="sec-adv-header">3.1 广告信道 PDU Header 格式（16 bit）</h3>
 
+  <!-- 完整空中帧视图——PDU Header 段高亮 -->
+  <div data-component="frame-view" data-id="adv-full-frame"></div>
+
+  <p class="section-text">上图展示了广告信道<strong>完整空中帧</strong>各字段的位置关系。下面聚焦 <strong>PDU Header（蓝色高亮段）</strong>的 16 bit 位布局：</p>
+
   <pre class="ascii-diagram"> bit: [15:8]    [7]   [6]    [5]    [4]   [3:0]
      ┌────────┬──────┬──────┬──────┬─────┬──────────┐
      │ Length │RxAdd │TxAdd │ChSel │ RFU │ PDU Type │
@@ -483,12 +517,71 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
       <tr><th>字段</th><th>位宽</th><th>位范围</th><th>说明</th></tr>
     </thead>
     <tbody>
-      <tr><td><strong>PDU Type</strong></td><td>4 bit</td><td>[3:0]</td><td>0000=ADV_IND, 0001=ADV_DIRECT_IND, 0010=ADV_NONCONN_IND, 0011=SCAN_REQ, 0100=SCAN_RSP, 0101=CONNECT_IND, 0110=ADV_SCAN_IND</td></tr>
-      <tr><td>RFU</td><td>1 bit</td><td>[4]</td><td>Reserved (保留)</td></tr>
-      <tr><td>ChSel</td><td>1 bit</td><td>[5]</td><td>信道选择算法: 0=Algorithm1, 1=Algorithm2</td></tr>
-      <tr><td>TxAdd</td><td>1 bit</td><td>[6]</td><td>发送方地址类型: 0=Public MAC, 1=Random MAC</td></tr>
-      <tr><td>RxAdd</td><td>1 bit</td><td>[7]</td><td>目标方地址类型: 0=Public MAC, 1=Random MAC（仅 ADV_DIRECT_IND 和 CONNECT_IND 使用）</td></tr>
-      <tr><td><strong>Length</strong></td><td>8 bit</td><td>[15:8]</td><td>Payload 字节数（6~37）</td></tr>
+      <tr><td><strong>PDU Type</strong></td><td>4 bit</td><td>[3:0]</td><td>广播 PDU 类型标识：<code>0000</code>=ADV_IND, <code>0001</code>=ADV_DIRECT_IND, <code>0010</code>=ADV_NONCONN_IND, <code>0011</code>=SCAN_REQ, <code>0100</code>=SCAN_RSP, <code>0101</code>=CONNECT_IND, <code>0110</code>=ADV_SCAN_IND
+        <div class="field-detail">
+          <span class="field-detail__toggle" onclick="var p=this.parentElement;var b=p.querySelector('.field-detail__body');var t=this;if(b.style.display==='block'){b.style.display='none';t.classList.remove('expanded');}else{b.style.display='block';t.classList.add('expanded');}">
+            <span class="field-detail__toggle-icon">▶</span> 六种 PDU Type 的区别与使用场景
+          </span>
+          <div class="field-detail__body">
+            <table>
+              <tr><th>PDU Type</th><th>值</th><th>可扫描</th><th>可连接</th><th>有 AdvData</th><th>典型场景</th></tr>
+              <tr><td>ADV_IND</td><td>0000</td><td>✅</td><td>✅</td><td>✅ (31B)</td><td>通用广播等连接（最常用）</td></tr>
+              <tr><td>ADV_DIRECT_IND</td><td>0001</td><td>❌</td><td>✅ (仅目标)</td><td>❌</td><td>快速重连已配对设备（Payload 仅 AdvA+InitA=12B）</td></tr>
+              <tr><td>ADV_NONCONN_IND</td><td>0010</td><td>❌</td><td>❌</td><td>✅</td><td>纯信标广播（iBeacon/Eddystone）</td></tr>
+              <tr><td>SCAN_REQ</td><td>0011</td><td>—</td><td>—</td><td>—</td><td>扫描方向广播方请求更多数据</td></tr>
+              <tr><td>SCAN_RSP</td><td>0100</td><td>—</td><td>—</td><td>✅ (31B)</td><td>广播方对 SCAN_REQ 的响应</td></tr>
+              <tr><td>CONNECT_IND</td><td>0101</td><td>—</td><td>—</td><td>—</td><td>发起连接（Payload=34B，携带全部连接参数）</td></tr>
+              <tr><td>ADV_SCAN_IND</td><td>0110</td><td>✅</td><td>❌</td><td>✅</td><td>仅广播+额外信息，不允许连接</td></tr>
+            </table>
+            <p><strong>ADV_DIRECT_IND 的 InitA 来源：</strong>InitA（6 字节目标地址）来自绑定表——首次配对后把对方 Identity Address 存入 Flash。下次重连时从绑定表读取填入 InitA，只允许这一个设备连接。现代手机默认每 15 分钟换一次 RPA（随机地址），定向广播仍有效——手机收到后用 IRK 可认出自己的身份地址。</p>
+            <p><strong>ADV_IND vs ADV_SCAN_IND：</strong>ADV_IND 本身就支持被扫描（可回 SCAN_RSP），不需要切 ADV_SCAN_IND。ADV_SCAN_IND 唯一的存在理由是"想给额外广播数据但绝不允许连接"。</p>
+          </div>
+        </div>
+      </td></tr>
+      <tr><td>RFU</td><td>1 bit</td><td>[4]</td><td>Reserved (保留位，必须为 0)</td></tr>
+      <tr><td>ChSel</td><td>1 bit</td><td>[5]</td><td>信道选择算法: 0=Algorithm #1（自适应跳频）, 1=Algorithm #2（伪随机）
+        <div class="field-detail">
+          <span class="field-detail__toggle" onclick="var p=this.parentElement;var b=p.querySelector('.field-detail__body');var t=this;if(b.style.display==='block'){b.style.display='none';t.classList.remove('expanded');}else{b.style.display='block';t.classList.add('expanded');}">
+            <span class="field-detail__toggle-icon">▶</span> Algorithm #1 vs #2 的区别
+          </span>
+          <div class="field-detail__body">
+            <p><strong>Algorithm #1（默认）：</strong>基于信道图 (Channel Map) 和跳频增量 (Hop Increment) 在可用信道之间循环跳转。如果某个信道被标记为"不可用"(ChM bit=0)，则跳过该信道，用"重映射"机制把不可用信道映射到可用信道池中。</p>
+            <p><strong>Algorithm #2：</strong>在 Algorithm #1 的基础上增加伪随机性——使用一个 PRNG（伪随机数生成器）选择下一个信道，使跳频序列更难预测。BLE 5.0 引入，用于改善抗干扰能力和安全性。</p>
+            <p>ChSel 位在广播阶段告知扫描方"我支持 Algorithm #2"——如果 Central 也支持，连接后可用 Algorithm #2 跳频。</p>
+          </div>
+        </div>
+      </td></tr>
+      <tr><td>TxAdd</td><td>1 bit</td><td>[6]</td><td>发送方地址类型: 0=Public MAC, 1=Random MAC
+        <div class="field-detail">
+          <span class="field-detail__toggle" onclick="var p=this.parentElement;var b=p.querySelector('.field-detail__body');var t=this;if(b.style.display==='block'){b.style.display='none';t.classList.remove('expanded');}else{b.style.display='block';t.classList.add('expanded');}">
+            <span class="field-detail__toggle-icon">▶</span> Public vs Random MAC 地址
+          </span>
+          <div class="field-detail__body">
+            <p><strong>Public MAC：</strong>IEEE 注册的全球唯一地址（前 3 字节 OUI 由 IEEE 分配给厂商，后 3 字节厂商自编）。类似 Wi-Fi MAC，永久不变。需要向 IEEE 购买，成本 ~$3000/OUI。</p>
+            <p><strong>Random MAC 分两种：</strong></p>
+            <table>
+              <tr><th>类型</th><th>TxAdd 标识</th><th>特点</th></tr>
+              <tr><td>Static Random</td><td>1（最高两 bit=11）</td><td>设备每次上电随机生成，本次上电期间不变。不需要买 IEEE OUI，免费。</td></tr>
+              <tr><td>Private Random (RPA)</td><td>1（最高两 bit=00）</td><td>每 15 分钟更换一次，用 IRK + 随机数 hash 生成。只有拥有 IRK 的设备能解析出真实身份——这是 BLE 隐私保护的核心机制。</td></tr>
+            </table>
+            <p>现代手机默认使用 RPA 地址以防止追踪。TxAdd 告诉对方"我发的这个 6 字节地址怎么解读"。</p>
+          </div>
+        </div>
+      </td></tr>
+      <tr><td>RxAdd</td><td>1 bit</td><td>[7]</td><td>目标方地址类型: 0=Public MAC, 1=Random MAC（仅 ADV_DIRECT_IND 和 CONNECT_IND 使用此位，其他 PDU Type 置 0）</td></tr>
+      <tr><td><strong>Length</strong></td><td>8 bit</td><td>[15:8]</td><td>Payload 字节数（6~37）
+        <div class="field-detail">
+          <span class="field-detail__toggle" onclick="var p=this.parentElement;var b=p.querySelector('.field-detail__body');var t=this;if(b.style.display==='block'){b.style.display='none';t.classList.remove('expanded');}else{b.style.display='block';t.classList.add('expanded');}">
+            <span class="field-detail__toggle-icon">▶</span> Length 字段的版本差异
+          </span>
+          <div class="field-detail__body">
+            <p><strong>BLE 4.0~4.1：</strong>Length 为 <strong>6 bit</strong>（位范围 [5:0]），最大 63 字节。PDU Header 仅 2 字节，高位 2 bit 为 RFU。</p>
+            <p><strong>BLE 4.2+：</strong>Length 扩展为 <strong>8 bit</strong>（位范围 [15:8]），最大 255 字节。本手册统一使用 8 bit 标准。</p>
+            <p><strong>广播 Payload 实际限制：</strong>虽然 Length 可达 255，但广播 PDU 的 Payload 实际最大 37 字节（AdvA 6B + AdvData 31B）。CONNECT_IND 的 Payload 固定 34 字节。Minimum 6 字节（仅 AdvA，无 AdvData）。</p>
+            <p><strong>数据信道：</strong>Length=0 表示空包（仅 LL Header + CRC，用于维持心跳/确认）。Data Length Extension 协商后最大可达 251 字节。</p>
+          </div>
+        </div>
+      </td></tr>
     </tbody>
   </table>
 
@@ -597,7 +690,7 @@ CONNECT_IND:
 
   <h4 class="section-subsubtitle">(a) ADV_IND 报文</h4>
 
-  <p class="section-text"><strong>PDU Header (16 bit)</strong>：PDU Type=0000, RFU=0, ChSel=0, TxAdd=0/1, RxAdd=0, Length=6+AdvData长度</p>
+  <p class="section-text"><strong>PDU Header</strong>：<a href="#sec-adv-header" style="color:var(--blue);">详见 3.1 节</a>。此处 PDU Type=<code>0000</code> (ADV_IND)，Length=6+AdvData 长度。</p>
   <p class="section-text"><strong>PDU Payload</strong>：</p>
 
   <table class="data-table">
@@ -612,7 +705,7 @@ CONNECT_IND:
 
   <h4 class="section-subsubtitle">(b) SCAN_REQ 报文</h4>
 
-  <p class="section-text"><strong>PDU Header</strong>：PDU Type=0011, Length=12</p>
+  <p class="section-text"><strong>PDU Header</strong>：<a href="#sec-adv-header" style="color:var(--blue);">详见 3.1 节</a>。此处 PDU Type=<code>0011</code> (SCAN_REQ)，Length=12。</p>
   <p class="section-text"><strong>PDU Payload (12 字节)</strong>：</p>
 
   <table class="data-table">
@@ -627,7 +720,7 @@ CONNECT_IND:
 
   <h4 class="section-subsubtitle">(c) SCAN_RSP 报文</h4>
 
-  <p class="section-text"><strong>PDU Header</strong>：PDU Type=0100, Length=6+ScanRspData长度</p>
+  <p class="section-text"><strong>PDU Header</strong>：<a href="#sec-adv-header" style="color:var(--blue);">详见 3.1 节</a>。此处 PDU Type=<code>0100</code> (SCAN_RSP)，Length=6+ScanRspData 长度。</p>
   <p class="section-text"><strong>PDU Payload</strong>：</p>
 
   <table class="data-table">
@@ -644,7 +737,7 @@ CONNECT_IND:
 
   <h4 class="section-subsubtitle">(d) CONNECT_IND 报文 — 最重要的一个包</h4>
 
-  <p class="section-text"><strong>PDU Header</strong>：PDU Type=0101, Length=34</p>
+  <p class="section-text"><strong>PDU Header</strong>：<a href="#sec-adv-header" style="color:var(--blue);">详见 3.1 节</a>。此处 PDU Type=<code>0101</code> (CONNECT_IND)，Length=34。</p>
   <p class="section-text"><strong>PDU Payload (34 字节)</strong>：</p>
 
   <table class="data-table">
@@ -708,6 +801,11 @@ CONNECT_IND:
 
   <h3 class="section-subtitle" id="sec-data-header">4.1 数据信道 PDU Header 格式（16 bit）</h3>
 
+  <!-- 完整空中帧视图——PDU Header 段高亮 -->
+  <div data-component="frame-view" data-id="data-full-frame"></div>
+
+  <p class="section-text">上图展示了数据信道<strong>完整空中帧</strong>各字段的位置关系（含 MIC，因为数据信道包可加密）。下面聚焦 <strong>PDU Header（蓝色高亮段）</strong>的 16 bit 位布局：</p>
+
   <pre class="ascii-diagram"> bit: [15:8]    [7:6]  [5]   [4]   [3]   [2]   [1:0]
      ┌────────┬──────┬─────┬─────┬─────┬─────┬────────┐
      │ Length │ RFU  │ CP  │ MD  │ SN  │NESN │  LLID  │
@@ -721,26 +819,113 @@ CONNECT_IND:
       <tr><th>字段</th><th>位宽</th><th>位范围</th><th>说明</th></tr>
     </thead>
     <tbody>
-      <tr><td><strong>LLID</strong></td><td>2 bit</td><td>[1:0]</td><td><strong>10</strong>=LL Data PDU（起始片段）, <strong>01</strong>=LL Data PDU（空包/续传片段）, <strong>11</strong>=LL Control PDU</td></tr>
-      <tr><td><strong>NESN</strong></td><td>1 bit</td><td>[2]</td><td>Next Expected SN——确认对方上一包已收，期望对方下一个包的 SN 值</td></tr>
-      <tr><td><strong>SN</strong></td><td>1 bit</td><td>[3]</td><td>Sequence Number——本包序列号（0/1 翻转=新包, 相同=重传包）</td></tr>
-      <tr><td><strong>MD</strong></td><td>1 bit</td><td>[4]</td><td>More Data——1=本连接事件内还有更多数据要发</td></tr>
-      <tr><td><strong>CP</strong></td><td>1 bit</td><td>[5]</td><td>Coded PHY 指示（BLE 5.0: 0=非Coded PHY, 1=Coded PHY）</td></tr>
-      <tr><td>RFU</td><td>2 bit</td><td>[7:6]</td><td>Reserved</td></tr>
-      <tr><td><strong>Length</strong></td><td>8 bit</td><td>[15:8]</td><td>Payload 字节数（0=空包, 最大 27/251 取决于特性协商）</td></tr>
+      <tr><td><strong>LLID</strong></td><td>2 bit</td><td>[1:0]</td><td>链路层 ID，决定 PDU 类型：<code>10</code>=LL Data PDU（起始片段/完整 L2CAP 包）, <code>01</code>=LL Data PDU（续传片段或空包）, <code>11</code>=LL Control PDU（链路层管理命令）
+        <div class="field-detail">
+          <span class="field-detail__toggle" onclick="var p=this.parentElement;var b=p.querySelector('.field-detail__body');var t=this;if(b.style.display==='block'){b.style.display='none';t.classList.remove('expanded');}else{b.style.display='block';t.classList.add('expanded');}">
+            <span class="field-detail__toggle-icon">▶</span> LLID 三种模式详解 & LL Control vs LL Data 的关系
+          </span>
+          <div class="field-detail__body">
+            <table>
+              <tr><th>LLID</th><th>PDU 类型</th><th>含义</th><th>谁处理</th></tr>
+              <tr><td><code>10</code></td><td><strong>LL Data PDU</strong></td><td>承载 L2CAP 包（上层数据），片段起始或完整包</td><td>L2CAP → ATT/SMP</td></tr>
+              <tr><td><code>01</code></td><td><strong>LL Data PDU</strong></td><td>空包（维持心跳/确认）或分片续传片段</td><td>链路层确认 + 重组</td></tr>
+              <tr><td><code>11</code></td><td><strong>LL Control PDU</strong></td><td>链路层自身管理命令，Payload 以 Opcode 开头</td><td>Controller 内部消化</td></tr>
+            </table>
+            <p><strong>关键认知：LL Control PDU 和 LL Data PDU 是平级关系，不是嵌套关系。</strong></p>
+            <p>链路层收到一个包 → 看 LLID：</p>
+            <pre>LLID=10/01 → Payload 是 L2CAP 包 → 拆掉 LL Header → 交给 L2CAP 层
+LLID=11   → Payload 以 Opcode 开头 → Controller 自己处理 → 不出链路层</pre>
+            <p>LL Control PDU 不过 L2CAP 层，因此<strong>没有 CID</strong>。这是一种两全设计：链路层自身的管理命令（改参数、加密、断连）不走 L2CAP 的复杂封装，直接在链路层快速处理。</p>
+          </div>
+        </div>
+      </td></tr>
+      <tr><td><strong>NESN</strong></td><td>1 bit</td><td>[2]</td><td>Next Expected SN——确认对方上一包已收，期望对方下一个包的 SN 值
+        <div class="field-detail">
+          <span class="field-detail__toggle" onclick="var p=this.parentElement;var b=p.querySelector('.field-detail__body');var t=this;if(b.style.display==='block'){b.style.display='none';t.classList.remove('expanded');}else{b.style.display='block';t.classList.add('expanded');}">
+            <span class="field-detail__toggle-icon">▶</span> SN/NESN 停等协议：1 bit 为什么够用？
+          </span>
+          <div class="field-detail__body">
+            <p><strong>BLE 链路层是停等协议（Stop-and-Wait），不是 TCP 那种滑动窗口。</strong>一次只发一包，收到回复才发下一包。最多只有一个包在飞，所以只需 1 bit 区分"这个包"和"下一个包"。</p>
+            <p><strong>SN（Sequence Number）：</strong></p>
+            <pre>正常:
+  事件1: SN=0 [新数据] → Slave 回复 NESN=1 [收到了]
+  事件2: SN=1 [新数据，翻了一下] → Slave 回复 NESN=0 [收到了]
+  事件3: SN=0 [又翻了，新数据]
+
+丢包:
+  事件1: SN=0 [新数据] → Slave 回复 NESN=1
+         ↑ 这个 ACK 在空中丢了
+  Master 超时（150μs 内没回）→ 重传
+  事件1':SN=0 [SN 没变！]
+  Slave 收到: SN=0 → 和上次一样 → 这是重传，不处理数据，只重发 ACK</pre>
+            <p><strong>NESN 隐含 ACK：</strong></p>
+            <table>
+              <tr><th></th><th>TCP</th><th>BLE 链路层</th></tr>
+              <tr><td>协议类型</td><td>滑动窗口</td><td>停等 (Stop-and-Wait)</td></tr>
+              <tr><td>同时在路上的包</td><td>多个</td><td>最多 1 个</td></tr>
+              <tr><td>SN 大小</td><td>32 bit</td><td>1 bit</td></tr>
+              <tr><td>ACK 方式</td><td>独立 ACK 包</td><td>NESN 翻转隐含 ACK</td></tr>
+              <tr><td>乱序</td><td>可能</td><td>不存在</td></tr>
+            </table>
+            <p>NESN 翻转（0→1 或 1→0）= "下一个用这个 SN" = 上一个收到了。<br>NESN 不变 = "还是那个 SN" = 上一个没收到（隐性 NAK）。确认和期望打包在同一个 1 bit 字段里，是停等协议最优雅的设计。</p>
+          </div>
+        </div>
+      </td></tr>
+      <tr><td><strong>SN</strong></td><td>1 bit</td><td>[3]</td><td>Sequence Number——本包序列号（0/1 翻转=新包, 相同=重传包）<br><span style="font-size:11px;color:var(--text-secondary);">详见上方 NESN 折叠块中的 SN/NESN 联合说明</span></td></tr>
+      <tr><td><strong>MD</strong></td><td>1 bit</td><td>[4]</td><td>More Data——1=本连接事件内还有更多数据要发（对方应继续监听，不要立即休眠）
+        <div class="field-detail">
+          <span class="field-detail__toggle" onclick="var p=this.parentElement;var b=p.querySelector('.field-detail__body');var t=this;if(b.style.display==='block'){b.style.display='none';t.classList.remove('expanded');}else{b.style.display='block';t.classList.add('expanded');}">
+            <span class="field-detail__toggle-icon">▶</span> MD 的工作原理
+          </span>
+          <div class="field-detail__body">
+            <p>连接事件中，Master 发完一包后如果 MD=1，Slave 就知道"别急着关接收窗口，后面还有"。这允许在一次连接事件内连续发送多个包，提高吞吐量。</p>
+            <p>MD=0 表示本包是本次连接事件的最后一包——对方收到后可以安全关闭接收窗口进入休眠，等下一个 Interval 再醒来。</p>
+            <p><strong>典型用法：</strong>长数据分片发送时，前 N-1 片都设 MD=1，最后一片设 MD=0。</p>
+          </div>
+        </div>
+      </td></tr>
+      <tr><td><strong>CP</strong></td><td>1 bit</td><td>[5]</td><td>Coded PHY 指示（BLE 5.0 引入）: 0=1M 或 2M PHY, 1=Coded PHY (S=2 或 S=8)
+        <div class="field-detail">
+          <span class="field-detail__toggle" onclick="var p=this.parentElement;var b=p.querySelector('.field-detail__body');var t=this;if(b.style.display==='block'){b.style.display='none';t.classList.remove('expanded');}else{b.style.display='block';t.classList.add('expanded');}">
+            <span class="field-detail__toggle-icon">▶</span> Coded PHY 是什么？
+          </span>
+          <div class="field-detail__body">
+            <p>BLE 5.0 引入 Coded PHY 实现<strong>远程通信</strong>（最远可达数百米）：</p>
+            <table>
+              <tr><th>PHY</th><th>速率</th><th>距离</th><th>编码方式</th></tr>
+              <tr><td>1M (LE 1M)</td><td>1 Mbps</td><td>~100m</td><td>无编码，每 bit 1 个符号</td></tr>
+              <tr><td>2M (LE 2M)</td><td>2 Mbps</td><td>~50m</td><td>无编码，每 bit 0.5 个符号</td></tr>
+              <tr><td>Coded S=2</td><td>500 Kbps</td><td>~200m</td><td>每 bit 编码为 2 个符号（FEC）</td></tr>
+              <tr><td>Coded S=8</td><td>125 Kbps</td><td>~400m+</td><td>每 bit 编码为 8 个符号（FEC 最强纠错）</td></tr>
+            </table>
+            <p>CP=1 时 CI（Coding Indicator）字段进一步区分 S=2 还是 S=8。Coded PHY 以降低速率为代价换取前向纠错（FEC）增益，使信噪比很差时仍能通信。</p>
+          </div>
+        </div>
+      </td></tr>
+      <tr><td>RFU</td><td>2 bit</td><td>[7:6]</td><td>Reserved（保留位）</td></tr>
+      <tr><td><strong>Length</strong></td><td>8 bit</td><td>[15:8]</td><td>Payload 字节数（0=空包, 最大 27/251 取决于 Data Length Extension 协商）
+        <div class="field-detail">
+          <span class="field-detail__toggle" onclick="var p=this.parentElement;var b=p.querySelector('.field-detail__body');var t=this;if(b.style.display==='block'){b.style.display='none';t.classList.remove('expanded');}else{b.style.display='block';t.classList.add('expanded');}">
+            <span class="field-detail__toggle-icon">▶</span> Payload 长度限制详解
+          </span>
+          <div class="field-detail__body">
+            <table>
+              <tr><th>BLE 版本</th><th>LL Payload 最大</th><th>说明</th></tr>
+              <tr><td>4.0 / 4.1</td><td>27 字节</td><td>固定上限，不支持扩展</td></tr>
+              <tr><td>4.2+</td><td>251 字节</td><td>需通过 LL_LENGTH_REQ/RSP 协商 Data Length Extension</td></tr>
+            </table>
+            <p><strong>多层限制链：</strong></p>
+            <pre>应用层 writeCharacteristic(data)
+  → ATT MTU 限制 (协商决定，Android 默认 517, iOS 默认 527)
+    → L2CAP Length 2 字节 (纸面上限 65535，实际不是瓶颈)
+      → <strong>LL Payload Length (27 或 251)</strong> ← 真正的瓶颈
+        → 链路层自动分片 (LLID=10 第一片, LLID=01 续传)</pre>
+            <p>Length=0 的含义：空包——仅 LL Header + CRC，无 Payload 无 MIC。用于维持连接心跳、确认对方包（通过 NESN）、从设备无数据时"签到"。</p>
+          </div>
+        </div>
+      </td></tr>
     </tbody>
   </table>
-
-  <p class="section-text"><strong>SN/NESN 确认重传机制</strong>：</p>
-
-  <pre class="ascii-diagram">停等协议（Stop-and-Wait）：一次只发一包，收到回复才发下一包。
-
-SN:  本包序列号，新包 0→1→0→1 交替翻转
-     连续两包 SN 相同 → 这是重传
-NESN: 告诉对方"我收到了你 SN=X 的包，期待你的下一个 SN=NESN"
-     确认和期望打包在同一个字段里
-
-例：Master(SN=0) → Slave 回复(NESN=1) → Master(SN=1) → ...</pre>
 
   <h3 class="section-subtitle" id="sec-llid">4.2 LLID 决定 PDU 类型</h3>
 
@@ -2013,6 +2198,104 @@ SKDm/SKDs 每次连接都是全新随机数
     }
   };
 
+  // ==================== FRAME_VIEWS Data — 完整空中帧视图 ====================
+  var FRAME_VIEWS = {
+    'adv-full-frame': {
+      id: 'adv-full-frame',
+      title: '广告信道完整空中帧（PDU Header 高亮）',
+      highlight: 'PDU Header',
+      fields: [
+        { name: 'Preamble', flex: 3, color: 'var(--gray)', desc: '前导码 0xAA (1 字节)，物理层比特同步' },
+        { name: 'Access Address', flex: 10, color: 'var(--cyan)', desc: '广告信道固定 0x8E89BED6 (4 字节)' },
+        { name: 'PDU Header', flex: 6, color: 'var(--blue)', desc: '2 字节链路层头 ← 当前讲解部分' },
+        { name: 'Payload', flex: 10, color: 'var(--orange)', desc: 'AdvA(6B) + AdvData(0~31B)，最多 37 字节' },
+        { name: 'CRC', flex: 6, color: 'var(--green)', desc: '3 字节循环冗余校验 (所有包都有)' }
+      ]
+    },
+    'data-full-frame': {
+      id: 'data-full-frame',
+      title: '数据信道完整空中帧（PDU Header 高亮）',
+      highlight: 'PDU Header',
+      fields: [
+        { name: 'Preamble', flex: 3, color: 'var(--gray)', desc: '前导码 (1 字节)，物理层比特同步' },
+        { name: 'Access Address', flex: 10, color: 'var(--cyan)', desc: '随机 32 位值 (4 字节)，CONNECT_IND 中下发' },
+        { name: 'PDU Header', flex: 6, color: 'var(--blue)', desc: '2 字节 ← 当前讲解部分（LLID/SN/NESN/MD/CP/Length）' },
+        { name: 'Payload', flex: 10, color: 'var(--orange)', desc: 'L2CAP 包 (0~251 字节)，可变长度' },
+        { name: 'MIC', flex: 6, color: 'var(--purple)', desc: '4 字节消息完整性校验 (仅加密包有)' },
+        { name: 'CRC', flex: 6, color: 'var(--green)', desc: '3 字节循环冗余校验 (所有包都有)' }
+      ]
+    }
+  };
+
+  // --- Render a single frame view (complete air frame visualization) ---
+  function renderFrameView(frameDef) {
+    var container = document.createElement('div');
+    container.className = 'frame-view';
+
+    // Title
+    var title = document.createElement('div');
+    title.className = 'frame-view__title';
+    title.textContent = frameDef.title;
+    container.appendChild(title);
+
+    // Color bar
+    var bar = document.createElement('div');
+    bar.className = 'frame-view__bar';
+    var totalFlex = 0;
+    frameDef.fields.forEach(function(f) { totalFlex += f.flex; });
+
+    frameDef.fields.forEach(function(field) {
+      var seg = document.createElement('div');
+      seg.className = 'frame-view__seg';
+      if (field.name === frameDef.highlight) {
+        seg.classList.add('frame-view__seg--highlighted');
+      } else {
+        seg.classList.add('frame-view__seg--dimmed');
+      }
+      seg.style.cssText = 'flex:' + field.flex + ';background:' + field.color + ';';
+      seg.title = field.desc;
+
+      var label = document.createElement('span');
+      label.className = 'frame-view__seg-label';
+      label.textContent = field.name;
+      seg.appendChild(label);
+
+      var size = document.createElement('span');
+      size.className = 'frame-view__seg-size';
+      size.textContent = field.desc.match(/\((\d+)\s*字节\)/) ? field.desc.match(/\((\d+)\s*字节\)/)[0] : '';
+      seg.appendChild(size);
+
+      bar.appendChild(seg);
+    });
+    container.appendChild(bar);
+
+    // Legend
+    var legend = document.createElement('div');
+    legend.className = 'frame-view__legend';
+    legend.innerHTML =
+      '<span class="frame-view__legend-item">' +
+        '<span class="frame-view__legend-swatch" style="background:var(--blue);box-shadow:inset 0 0 0 2px rgba(255,255,255,.8);"></span> ' +
+        '当前讲解字段（高亮）</span>' +
+      '<span class="frame-view__legend-item">' +
+        '<span class="frame-view__legend-swatch" style="background:var(--gray);opacity:.38;"></span> ' +
+        '其他帧字段（半透明）</span>';
+    container.appendChild(legend);
+
+    return container;
+  }
+
+  // --- Render all frame-view placeholders ---
+  function renderAllFrameViews() {
+    var placeholders = document.querySelectorAll('[data-component="frame-view"]');
+    placeholders.forEach(function(el) {
+      var id = el.getAttribute('data-id');
+      var frameDef = FRAME_VIEWS[id];
+      if (!frameDef) return;
+      var rendered = renderFrameView(frameDef);
+      el.parentNode.replaceChild(rendered, el);
+    });
+  }
+
   // --- Render a single bit layout ---
   function renderBitLayout(layoutDef) {
     var container = document.createElement('div');
@@ -2793,6 +3076,7 @@ SKDm/SKDs 每次连接都是全新随机数
   document.addEventListener('DOMContentLoaded', function() {
     renderTree(TREE, document.getElementById('sidebarContent'));
     renderAllBitLayouts();
+    renderAllFrameViews();
     setTimeout(function() {
       document.querySelectorAll('.main-section[id]').forEach(function(s) { observer.observe(s); });
     }, 100);

@@ -58,7 +58,7 @@
 
 ### 产出
 
-- **`ble-protocol-manual.html`**（~3000 行，单文件，零外部依赖，双击即可在浏览器打开）
+- **`ble-protocol-manual.html`**（~3106 行，单文件，零外部依赖，双击即可在浏览器打开）
 
 ### 实现功能
 
@@ -67,6 +67,8 @@
 | 📑 10 章全覆盖 | 协议栈总览 → PHY → 链路层(广播+连接) → HCI → L2CAP → SMP → ATT/GATT → 加密 → 速查表 → 27 步序列 |
 | 🌳 左侧树形导航 | 44 个锚点，滚动跟踪高亮（IntersectionObserver），移动端抽屉收起 |
 | 🎨 位布局可视化 | 5 个位布局组件（广告 PDU Header / 数据 PDU Header / 空中帧 / CONNECT_IND / LTV），色块条 + 详细表格联动高亮，精细到每个 bit 的类型和含义 |
+| 🖼 完整帧视图 | 3.1 / 4.1 节新增：展示完整空中帧（Preamble→AA→PDU→Payload→CRC），当前讲解的 PDU Header 段高亮，其余字段半透明 |
+| 📖 字段折叠详释 | 基于用户 Q&A 记录，对 PDU Type/ChSel/TxAdd/Length（3.1）及 LLID/SN&NESN/MD/CP/Length（4.1）共 9 个关键字段添加可折叠深入解释 |
 | ⏱ 27 步时序图 | 完整报文序列（广告→连接→SMP→加密→ATT→断开），点击步骤展开详情，可选自动播放/调速(0.5x/1x/2x) |
 | 📊 五合一速查表 | LL Control Opcode / SMP Code / ATT Opcode / L2CAP CID / AD Type，Tab 切换 + 即时搜索过滤 |
 | 🔄 纯 CSS 流程图 | 协议栈 7 层层叠块、配对四阶段流程、四种认证路径分支、加密范围标注（明文/密文分色） |
@@ -78,6 +80,7 @@
 
 - 文案为静态 HTML，结构化数据（位布局、时序步骤、速查表）以 JS 对象存储，页面加载时渲染函数替换占位标记生成 DOM
 - 冷色系配色（蓝/青/绿/紫/橙/灰），CSS 变量驱动主题切换
+- **新增组件**：`FRAME_VIEWS` 数据驱动完整帧视图（`renderFrameView()`），字段详释通过 CSS `.field-detail` 折叠块 + 内联 onclick 实现（零 JS 依赖）
 - 零依赖：无 CDN、无 node_modules、无外部字体/图标库
 
 ### 设计文档
@@ -137,7 +140,7 @@ D:\CC\personal-lr-notes\CCNotes\BLE\
 ├── HANDOFF.md                            ← 本文件
 ├── 附录-BLE协议交互报文完整手册.md         ← 核心参考资料（1253 行）
 ├── 附录-报文手册深度问答.md               ← 手册答疑副册
-├── ble-protocol-manual.html              ← 🆕 HTML 交互学习页面（~3000 行，双击打开）
+├── ble-protocol-manual.html              ← HTML 交互学习页面（~3106 行，双击打开）
 │
 ├── docs/superpowers/
 │   ├── specs/2026-07-19-ble-protocol-html-design.md   ← HTML 页面设计文档
@@ -153,12 +156,22 @@ D:\CC\personal-lr-notes\CCNotes\BLE\
 
 ## HTML 任务完成记录
 
+### 首次开发（2026-07-19）
+
 任务于 2026-07-19 完成。实现过程中遵循了以下原则：
 
 1. **用真内容，不用 Lorem Ipsum**。手册中每个 Opcode 值、字段名、位值都经过验证，HTML 中直接使用。
 2. **先确认再码代码**。设计阶段逐项确认：页面结构（全内容覆盖）、交互方式（点击展开）、视觉风格（冷色系简洁）、深色模式（跟随系统 + 手动切换）。
 3. **测试覆盖面**：手册中所有表格（Opcode 速查表、AD Type 表、CID 表等）均在 HTML 中正确渲染。
 4. **不引入新框架**：单文件 HTML，零外部依赖。
+
+### 改进（2026-07-20）
+
+基于用户反馈完成三项改进：
+
+1. **合并重复字段介绍**：3.4 节 (a)-(d) 各 PDU 类型不再重复 PDU Header 各字段描述，改为链接引用 3.1 节。避免"3.1 讲一遍、3.4 又讲一遍"的重复。
+2. **新增完整帧视图**：3.1 和 4.1 节在 PDU Header 位布局上方增加完整空中帧色块条（Preamble→AA→PDU→Payload→CRC），PDU Header 段白色高亮 + 放大，其余字段半透明。帮助读者定位"当前在讲帧的哪个部分"。
+3. **新增字段折叠详释**：基于 `附录-报文手册深度问答.md` 中 18 个问答记录，为 9 个高频追问字段添加可折叠深入解释（3.1：PDU Type / ChSel / TxAdd / Length；4.1：LLID / SN&NESN / MD / CP / Length）。折叠块默认收起，点击 ▶ 展开，不干扰快速查阅但满足深度追问需求。
 
 ### 后续建议
 
@@ -168,5 +181,5 @@ D:\CC\personal-lr-notes\CCNotes\BLE\
 
 ---
 
-*交接时间：2026-07-19（更新）*
+*交接时间：2026-07-20（更新：HTML 改进——完整帧视图 + 折叠详释 + 合并重复）*
 *旧会话记录：`C:\Users\fdl\.claude\projects\D--CC-personal-lr-notes-CCNotes-BLE\42366f4e-55c1-4825-b45e-192bf9174bde.jsonl`*
