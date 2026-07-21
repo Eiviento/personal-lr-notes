@@ -58,7 +58,7 @@
 
 ### 产出
 
-- **`ble-protocol-manual.html`**（~3106 行，单文件，零外部依赖，双击即可在浏览器打开）
+- **`ble-protocol-manual.html`**（~3276 行，单文件，零外部依赖，双击即可在浏览器打开）
 
 ### 实现功能
 
@@ -67,8 +67,10 @@
 | 📑 10 章全覆盖 | 协议栈总览 → PHY → 链路层(广播+连接) → HCI → L2CAP → SMP → ATT/GATT → 加密 → 速查表 → 27 步序列 |
 | 🌳 左侧树形导航 | 44 个锚点，滚动跟踪高亮（IntersectionObserver），移动端抽屉收起 |
 | 🎨 位布局可视化 | 5 个位布局组件（广告 PDU Header / 数据 PDU Header / 空中帧 / CONNECT_IND / LTV），色块条 + 详细表格联动高亮，精细到每个 bit 的类型和含义 |
-| 🖼 完整帧视图 | 3.1 / 4.1 节新增：展示完整空中帧（Preamble→AA→PDU→Payload→CRC），当前讲解的 PDU Header 段高亮，其余字段半透明 |
-| 📖 字段折叠详释 | 基于用户 Q&A 记录，对 PDU Type/ChSel/TxAdd/Length（3.1）及 LLID/SN&NESN/MD/CP/Length（4.1）共 9 个关键字段添加可折叠深入解释 |
+| 🖼 完整帧视图 | 3.1 / 4.1 / 6.1 / 8.5 节：展示当前层在外层封装中的嵌套位置，讲解目标段白色高亮 + 放大，其余字段半透明。已覆盖：广告帧(PDU Header)、数据帧(PDU Header)、L2CAP帧(LL→L2CAP→Payload)、MTU帧(LL→L2CAP→ATT PDU) |
+| 📖 字段折叠详释 | 基于用户 Q&A 记录，为 9 个高频追问字段添加可折叠深入解释（3.1：PDU Type/ChSel/TxAdd/Length；4.1：LLID/SN&NESN/MD/CP/Length；6.1：L2CAP Length） |
+| 🔗 SMP 触发链路 | 7.1 节新增：三种触发方式 + LL 加密命令（LL_ENC_REQ/RSP → LL_START_ENC_REQ/RSP）的完整 ASCII 流程图，明确 SMP（协商密钥）与 LL（启用加密）的分层职责 |
+| 📦 MTU 协商完整拆解 | 8.5 节重写：从 LL Header 每一个 bit → L2CAP 头 → ATT PDU 的三层完整报文拆解，含 Request/Response 逐字段对比 + 默认 vs 协商后 MTU 影响对比表 |
 | ⏱ 27 步时序图 | 完整报文序列（广告→连接→SMP→加密→ATT→断开），点击步骤展开详情，可选自动播放/调速(0.5x/1x/2x) |
 | 📊 五合一速查表 | LL Control Opcode / SMP Code / ATT Opcode / L2CAP CID / AD Type，Tab 切换 + 即时搜索过滤 |
 | 🔄 纯 CSS 流程图 | 协议栈 7 层层叠块、配对四阶段流程、四种认证路径分支、加密范围标注（明文/密文分色） |
@@ -80,7 +82,7 @@
 
 - 文案为静态 HTML，结构化数据（位布局、时序步骤、速查表）以 JS 对象存储，页面加载时渲染函数替换占位标记生成 DOM
 - 冷色系配色（蓝/青/绿/紫/橙/灰），CSS 变量驱动主题切换
-- **新增组件**：`FRAME_VIEWS` 数据驱动完整帧视图（`renderFrameView()`），字段详释通过 CSS `.field-detail` 折叠块 + 内联 onclick 实现（零 JS 依赖）
+- **新增组件**：`FRAME_VIEWS` 数据驱动完整帧视图（`renderFrameView()`），已覆盖 4 个场景（adv/data/l2cap/mtu-exchange）；字段详释通过 CSS `.field-detail` 折叠块 + 内联 onclick 实现（零 JS 依赖）
 - 零依赖：无 CDN、无 node_modules、无外部字体/图标库
 
 ### 设计文档
@@ -140,7 +142,7 @@ D:\CC\personal-lr-notes\CCNotes\BLE\
 ├── HANDOFF.md                            ← 本文件
 ├── 附录-BLE协议交互报文完整手册.md         ← 核心参考资料（1253 行）
 ├── 附录-报文手册深度问答.md               ← 手册答疑副册
-├── ble-protocol-manual.html              ← HTML 交互学习页面（~3106 行，双击打开）
+├── ble-protocol-manual.html              ← HTML 交互学习页面（~3276 行，双击打开）
 │
 ├── docs/superpowers/
 │   ├── specs/2026-07-19-ble-protocol-html-design.md   ← HTML 页面设计文档
@@ -165,13 +167,22 @@ D:\CC\personal-lr-notes\CCNotes\BLE\
 3. **测试覆盖面**：手册中所有表格（Opcode 速查表、AD Type 表、CID 表等）均在 HTML 中正确渲染。
 4. **不引入新框架**：单文件 HTML，零外部依赖。
 
-### 改进（2026-07-20）
+### 改进（2026-07-20 第一批）
 
 基于用户反馈完成三项改进：
 
-1. **合并重复字段介绍**：3.4 节 (a)-(d) 各 PDU 类型不再重复 PDU Header 各字段描述，改为链接引用 3.1 节。避免"3.1 讲一遍、3.4 又讲一遍"的重复。
-2. **新增完整帧视图**：3.1 和 4.1 节在 PDU Header 位布局上方增加完整空中帧色块条（Preamble→AA→PDU→Payload→CRC），PDU Header 段白色高亮 + 放大，其余字段半透明。帮助读者定位"当前在讲帧的哪个部分"。
-3. **新增字段折叠详释**：基于 `附录-报文手册深度问答.md` 中 18 个问答记录，为 9 个高频追问字段添加可折叠深入解释（3.1：PDU Type / ChSel / TxAdd / Length；4.1：LLID / SN&NESN / MD / CP / Length）。折叠块默认收起，点击 ▶ 展开，不干扰快速查阅但满足深度追问需求。
+1. **合并重复字段介绍**：3.4 节 (a)-(d) 各 PDU 类型不再重复 PDU Header 各字段描述，改为链接引用 3.1 节。
+2. **新增完整帧视图**：3.1 / 4.1 节增加完整空中帧色块条（Preamble→AA→PDU→Payload→CRC），PDU Header 段白色高亮。
+3. **新增字段折叠详释**：基于 Q&A 为 9 个高频追问字段添加可折叠深入解释。
+
+### 改进（2026-07-20 第二批）
+
+基于用户继续反馈完成四项改进：
+
+4. **L2CAP 帧视图**：6.1 节新增 L2CAP 嵌套帧视图（LL Header → L2CAP Header 高亮 → Payload），展示"L2CAP 不直接面对空中，被封装在 LL Payload 里"。L2CAP Length 字段新增折叠详释（来自 Q11）。
+5. **SMP 触发链路**：7.1 节开头新增完整 ASCII 流程图，说明三种触发方式（Security Request / Pairing Request / GATT 按需）+ LL 加密四命令（LL_ENC_REQ/RSP → LL_START_ENC_REQ/RSP），明确 SMP（协商密钥）与 LL（启用加密）的分层职责。
+6. **MTU 协商完整拆解**：8.5 节重写为三层完整报文格式，逐层展示每一位的选择理由（LL Header 每个 bit 值 + L2CAP 头 + ATT PDU），含 Request/Response 对比 + MTU 影响对比表 + 链路层限制提醒。
+7. **Q19 新增**：ATT/GATT Handle 本质（16 位查找键、属性表结构、不定长存储、单次读写上限公式）。
 
 ### 后续建议
 
@@ -181,5 +192,5 @@ D:\CC\personal-lr-notes\CCNotes\BLE\
 
 ---
 
-*交接时间：2026-07-20（更新：HTML 改进——完整帧视图 + 折叠详释 + 合并重复）*
+*交接时间：2026-07-20（更新：L2CAP 帧视图 + SMP 触发链路 + MTU 三层拆解 + Q19）*
 *旧会话记录：`C:\Users\fdl\.claude\projects\D--CC-personal-lr-notes-CCNotes-BLE\42366f4e-55c1-4825-b45e-192bf9174bde.jsonl`*
