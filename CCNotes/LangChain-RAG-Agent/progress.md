@@ -23,9 +23,10 @@
   - HANDOFF.md (created)
 
 ### Phase 2: LangChain 核心概念
-- **Status:** pending
+- **Status:** in_progress
+- **Started:** 2026-07-19
 - Actions taken:
-  -
+  - 完成 2.1 LangChain 三大核心（PromptTemplate + Model + Parser），用 LCEL 管道重写 Phase 1.4 脚本并调通
 - Files created/modified:
   -
 

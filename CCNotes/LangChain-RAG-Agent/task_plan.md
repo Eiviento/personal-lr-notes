@@ -16,7 +16,7 @@ Phase 2
 - **Status:** complete
 
 ### Phase 2: LangChain 核心概念
-- [ ] 2.1 理解 LangChain 的三大核心：PromptTemplate、Model、Parser
+- [x] 2.1 理解 LangChain 的三大核心：PromptTemplate、Model、Parser
 - [ ] 2.2 学习 LCEL（LangChain Expression Language）管道写法
 - [ ] 2.3 掌握 StrOutputParser / JsonOutputParser 的使用
 - [ ] 2.4 实操：用 LangChain 重写第一阶段的功能，对比差异

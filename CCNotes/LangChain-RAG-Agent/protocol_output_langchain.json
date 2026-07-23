@@ -1,0 +1,37 @@
+{
+  "protocol_name": "环境数据上报协议",
+  "description": "设备定时上报温度、湿度和电池电量数据",
+  "fields": [
+    {
+      "name": "temperature",
+      "chinese_name": "温度",
+      "type": "float32",
+      "length": 4,
+      "unit": "摄氏度",
+      "range": "-40~85",
+      "description": "环境温度值"
+    },
+    {
+      "name": "humidity",
+      "chinese_name": "湿度",
+      "type": "float32",
+      "length": 4,
+      "unit": "%RH",
+      "range": "0~100",
+      "description": "相对湿度百分比"
+    },
+    {
+      "name": "batteryLevel",
+      "chinese_name": "电池电量",
+      "type": "uint8",
+      "length": 1,
+      "unit": "%",
+      "range": "0~100",
+      "description": "电池剩余电量百分比"
+    }
+  ],
+  "timing": {
+    "report_interval": "1s",
+    "direction": "上行"
+  }
+}
