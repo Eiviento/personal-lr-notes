@@ -782,6 +782,158 @@ Bit1-0 = 11 → DATA类</code></pre>
     <p class="packet-title">Handshake 包 (ACK/NAK/STALL/NYET)</p>
     <div class="packet-diagram-wrapper" id="pkt-handshake"></div>
   </article>
+
+  <!-- 2.10 -->
+  <article class="card" id="kp-2-10">
+    <h3>2.10 控制传输逐事务拆解</h3>
+    <h4>三阶段模型</h4>
+    <pre><code>必含: SETUP + STATUS
+可选: DATA (wLength=0则跳过)</code></pre>
+    <h4>SETUP阶段</h4>
+    <pre><code>Host → SETUP Token (0x2D, ADDR, EP0)
+Host → DATA0 (8B SETUP包)
+Host ← ACK (设备必须ACK! 不能NAK)</code></pre>
+    <h4>SETUP包8字节</h4>
+    <table>
+      <tr><th>偏移</th><th>字段</th><th>大小</th><th>示例(GET_DESCRIPTOR)</th></tr>
+      <tr><td>+0</td><td>bmRequestType</td><td>1B</td><td>0x80 (D2H, Standard, Device)</td></tr>
+      <tr><td>+1</td><td>bRequest</td><td>1B</td><td>0x06 (GET_DESCRIPTOR)</td></tr>
+      <tr><td>+2</td><td>wValue</td><td>2B</td><td>0x0100 (Device Desc, Index=0)</td></tr>
+      <tr><td>+4</td><td>wIndex</td><td>2B</td><td>0x0000</td></tr>
+      <tr><td>+6</td><td>wLength</td><td>2B</td><td>0x0012 (18 bytes)</td></tr>
+    </table>
+    <h4>STATUS阶段</h4>
+    <ul>
+      <li>方向总是跟DATA阶段相反</li>
+      <li>STATUS数据包永远是DATA1</li>
+      <li>接收STATUS的那方必须回ACK→控制传输才正式闭环</li>
+    </ul>
+    <h4>三种类型</h4>
+    <ol>
+      <li>控制读(Read): SETUP→DATA(IN)×N→STATUS(OUT)</li>
+      <li>控制写(Write): SETUP→DATA(OUT)×N→STATUS(IN)</li>
+      <li>无数据(No Data): SETUP→STATUS(IN)</li>
+    </ol>
+    <!-- Control transfer sequence SVG added in Task 9 -->
+  </article>
+
+  <!-- 2.11 -->
+  <article class="card" id="kp-2-11">
+    <h3>2.11 中断传输逐事务拆解</h3>
+    <h4>基本结构</h4>
+    <pre><code>Host发IN Token→Device回应:
+  有数据: DATA(1~64B FS/1~1024B HS)→Host ACK
+  无数据: NAK (Host下个周期再问)
+  出错:   STALL</code></pre>
+    <h4>bInterval 延迟保证</h4>
+    <pre><code>LS/FS: bInterval = N ms
+HS: 实际间隔 = 2^(bInterval-1) × 125μs
+
+最快延迟: HS bInterval=1 → 125μs
+典型鼠标: FS bInterval=10 → 10ms</code></pre>
+    <h4>选型: 中断 vs 批量</h4>
+    <table>
+      <tr><th>维度</th><th>中断</th><th>批量</th></tr>
+      <tr><td>延迟</td><td>有保证</td><td>无保证</td></tr>
+      <tr><td>数据量</td><td>小</td><td>大</td></tr>
+      <tr><td>CPU</td><td>必须定期轮询</td><td>按需</td></tr>
+      <tr><td>用途</td><td>状态/按键/传感器</td><td>文件/串口流</td></tr>
+    </table>
+  </article>
+
+  <!-- 2.12 -->
+  <article class="card" id="kp-2-12">
+    <h3>2.12 批量传输逐事务拆解</h3>
+    <h4>帧内优先级</h4>
+    <pre><code>等时 > 中断 > 控制(≥10%) > 批量(吃剩饭)</code></pre>
+    <h4>HS PING流控</h4>
+    <pre><code>FS/LS: 直接OUT→可能被NAK(浪费带宽)
+HS: 先PING探测空间→ACK→再OUT→避免浪费
+
+PING流程:
+Host→PING Token→Device回ACK(有空间)/NAK(满)
+ACK→OUT Token+DATA→Device回ACK/NYET
+NYET: 数据收了但满了，下次先PING再发</code></pre>
+    <h4>理论吞吐</h4>
+    <p>HS: 13×512B/125μs ≈ 53.2 MB/s (理论)。实际: 20-35 MB/s。</p>
+    <h4>结束条件</h4>
+    <ol>
+      <li>客户端指定了传输长度</li>
+      <li>短包终止 (&lt; MaxPacketSize)</li>
+      <li>零长度包 (设备不想NAK)</li>
+    </ol>
+  </article>
+
+  <!-- 2.13 -->
+  <article class="card" id="kp-2-13">
+    <h3>2.13 等时传输逐事务拆解</h3>
+    <h4>基本结构（无握手包！）</h4>
+    <pre><code>IN:  Host→IN Token ←DATA (结束!)
+OUT: Host→OUT Token→DATA (结束!)</code></pre>
+    <p>没有ACK, 没有NAK, 没有STALL。</p>
+    <h4>为什么不要握手</h4>
+    <p>实时>可靠性: 30fps视频(33ms/帧), 重传延迟比丢几帧更致命。人脑对5-10%帧丢失不敏感，但对&gt;50ms延迟非常敏感。</p>
+    <h4>HS微帧多包</h4>
+    <pre><code>一个微帧最多3包:
+IN+DATA2(1024B)→IN+DATA1(1024B)→IN+DATA0(1024B)
+= 3072B/125μs ≈ 24.6 MB/s</code></pre>
+    <h4>同步类型 (bmAttributes Bit2-3)</h4>
+    <ul>
+      <li>00=Asynchronous (异步, 各走各时钟, 如USB音箱)</li>
+      <li>01=Adaptive (自适应, 如USB话筒)</li>
+      <li>10=Synchronous (同步, 锁定SOF, 如UVC摄像头)</li>
+    </ul>
+  </article>
+
+  <!-- 2.14 -->
+  <article class="card" id="kp-2-14">
+    <h3>2.14 SOF 包与帧结构</h3>
+    <h4>SOF包结构</h4>
+    <pre><code>SYNC(8b) | PID=SOF(0xA5) | Frame Number(11b) | CRC5(5b) | EOP(3b)</code></pre>
+    <p>SOF是广播包(没有ADDR/ENDP)，总线上所有设备都收到。</p>
+    <h4>Frame Number = 0~2047</h4>
+    <pre><code>FS: 1帧=1ms→Frame Number每ms+1→~2.048秒回卷
+HS: 1微帧=125μs→每125μs发SOF→但Frame Number每1ms才+1
+    8个微帧=1ms=1个HS帧
+    设备自己计微帧号(0~7)</code></pre>
+    <h4>Suspend检测</h4>
+    <p>连续3ms(FS)或3个微帧(HS)没看到SOF→设备进入Suspend→电流≤2.5mA</p>
+  </article>
+
+  <!-- 2.15 -->
+  <article class="card" id="kp-2-15">
+    <h3>2.15 HS 高速模式补充</h3>
+    <h4>微帧结构</h4>
+    <p>8个微帧=1ms HS帧。μF0~μF7，Frame Number相同，下一组μF0的Frame Number+1。</p>
+    <h4>Split Transaction</h4>
+    <p><strong>问题</strong>: HS Hub后挂FS/LS设备，Hub必须做速度翻译。</p>
+    <p><strong>Phase 1: Start-Split (SSPLIT)</strong></p>
+    <pre><code>Host→SSPLIT Token→Hub翻译成FS/LS信号→跟FS/LS设备交互→数据暂存Hub缓冲区
+SSPLIT字段: Hub Addr(7b) | SC=0 | Port(7b) | S(0=FS,1=LS) | E=0 | ET(2b) | CRC5</code></pre>
+    <p><strong>Phase 2: Complete-Split (CSPLIT)</strong></p>
+    <pre><code>Host→CSPLIT Token→Hub返回之前暂存的数据
+CSPLIT字段: Hub Addr(7b) | SC=1 | Port(7b) | S | U(0=未完,1=完成) | ET(2b)</code></pre>
+  </article>
+
+  <!-- 2.16 -->
+  <article class="card" id="kp-2-16">
+    <h3>2.16 USB 3.x SuperSpeed 概览</h3>
+    <h4>双总线架构</h4>
+    <p>USB 3.0端口 = USB 2.0总线 + SuperSpeed总线 (并行运行，互不抢占)。</p>
+    <h4>广播式 vs 路由式</h4>
+    <pre><code>USB 2.0: Host喊一嗓子，所有设备都听→功耗随设备数增加
+USB 3.0: 路由式转发→只有目标设备接收→功耗常数</code></pre>
+    <h4>USB 2.0 vs 3.0 核心对比</h4>
+    <table>
+      <tr><th>维度</th><th>USB 2.0</th><th>USB 3.x</th></tr>
+      <tr><td>拓扑</td><td>广播式</td><td>路由式</td></tr>
+      <tr><td>编码</td><td>NRZI</td><td>8b/10b→128b/132b</td></tr>
+      <tr><td>流控</td><td>NAK/NYET/PING</td><td>链路层信用(Credit-based)</td></tr>
+      <tr><td>链路管理</td><td>SE0复位</td><td>LTSSM状态机</td></tr>
+      <tr><td>中断</td><td>定期轮询</td><td>设备可主动发ERDY</td></tr>
+      <tr><td>EP0</td><td>64B</td><td>512B</td></tr>
+    </table>
+  </article>
 </main>
 
 <div class="theme-bar">
