@@ -1088,6 +1088,56 @@ USB 3.0: 路由式转发→只有目标设备接收→功耗常数</code></pre>
       <tr><td>EP0</td><td>64B</td><td>512B</td></tr>
     </table>
   </article>
+
+	<!-- ===== Phase 3 Placeholder ===== -->
+	<div class="phase-header" id="phase-3"><h2>Phase 3: USB 描述符体系 — 逐字节解剖 <span style="font-size:14px;color:var(--color-data);margin-left:8px;">◐ 待学习</span></h2></div>
+	<div class="placeholder">
+	  <h3>第三阶段 — 11 个知识点</h3>
+	  <p>描述符层级关系 → Device Descriptor(18字节逐位) → Configuration Descriptor(9字节逐位) → Interface Descriptor(9字节逐位) → Endpoint Descriptor(7字节逐位) → String Descriptor(UNICODE) → Qualifier/BOS Descriptor</p>
+	  <ul>
+	    <li>3.1 描述符层级关系 · 3.2 ⛁ Device Descriptor · 3.3 bcdUSB BCD编码</li>
+	    <li>3.4 ⛁ Configuration Descriptor · 3.5 ⛁ Interface Descriptor · 3.6 ⛁ Endpoint Descriptor</li>
+	    <li>3.7 bInterval含义 · 3.8 ⛁ String Descriptor · 3.9 Qualifier · 3.10 BOS · 3.11 类型码全集</li>
+	  </ul>
+	</div>
+
+	<!-- ===== Phase 4 Placeholder ===== -->
+	<div class="phase-header" id="phase-4"><h2>Phase 4: USB 枚举过程 — 逐包逐事务追踪 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+	<div class="placeholder">
+	  <h3>第四阶段 — 12 个知识点</h3>
+	  <p>插入检测→总线复位→Get_Descriptor(Device)×2→Set_Address→Get_Descriptor(Config)×2→Get_Descriptor(String)→Set_Configuration→Wireshark抓包验证</p>
+	</div>
+
+	<!-- ===== Phase 5 Placeholder ===== -->
+	<div class="phase-header" id="phase-5"><h2>Phase 5: 标准请求与 Setup 包深度解析 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+	<div class="placeholder">
+	  <h3>第五阶段 — 6 个知识点</h3>
+	  <p>⛁ SETUP包8字节逐位 · 11种标准设备请求全集 · GET_STATUS / SET_FEATURE / CLEAR_FEATURE · SET_INTERFACE / GET_INTERFACE · wValue/wIndex/wLength速查表</p>
+	</div>
+
+	<!-- ===== Phase 6 Placeholder ===== -->
+	<div class="phase-header" id="phase-6"><h2>Phase 6: 设备类协议逐字节解析 (HID / CDC / UVC) <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+	<div class="placeholder">
+	  <h3>第六阶段 — 26 个知识点</h3>
+	  <p><strong>HID类:</strong> ⛁ HID Descriptor · ⛁ Report Descriptor Item编码 · Main/Global/Local Item全集 · 键盘Report范例 · HID Report协议</p>
+	  <p><strong>CDC类:</strong> ⛁ CDC功能描述符链 · Header/ACM/Union/Call Mgmt Descriptor · CDC类请求 · 数据流</p>
+	  <p><strong>UVC类:</strong> ⛁ UVC接口组织 · VC/VS描述符链 · Probe/Commit协商 · ⛁ Payload Header</p>
+	</div>
+
+	<!-- ===== Phase 7 Placeholder ===== -->
+	<div class="phase-header" id="phase-7"><h2>Phase 7: 协议分析工具与实操 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+	<div class="placeholder">
+	  <h3>第七阶段 — 7 个知识点</h3>
+	  <p>lsusb -v完整输出解读 · Wireshark+USBpcap安装配置 · 抓取HID/CDC/UVC枚举与数据流 · USB Tree Viewer</p>
+	</div>
+
+	<!-- ===== Phase 8 Placeholder ===== -->
+	<div class="phase-header" id="phase-8"><h2>Phase 8: libusb 编程衔接 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+	<div class="placeholder">
+	  <h3>第八阶段 — 5 个知识点</h3>
+	  <p>libusb架构概览(同步/异步模型) · 设备发现与枚举 · 控制传输编程 · 批量/中断/等时传输编程 · 热插拔检测</p>
+	</div>
+
 </main>
 
 <div class="theme-bar">
