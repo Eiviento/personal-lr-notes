@@ -1,0 +1,1729 @@
+# USB Notes Web Visualization — Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Build a single offline HTML file that visualizes USB protocol learning notes with interactive packet-structure diagrams and SVG architecture flowcharts.
+
+**Architecture:** One self-contained HTML5 file with embedded CSS (layout, theme variables, card styles), embedded JS (packet diagram data + DOM renderer + theme toggle + navigation), and inline SVGs (7 architecture diagrams). Zero external dependencies.
+
+**Tech Stack:** HTML5, CSS Grid + Flexbox, CSS Custom Properties (theme), vanilla JS, inline SVG.
+
+## Global Constraints
+
+- Single file: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html`
+- Zero external dependencies (no CDN, no fonts, no libraries)
+- CSS variables for all colors (light + dark themes)
+- 6-color fixed palette for packet diagrams
+- All SVG inline, hand-coded, 2px lines, 8px rounded rects, 13px sans-serif
+- Sidebar fixed left, main content scrollable right
+- Theme toggle via `localStorage`
+- Phase 3-8 as dashed placeholders
+
+---
+
+## File Structure
+
+```
+D:\CC\personal-lr-notes\CCNotes\USB\
+└── usb-notes.html   ← Single output file (created Task 1, built incrementally Tasks 2-10)
+```
+
+---
+
+### Task 1: HTML scaffold + CSS foundation + theme system
+
+**Files:**
+- Create: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html`
+
+**Produces:** Openable HTML file with working layout grid, light/dark theme variables, typography, and empty sidebar+main zones.
+
+- [ ] **Step 1: Write HTML scaffold with CSS**
+
+Write the complete file skeleton:
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USB 协议学习笔记 — 逐字节精讲</title>
+<style>
+/* ===== CSS Variables & Theme ===== */
+:root {
+  --bg: #ffffff;
+  --card-bg: #f8f9fa;
+  --text: #212529;
+  --text-muted: #868e96;
+  --code-bg: #f1f3f5;
+  --border: #dee2e6;
+  --sidebar-bg: #f8f9fa;
+  --sidebar-text: #212529;
+  --heading: #1a1b1e;
+  --color-sync-pid: #1e90ff;
+  --color-addr: #20c997;
+  --color-data: #ffa94d;
+  --color-crc: #845ef7;
+  --color-eop: #adb5bd;
+  --color-frame: #51cf66;
+  --svg-line: #495057;
+  --svg-text: #212529;
+  --svg-fill: #f8f9fa;
+  --table-stripe: #f1f3f5;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --card-hover-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  --prose-max-width: 780px;
+}
+
+.dark {
+  --bg: #1a1b1e;
+  --card-bg: #2c2e33;
+  --text: #e9ecef;
+  --text-muted: #868e96;
+  --code-bg: #25262b;
+  --border: #495057;
+  --sidebar-bg: #212529;
+  --sidebar-text: #e9ecef;
+  --heading: #f8f9fa;
+  --color-sync-pid: #8ab4f8;
+  --color-addr: #63e6be;
+  --color-data: #ffc078;
+  --color-crc: #b197fc;
+  --color-eop: #dee2e6;
+  --color-frame: #69db7c;
+  --svg-line: #adb5bd;
+  --svg-text: #e9ecef;
+  --svg-fill: #2c2e33;
+  --table-stripe: #25262b;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --card-hover-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 20px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  font-size: 15px; line-height: 1.7; color: var(--text);
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+  position: fixed; top: 0; left: 0; width: 280px; height: 100vh;
+  background: var(--sidebar-bg); border-right: 1px solid var(--border);
+  overflow-y: auto; padding: 20px 16px; z-index: 10;
+}
+.sidebar h2 { font-size: 16px; margin-bottom: 16px; color: var(--heading); }
+.sidebar details { margin-bottom: 8px; }
+.sidebar details > summary {
+  cursor: pointer; font-weight: 600; font-size: 14px; padding: 4px 0;
+  color: var(--heading); list-style: none;
+  display: flex; align-items: center; gap: 6px;
+}
+.sidebar details > summary::-webkit-details-marker { display: none; }
+.sidebar details > summary::before { content: '▸'; font-size: 10px; transition: transform 0.2s; display: inline-block; width: 12px; }
+.sidebar details[open] > summary::before { transform: rotate(90deg); }
+.sidebar details .sub-item {
+  display: block; padding: 3px 0 3px 24px; font-size: 13px;
+  color: var(--text-muted); text-decoration: none; border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.sidebar details .sub-item:hover, .sidebar details .sub-item.active {
+  color: var(--color-sync-pid); background: rgba(30,144,255,0.08);
+}
+.sidebar .badge { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+.sidebar .phase-done { color: #51cf66; }
+.sidebar .phase-current { color: var(--color-data); }
+.sidebar .phase-pending { color: var(--text-muted); }
+.sidebar .icon-packet { font-size: 11px; color: var(--color-crc); }
+
+/* ===== Main ===== */
+.main { grid-column: 2; padding: 24px 32px 80px; max-width: 1100px; }
+
+/* ===== Cards ===== */
+.card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 24px 28px; margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+.card:hover { box-shadow: var(--card-hover-shadow); }
+.card h3 { font-size: 18px; color: var(--heading); margin-bottom: 12px; }
+.card h3 .badge-pack { font-size: 12px; background: var(--color-crc); color: #fff; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
+.card h4 { font-size: 15px; color: var(--heading); margin: 16px 0 8px; }
+
+/* ===== Phase Header ===== */
+.phase-header {
+  margin: 32px 0 16px; padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-sync-pid);
+}
+.phase-header h2 { font-size: 22px; color: var(--heading); }
+
+/* ===== Tables ===== */
+.card table {
+  width: 100%; border-collapse: collapse; margin: 12px 0;
+  font-size: 14px;
+}
+.card table th, .card table td {
+  padding: 8px 12px; border: 1px solid var(--border); text-align: left;
+}
+.card table th { background: var(--code-bg); font-weight: 600; color: var(--heading); }
+.card table tr:nth-child(even) td { background: var(--table-stripe); }
+
+/* ===== Code ===== */
+.card code {
+  background: var(--code-bg); padding: 1px 5px; border-radius: 3px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 13px;
+}
+.card pre {
+  background: var(--code-bg); padding: 14px 18px; border-radius: 6px;
+  overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.5;
+  border: 1px solid var(--border);
+}
+.card pre code { background: none; padding: 0; }
+
+/* ===== Packet Diagram ===== */
+.packet-diagram {
+  display: flex; border-radius: 8px; overflow: hidden;
+  margin: 16px 0; border: 1px solid var(--border);
+  min-width: fit-content;
+}
+.packet-diagram .field {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 10px 4px; position: relative;
+  cursor: default; transition: filter 0.15s, transform 0.15s;
+  border-right: 1px solid rgba(255,255,255,0.3); min-width: 0;
+}
+.packet-diagram .field:last-child { border-right: none; }
+.packet-diagram .field:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.packet-diagram .field .fname { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; }
+.packet-diagram .field .fbits { font-size: 10px; color: rgba(255,255,255,0.85); white-space: nowrap; }
+.packet-diagram .field .fval  { font-size: 10px; color: rgba(255,255,255,0.7); white-space: nowrap; margin-top: 2px; }
+.packet-diagram .field .tooltip {
+  display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%); background: #212529; color: #f8f9fa;
+  padding: 6px 10px; border-radius: 4px; font-size: 12px; white-space: nowrap;
+  z-index: 20; pointer-events: none;
+}
+.packet-diagram .field:hover .tooltip { display: block; }
+.packet-diagram-wrapper { overflow-x: auto; padding-bottom: 4px; }
+.packet-title { font-weight: 600; color: var(--heading); margin: 16px 0 4px; }
+
+.color-sync-pid { background: var(--color-sync-pid); }
+.color-addr     { background: var(--color-addr); }
+.color-data     { background: var(--color-data); }
+.color-crc      { background: var(--color-crc); }
+.color-eop      { background: var(--color-eop); }
+.color-frame    { background: var(--color-frame); }
+
+/* ===== SVG Diagrams ===== */
+.diagram-container { margin: 20px 0; text-align: center; }
+.diagram-container svg { max-width: 100%; height: auto; }
+
+/* ===== Placeholder ===== */
+.placeholder {
+  border: 2px dashed var(--border); border-radius: 10px;
+  padding: 28px; margin-bottom: 16px; text-align: center;
+  color: var(--text-muted);
+}
+.placeholder h3 { font-size: 16px; margin-bottom: 8px; }
+.placeholder ul { list-style: none; font-size: 13px; line-height: 2; }
+
+/* ===== Theme Toggle ===== */
+.theme-bar {
+  position: fixed; bottom: 20px; right: 20px; z-index: 30;
+}
+.theme-btn {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--card-bg); cursor: pointer; font-size: 20px;
+  box-shadow: var(--shadow); transition: transform 0.2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.theme-btn:hover { transform: scale(1.1); }
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  body { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .main { grid-column: 1; padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <h2>USB 协议学习笔记</h2>
+  <!-- Sidebar content added in Task 2 -->
+</nav>
+
+<main class="main">
+  <!-- Content added in Tasks 3-7, 9-10 -->
+</main>
+
+<div class="theme-bar">
+  <button class="theme-btn" id="themeToggle" title="切换暗色/亮色模式">☀</button>
+</div>
+
+<script>
+// JS added in Tasks 2, 8, 10
+</script>
+
+</body>
+</html>
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Open `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` in browser.
+- Verify: white background, empty sidebar on left, empty main area on right, theme toggle button bottom-right visible.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: scaffold HTML with CSS foundation and theme system
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 2: Navigation sidebar
+
+**Files:**
+- Modify: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` (fill `<nav class="sidebar">` + add nav JS)
+
+**Interfaces:**
+- Produces: sidebar with 8 phase `<details>` sections, each containing `<a class="sub-item" href="#kp-X-Y">` links
+- Produces: JS function `highlightCurrentSection()` called on scroll
+
+- [ ] **Step 1: Add sidebar HTML**
+
+Replace `<!-- Sidebar content added in Task 2 -->` with:
+
+```html
+<details open>
+  <summary><span>📡 Phase 1: USB 概览与总线拓扑</span><span class="badge phase-done">5/5 ✓</span></summary>
+  <a class="sub-item" href="#kp-1-1">1.1 USB 设计目标与历史</a>
+  <a class="sub-item" href="#kp-1-2">1.2 USB 版本演进全景</a>
+  <a class="sub-item" href="#kp-1-3">1.3 总线拓扑结构</a>
+  <a class="sub-item" href="#kp-1-4">1.4 主机控制器类型</a>
+  <a class="sub-item" href="#kp-1-5">1.5 物理层与电气特性</a>
+</details>
+
+<details open>
+  <summary><span>📡 Phase 2: USB 通信模型</span><span class="badge phase-done">16/16 ✓</span></summary>
+  <a class="sub-item" href="#kp-2-1">2.1 三层通信模型</a>
+  <a class="sub-item" href="#kp-2-2">2.2 端点(Endpoint)深入</a>
+  <a class="sub-item" href="#kp-2-3">2.3 管道(Pipe)深入</a>
+  <a class="sub-item" href="#kp-2-4">2.4 四种传输类型全景</a>
+  <a class="sub-item" href="#kp-2-5">2.5 传输/事务/包三层映射</a>
+  <a class="sub-item" href="#kp-2-6">⛁ 2.6 PID 编码表</a>
+  <a class="sub-item" href="#kp-2-7">⛁ 2.7 Token 包逐位解析</a>
+  <a class="sub-item" href="#kp-2-8">⛁ 2.8 Data 包逐位解析</a>
+  <a class="sub-item" href="#kp-2-9">⛁ 2.9 Handshake 包逐位解析</a>
+  <a class="sub-item" href="#kp-2-10">2.10 控制传输逐事务拆解</a>
+  <a class="sub-item" href="#kp-2-11">2.11 中断传输逐事务拆解</a>
+  <a class="sub-item" href="#kp-2-12">2.12 批量传输逐事务拆解</a>
+  <a class="sub-item" href="#kp-2-13">2.13 等时传输逐事务拆解</a>
+  <a class="sub-item" href="#kp-2-14">2.14 SOF 包与帧结构</a>
+  <a class="sub-item" href="#kp-2-15">2.15 HS 高速模式补充</a>
+  <a class="sub-item" href="#kp-2-16">2.16 USB 3.x SuperSpeed 概览</a>
+</details>
+
+<details>
+  <summary><span>📡 Phase 3: 描述符体系</span><span class="badge phase-current">0/11 ◐</span></summary>
+  <a class="sub-item" href="#kp-3-1">3.1 描述符层级关系</a>
+  <a class="sub-item" href="#kp-3-2">⛁ 3.2 Device Descriptor</a>
+  <a class="sub-item" href="#kp-3-3">3.3 bcdUSB BCD 编码</a>
+  <a class="sub-item" href="#kp-3-4">⛁ 3.4 Configuration Descriptor</a>
+  <a class="sub-item" href="#kp-3-5">⛁ 3.5 Interface Descriptor</a>
+  <a class="sub-item" href="#kp-3-6">⛁ 3.6 Endpoint Descriptor</a>
+  <a class="sub-item" href="#kp-3-7">3.7 bInterval 速率含义</a>
+  <a class="sub-item" href="#kp-3-8">⛁ 3.8 String Descriptor</a>
+  <a class="sub-item" href="#kp-3-9">3.9 Qualifier Descriptor</a>
+  <a class="sub-item" href="#kp-3-10">3.10 BOS Descriptor</a>
+  <a class="sub-item" href="#kp-3-11">3.11 描述符类型码全集</a>
+</details>
+
+<details>
+  <summary><span>📡 Phase 4: 枚举过程</span><span class="badge phase-pending">0/12 ○</span></summary>
+</details>
+
+<details>
+  <summary><span>📡 Phase 5: 标准请求</span><span class="badge phase-pending">0/6 ○</span></summary>
+</details>
+
+<details>
+  <summary><span>📡 Phase 6: HID/CDC/UVC</span><span class="badge phase-pending">0/26 ○</span></summary>
+</details>
+
+<details>
+  <summary><span>📡 Phase 7: 协议分析工具</span><span class="badge phase-pending">0/7 ○</span></summary>
+</details>
+
+<details>
+  <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-pending">0/5 ○</span></summary>
+</details>
+```
+
+- [ ] **Step 2: Add scroll spy JS**
+
+In the `<script>` block, add:
+
+```js
+// Scroll spy — highlight active nav item
+const sidebarLinks = document.querySelectorAll('.sidebar .sub-item');
+const cards = document.querySelectorAll('.card[id]');
+
+function highlightNav() {
+  let current = null;
+  cards.forEach(card => {
+    const rect = card.getBoundingClientRect();
+    if (rect.top <= 120) current = card.id;
+  });
+  sidebarLinks.forEach(link => {
+    link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+  });
+}
+
+window.addEventListener('scroll', highlightNav, { passive: true });
+```
+
+- [ ] **Step 3: Open in browser and verify**
+
+Open `usb-notes.html`.
+- Verify: sidebar shows 8 phases, Phase 1 & 2 expanded with sub-items, Phase 3-8 collapsed.
+- Verify: Phase badges show correct progress (✓/◐/○).
+- Click a sub-item → smooth scroll to target (target anchor won't exist yet, but URL hash changes).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: add navigation sidebar with 8 phases and scroll spy
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 3: Phase 1 content cards
+
+**Files:**
+- Modify: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` (fill `<main>` with Phase 1 cards)
+
+**Interfaces:**
+- Consumes: sidebar links from Task 2 (`#kp-1-1` through `#kp-1-5`)
+- Produces: 5 knowledge cards with id anchors, tables, content from `notes/phase1-usb-overview.md`
+
+- [ ] **Step 1: Add Phase 1 header + cards HTML**
+
+Insert into `<main class="main">`:
+
+```html
+<div class="phase-header" id="phase-1"><h2>Phase 1: USB 概览与总线拓扑</h2></div>
+
+<!-- 1.1 -->
+<article class="card" id="kp-1-1">
+  <h3>1.1 USB 设计目标与历史</h3>
+  <h4>USB 之前的七种接口和七种痛</h4>
+  <table>
+    <tr><th>接口</th><th>痛点</th></tr>
+    <tr><td>RS-232 串口</td><td>速度慢(115.2kbps)、不能热插拔、一端口一设备、需手动设参数</td></tr>
+    <tr><td>并口(LPT)</td><td>电缆粗贵、速度~150KB/s、只能接打印机</td></tr>
+    <tr><td>PS/2</td><td>不能热插拔、键盘鼠标不通用</td></tr>
+    <tr><td>SCSI</td><td>贵、需专用卡、终端电阻/ID需跳线</td></tr>
+    <tr><td>Game Port</td><td>只能一个游戏杆、CPU占用极高</td></tr>
+    <tr><td>VGA</td><td>只传视频不传数据/供电</td></tr>
+    <tr><td>各类专用</td><td>每加设备可能要加卡，IRQ/DMA/IO冲突</td></tr>
+  </table>
+  <h4>USB 七大设计目标</h4>
+  <table>
+    <tr><th>#</th><th>目标</th><th>对应设计决策</th></tr>
+    <tr><td>1</td><td>一根线接所有外设</td><td>统一物理层+协议层</td></tr>
+    <tr><td>2</td><td>热插拔</td><td>Host主动检测总线电平变化+枚举协议</td></tr>
+    <tr><td>3</td><td>自动配置</td><td>描述符→自动识别→不需要手动设地址</td></tr>
+    <tr><td>4</td><td>支持多种速度</td><td>1.5M/12M/480M/5G+ 分级</td></tr>
+    <tr><td>5</td><td>总线供电</td><td>VBUS 5V，低功耗设备不额外供电</td></tr>
+    <tr><td>6</td><td>可扩展</td><td>Hub级联，最多127设备</td></tr>
+    <tr><td>7</td><td>低成本</td><td>低速简单设备+分层协议</td></tr>
+  </table>
+  <h4>核心设计哲学</h4>
+  <p><strong>Host 中心化</strong>：所有通信由 Host 发起，Device 只能被动应答。</p>
+  <p>跟 MQTT 的根本差异：MQTT Client 可以随时 PUBLISH，USB Device 连打招呼的权利都没有。</p>
+  <h4>名字含义</h4>
+  <ul>
+    <li><strong>U</strong>niversal — 通用</li>
+    <li><strong>S</strong>erial — 串行</li>
+    <li><strong>B</strong>us — 总线</li>
+  </ul>
+</article>
+
+<!-- 1.2 -->
+<article class="card" id="kp-1-2">
+  <h3>1.2 USB 版本演进全景</h3>
+  <table>
+    <tr><th>版本</th><th>发布年</th><th>速度</th><th>编码</th><th>供电</th><th>连接器</th></tr>
+    <tr><td>USB 1.0</td><td>1996</td><td>1.5 Mbps</td><td>NRZI</td><td>5V/100mA</td><td>Type-A/B</td></tr>
+    <tr><td>USB 1.1</td><td>1998</td><td>1.5/12 Mbps</td><td>NRZI</td><td>5V/500mA</td><td>同上</td></tr>
+    <tr><td>USB 2.0</td><td>2000</td><td>+480 Mbps</td><td>NRZI</td><td>5V/500mA</td><td>+Mini/Micro</td></tr>
+    <tr><td>USB 3.0</td><td>2008</td><td>+5 Gbps</td><td>8b/10b</td><td>5V/900mA</td><td>新增5根差分线</td></tr>
+    <tr><td>USB 3.1</td><td>2013</td><td>+10 Gbps</td><td>128b/132b</td><td>可协商到20V/5A</td><td>Type-C引入</td></tr>
+    <tr><td>USB 3.2</td><td>2017</td><td>+20 Gbps</td><td>128b/132b</td><td>同上</td><td>Type-C双通道</td></tr>
+    <tr><td>USB4</td><td>2019</td><td>20/40 Gbps</td><td>64b/66b</td><td>同上</td><td>仅Type-C</td></tr>
+  </table>
+  <h4>关键速度等级</h4>
+  <ul>
+    <li><strong>Low Speed (LS)</strong>: 1.5Mbps — 键盘、鼠标</li>
+    <li><strong>Full Speed (FS)</strong>: 12Mbps — 打印机、老摄像头</li>
+    <li><strong>High Speed (HS)</strong>: 480Mbps — U盘、移动硬盘、高清摄像头</li>
+    <li><strong>SuperSpeed (SS)</strong>: 5Gbps+ — 固态硬盘、4K摄像头</li>
+  </ul>
+  <h4>为什么基于 USB 2.0 学协议</h4>
+  <ol>
+    <li>包结构可直接读(NRZI简单)</li>
+    <li>广播总线(Wireshark一个口看所有通信)</li>
+    <li>四种传输类型都有</li>
+    <li>HID/CDC/UVC在2.0上完整工作</li>
+    <li>3.0只是加了速度和路由，概念基础一样</li>
+  </ol>
+  <!-- Version timeline SVG added in Task 4 -->
+</article>
+
+<!-- 1.3 -->
+<article class="card" id="kp-1-3">
+  <h3>1.3 总线拓扑结构</h3>
+  <h4>树形拓扑规则</h4>
+  <table>
+    <tr><th>规则</th><th>数值</th></tr>
+    <tr><td>最多层数</td><td>7层(Tier)，Root Hub = Tier 1</td></tr>
+    <tr><td>最多设备</td><td>127个（ADDR字段7bit，0x00保留）</td></tr>
+    <tr><td>最多非Root Hub</td><td>5个</td></tr>
+    <tr><td>每段电缆最长</td><td>5米(FS/LS)，总长30米</td></tr>
+  </table>
+  <h4>地址范围</h4>
+  <pre><code>ADDR字段 7 bit → 0x00~0x7F (128个)
+0x00 = 默认地址（Default Address），设备刚复位后使用
+剩余 1~127 = 127个可分配地址 → 127设备上限</code></pre>
+  <h4>三种角色</h4>
+  <ul>
+    <li><strong>Host</strong>: 发起所有通信、提供VBUS(5V)、枚举、带宽调度、内置Root Hub</li>
+    <li><strong>Hub</strong>: 扩展端口、检测插拔、端口供电、HS↔FS/LS速度翻译(Split Transaction)、本身也是USB Device</li>
+    <li><strong>Device (Function)</strong>: 响应请求、提供描述符、实现功能逻辑、管理电源</li>
+  </ul>
+  <h4>Compound vs Composite</h4>
+  <ul>
+    <li><strong>Compound Device</strong>: 一个壳子多个地址（内含Hub+多个独立Device）</li>
+    <li><strong>Composite Device</strong>: 一个地址多个Interface（一个芯片多功能，如摄像头+麦克风）</li>
+  </ul>
+  <!-- Topology tree SVG added in Task 4 -->
+</article>
+
+<!-- 1.4 -->
+<article class="card" id="kp-1-4">
+  <h3>1.4 主机控制器类型</h3>
+  <table>
+    <tr><th>缩写</th><th>全称</th><th>管什么速度</th><th>存亡状态</th></tr>
+    <tr><td>UHCI</td><td>Universal HCI</td><td>LS+FS</td><td>已死亡(Intel)</td></tr>
+    <tr><td>OHCI</td><td>Open HCI</td><td>LS+FS</td><td>已死亡(Compaq等)</td></tr>
+    <tr><td>EHCI</td><td>Enhanced HCI</td><td>HS + 兼容LS/FS</td><td>存量设备</td></tr>
+    <tr><td>xHCI</td><td>eXtensible HCI</td><td>LS/FS/HS/SS全管</td><td>现代标准</td></tr>
+  </table>
+  <h4>xHCI 统一架构</h4>
+  <p>一个控制器管所有速度，不再需要Companion Controller。通过Transfer Ring (TRB环形链表) 统一管理所有传输。</p>
+  <!-- Software stack SVG added in Task 4 -->
+</article>
+
+<!-- 1.5 -->
+<article class="card" id="kp-1-5">
+  <h3>1.5 物理层与电气特性</h3>
+  <h4>USB 2.0 线缆 (4根线)</h4>
+  <table>
+    <tr><th>线色</th><th>信号</th><th>用途</th></tr>
+    <tr><td>红</td><td>VBUS</td><td>5V供电</td></tr>
+    <tr><td>白</td><td>D-</td><td>差分数据-</td></tr>
+    <tr><td>绿</td><td>D+</td><td>差分数据+</td></tr>
+    <tr><td>黑</td><td>GND</td><td>地线</td></tr>
+  </table>
+  <h4>VBUS 供电规范</h4>
+  <table>
+    <tr><th>状态</th><th>最大电流</th></tr>
+    <tr><td>未配置(枚举前)</td><td>100 mA</td></tr>
+    <tr><td>配置后 USB 2.0</td><td>500 mA</td></tr>
+    <tr><td>配置后 USB 3.0</td><td>900 mA</td></tr>
+    <tr><td>挂起态</td><td>2.5 mA</td></tr>
+  </table>
+  <p>电压: 4.40V ~ 5.25V (标称5.0V)</p>
+  <h4>差分信号原理</h4>
+  <p>D+和D-传差分信号：接收方计算 D+减D- 的差值。外部共模噪声同时影响两根线 → 相减后噪声抵消。</p>
+  <h4>J/K 状态</h4>
+  <table>
+    <tr><th>状态</th><th>D+</th><th>D-</th><th>LS含义</th><th>FS含义</th></tr>
+    <tr><td>J (Diff 1)</td><td>高</td><td>低</td><td>Idle</td><td>Data 1</td></tr>
+    <tr><td>K (Diff 0)</td><td>低</td><td>高</td><td>Data 1</td><td>Idle</td></tr>
+  </table>
+  <h4>速度识别（电阻决定）</h4>
+  <pre><code>Host/Hub侧: D+和D-各有15KΩ下拉到GND
+设备侧:
+  FS/HS设备: D+ → 1.5KΩ上拉到3.3V → 插入后D+变高
+  LS设备:    D- → 1.5KΩ上拉到3.3V → 插入后D-变高</code></pre>
+  <h4>HS Chirp 协商</h4>
+  <p>HS设备先冒充FS(D+上拉) → Host复位 → 设备发Chirp K → Host回Chirp K/J交替 → 设备切换HS终端电阻 → 协商成功，后续以480Mbps通信。</p>
+  <h4>NRZI 编码 + Bit Stuffing</h4>
+  <ul>
+    <li>NRZI: 0=跳变, 1=保持</li>
+    <li>Bit Stuffing: 连续6个1后强制插1个0(产生跳变维持时钟同步)</li>
+  </ul>
+</article>
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Open `usb-notes.html`.
+- Verify: 5 Phase 1 cards rendered, all tables formatted correctly, code blocks styled, sidebar links working for Phase 1.
+- Check: scroll to each card via sidebar click, verify smooth scroll.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: add Phase 1 content cards (5 knowledge points)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 4: Phase 1 SVG architecture diagrams (3 diagrams)
+
+**Files:**
+- Modify: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` (insert SVGs into cards 1.2, 1.3, 1.4)
+
+**Interfaces:**
+- Consumes: card `#kp-1-2` (version timeline placeholder), `#kp-1-3` (topology placeholder), `#kp-1-4` (stack placeholder) from Task 3
+
+- [ ] **Step 1: Add USB version evolution timeline SVG to card 1.2**
+
+Replace `<!-- Version timeline SVG added in Task 4 -->` with:
+
+```html
+<div class="diagram-container">
+<svg width="760" height="180" viewBox="0 0 760 180" xmlns="http://www.w3.org/2000/svg">
+  <line x1="40" y1="90" x2="720" y2="90" stroke="var(--svg-line)" stroke-width="2"/>
+  <g font-family="sans-serif" font-size="12" fill="var(--svg-text)">
+    <!-- 1996 USB 1.0 -->
+    <circle cx="80" cy="90" r="5" fill="var(--color-sync-pid)"/><line x1="80" y1="90" x2="80" y2="50" stroke="var(--svg-line)" stroke-width="1"/><rect x="30" y="20" width="100" height="24" rx="4" fill="var(--color-sync-pid)" opacity="0.15"/><text x="80" y="16" text-anchor="middle" font-size="10">1996</text><text x="80" y="36" text-anchor="middle" font-size="11" font-weight="600">USB 1.0</text><text x="80" y="60" text-anchor="middle" font-size="9" fill="var(--text-muted)">1.5 Mbps</text>
+    <!-- 1998 USB 1.1 -->
+    <circle cx="180" cy="90" r="5" fill="var(--color-addr)"/><line x1="180" y1="90" x2="180" y2="110" stroke="var(--svg-line)" stroke-width="1"/><rect x="130" y="114" width="100" height="24" rx="4" fill="var(--color-addr)" opacity="0.15"/><text x="180" y="110" text-anchor="middle" font-size="10">1998</text><text x="180" y="130" text-anchor="middle" font-size="11" font-weight="600">USB 1.1</text><text x="180" y="146" text-anchor="middle" font-size="9" fill="var(--text-muted)">1.5/12 Mbps</text>
+    <!-- 2000 USB 2.0 -->
+    <circle cx="280" cy="90" r="6" fill="var(--color-data)"/><line x1="280" y1="90" x2="280" y2="40" stroke="var(--svg-line)" stroke-width="1"/><rect x="230" y="10" width="100" height="24" rx="4" fill="var(--color-data)" opacity="0.15"/><text x="280" y="6" text-anchor="middle" font-size="10">2000</text><text x="280" y="26" text-anchor="middle" font-size="11" font-weight="600">USB 2.0</text><text x="280" y="50" text-anchor="middle" font-size="9" fill="var(--text-muted)">+480 Mbps</text>
+    <!-- 2008 USB 3.0 -->
+    <circle cx="400" cy="90" r="5" fill="var(--color-crc)"/><line x1="400" y1="90" x2="400" y2="110" stroke="var(--svg-line)" stroke-width="1"/><rect x="350" y="114" width="100" height="24" rx="4" fill="var(--color-crc)" opacity="0.15"/><text x="400" y="110" text-anchor="middle" font-size="10">2008</text><text x="400" y="130" text-anchor="middle" font-size="11" font-weight="600">USB 3.0</text><text x="400" y="146" text-anchor="middle" font-size="9" fill="var(--text-muted)">+5 Gbps</text>
+    <!-- 2013 USB 3.1 -->
+    <circle cx="510" cy="90" r="5" fill="var(--color-frame)"/><line x1="510" y1="90" x2="510" y2="50" stroke="var(--svg-line)" stroke-width="1"/><rect x="460" y="20" width="100" height="24" rx="4" fill="var(--color-frame)" opacity="0.15"/><text x="510" y="16" text-anchor="middle" font-size="10">2013</text><text x="510" y="36" text-anchor="middle" font-size="11" font-weight="600">USB 3.1</text><text x="510" y="60" text-anchor="middle" font-size="9" fill="var(--text-muted)">+10 Gbps</text>
+    <!-- 2017 USB 3.2 -->
+    <circle cx="620" cy="90" r="5" fill="var(--color-data)"/><line x1="620" y1="90" x2="620" y2="110" stroke="var(--svg-line)" stroke-width="1"/><rect x="570" y="114" width="100" height="24" rx="4" fill="var(--color-data)" opacity="0.15"/><text x="620" y="110" text-anchor="middle" font-size="10">2017</text><text x="620" y="130" text-anchor="middle" font-size="11" font-weight="600">USB 3.2</text><text x="620" y="146" text-anchor="middle" font-size="9" fill="var(--text-muted)">+20 Gbps</text>
+    <!-- 2019 USB4 -->
+    <circle cx="710" cy="90" r="6" fill="var(--color-sync-pid)"/><line x1="710" y1="90" x2="710" y2="40" stroke="var(--svg-line)" stroke-width="1"/><rect x="660" y="10" width="100" height="24" rx="4" fill="var(--color-sync-pid)" opacity="0.15"/><text x="710" y="6" text-anchor="middle" font-size="10">2019</text><text x="710" y="26" text-anchor="middle" font-size="11" font-weight="600">USB4</text><text x="710" y="50" text-anchor="middle" font-size="9" fill="var(--text-muted)">20/40 Gbps</text>
+  </g>
+</svg>
+</div>
+```
+
+- [ ] **Step 2: Add USB topology tree SVG to card 1.3**
+
+Replace `<!-- Topology tree SVG added in Task 4 -->` with:
+
+```html
+<div class="diagram-container">
+<svg width="640" height="320" viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg">
+  <g font-family="sans-serif" font-size="12" fill="var(--svg-text)">
+    <!-- Host -->
+    <rect x="240" y="10" width="160" height="36" rx="8" fill="var(--color-sync-pid)" opacity="0.2" stroke="var(--color-sync-pid)" stroke-width="2"/>
+    <text x="320" y="33" text-anchor="middle" font-weight="700" font-size="14">Host (Root Hub)</text>
+    <!-- Tier labels -->
+    <text x="10" y="33" font-size="11" fill="var(--text-muted)">Tier 1</text>
+    <line x1="320" y1="46" x2="320" y2="72" stroke="var(--svg-line)" stroke-width="2"/>
+    <!-- Tier 2 Hub -->
+    <rect x="240" y="70" width="160" height="32" rx="8" fill="var(--color-addr)" opacity="0.15" stroke="var(--color-addr)" stroke-width="1.5"/>
+    <text x="320" y="91" text-anchor="middle" font-size="13" font-weight="600">Hub (Tier 2)</text>
+    <text x="10" y="91" font-size="11" fill="var(--text-muted)">Tier 2</text>
+    <!-- Lines to Tier 3 -->
+    <line x1="260" y1="102" x2="180" y2="130" stroke="var(--svg-line)" stroke-width="1.5"/>
+    <line x1="320" y1="102" x2="320" y2="130" stroke="var(--svg-line)" stroke-width="1.5"/>
+    <line x1="380" y1="102" x2="460" y2="130" stroke="var(--svg-line)" stroke-width="1.5"/>
+    <!-- Tier 3 -->
+    <rect x="100" y="128" width="160" height="32" rx="8" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="180" y="149" text-anchor="middle" font-size="12" font-weight="600">Device (Function)</text>
+    <rect x="240" y="128" width="160" height="32" rx="8" fill="var(--color-addr)" opacity="0.15" stroke="var(--color-addr)" stroke-width="1.5"/>
+    <text x="320" y="149" text-anchor="middle" font-size="12" font-weight="600">Hub (Tier 3)</text>
+    <rect x="380" y="128" width="160" height="32" rx="8" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="460" y="149" text-anchor="middle" font-size="12" font-weight="600">Device (Function)</text>
+    <!-- Lines to Tier 4 -->
+    <line x1="290" y1="160" x2="290" y2="188" stroke="var(--svg-line)" stroke-width="1.5"/>
+    <line x1="350" y1="160" x2="350" y2="188" stroke="var(--svg-line)" stroke-width="1.5"/>
+    <!-- Tier 4 -->
+    <rect x="210" y="186" width="160" height="32" rx="8" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="290" y="207" text-anchor="middle" font-size="12" font-weight="600">Device</text>
+    <rect x="270" y="186" width="160" height="32" rx="8" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="350" y="207" text-anchor="middle" font-size="12" font-weight="600">Device</text>
+    <!-- Dots for deeper tiers ... -->
+    <line x1="320" y1="218" x2="320" y2="240" stroke="var(--svg-line)" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <text x="320" y="256" text-anchor="middle" font-size="11" fill="var(--text-muted)">⋮ 最多到 Tier 7</text>
+    <!-- Key constraint callouts -->
+    <text x="10" y="280" font-size="11" fill="var(--text-muted)">规则: 最多7层 · 127设备 · 5个非Root Hub</text>
+    <text x="10" y="298" font-size="11" fill="var(--text-muted)">每段电缆≤5m · 总长≤30m · ADDR=7bit(0x00保留)</text>
+  </g>
+</svg>
+</div>
+```
+
+- [ ] **Step 3: Add software stack SVG to card 1.4**
+
+Replace `<!-- Software stack SVG added in Task 4 -->` with:
+
+```html
+<div class="diagram-container">
+<svg width="520" height="310" viewBox="0 0 520 310" xmlns="http://www.w3.org/2000/svg">
+  <g font-family="sans-serif" font-size="13" fill="var(--svg-text)">
+    <!-- Your SDK -->
+    <rect x="120" y="10" width="280" height="36" rx="8" fill="var(--color-sync-pid)" opacity="0.2" stroke="var(--color-sync-pid)" stroke-width="2"/>
+    <text x="260" y="33" text-anchor="middle" font-weight="700">你的 SDK (libusb API)</text>
+    <line x1="260" y1="46" x2="260" y2="66" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <!-- libusb -->
+    <rect x="140" y="64" width="240" height="32" rx="8" fill="var(--color-addr)" opacity="0.15" stroke="var(--color-addr)" stroke-width="1.5"/>
+    <text x="260" y="85" text-anchor="middle" font-size="12" font-weight="600">libusb 用户空间库</text>
+    <line x1="260" y1="96" x2="260" y2="116" stroke="var(--svg-line)" stroke-width="1.5"/>
+    <!-- OS USB Backend -->
+    <rect x="130" y="114" width="260" height="32" rx="8" fill="var(--color-frame)" opacity="0.15" stroke="var(--color-frame)" stroke-width="1.5"/>
+    <text x="260" y="135" text-anchor="middle" font-size="12" font-weight="600">OS USB 驱动后端</text>
+    <text x="260" y="152" text-anchor="middle" font-size="10" fill="var(--text-muted)">WinUSB / usbfs / IOKit</text>
+    <line x1="260" y1="162" x2="260" y2="182" stroke="var(--svg-line)" stroke-width="1.5"/>
+    <!-- OS USB Stack -->
+    <rect x="140" y="180" width="240" height="32" rx="8" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="260" y="201" text-anchor="middle" font-size="12" font-weight="600">OS USB 驱动栈</text>
+    <line x1="260" y1="212" x2="260" y2="232" stroke="var(--svg-line)" stroke-width="1.5"/>
+    <!-- HCD -->
+    <rect x="140" y="230" width="240" height="32" rx="8" fill="var(--color-crc)" opacity="0.15" stroke="var(--color-crc)" stroke-width="1.5"/>
+    <text x="260" y="251" text-anchor="middle" font-size="12" font-weight="600">主机控制器驱动 (HCD)</text>
+    <line x1="260" y1="262" x2="260" y2="282" stroke="var(--svg-line)" stroke-width="1.5"/>
+    <!-- Hardware -->
+    <rect x="130" y="280" width="260" height="28" rx="8" fill="var(--color-eop)" opacity="0.2" stroke="var(--color-eop)" stroke-width="1.5"/>
+    <text x="260" y="299" text-anchor="middle" font-size="11" font-weight="600">主机控制器硬件 (xHCI) → D+/D-</text>
+  </g>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--svg-line)"/>
+    </marker>
+  </defs>
+</svg>
+</div>
+```
+
+- [ ] **Step 4: Open in browser and verify**
+
+Open `usb-notes.html`.
+- Verify: 3 SVG diagrams rendered correctly in their cards.
+- Verify: version timeline has 7 nodes on one line with alternating above/below labels.
+- Verify: topology tree shows Host → Hub → Hub/Device hierarchy with Tier labels.
+- Verify: software stack shows 6 layers with arrows.
+- Toggle dark mode → verify SVG colors adapt via CSS variables.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: add Phase 1 SVG diagrams (version timeline, topology tree, software stack)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 5: Phase 2 content cards — Part 1 (2.1–2.5)
+
+**Files:**
+- Modify: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` (append to `<main>` after Phase 1)
+
+**Interfaces:**
+- Consumes: sidebar links `#kp-2-1` through `#kp-2-5` from Task 2
+- Produces: 5 knowledge cards with id anchors, content from `notes/phase2-communication-model.md`
+
+- [ ] **Step 1: Add Phase 2 header + cards 2.1–2.5**
+
+Append after the last Phase 1 card (`<!-- 1.5 -->` card closing `</article>`):
+
+```html
+<div class="phase-header" id="phase-2"><h2>Phase 2: USB 通信模型 — 层层拆解到比特</h2></div>
+
+<!-- 2.1 -->
+<article class="card" id="kp-2-1">
+  <h3>2.1 三层通信模型</h3>
+  <h4>三层定义</h4>
+  <pre><code>功能层 (Function Layer) — "做什么"
+  → 你的SDK和业务逻辑
+  → 例: HID按键→按键码, CDC→串口字节流, UVC→视频帧
+
+USB设备层 (USB Device Layer) — "怎么组织"
+  → 端点/管道/传输类型/描述符
+  → 把包的碎片组织成有意义的传输
+
+总线接口层 (Bus Interface Layer) — "怎么传"
+  → 包(Packet)、NRZI编码、D+/D-信号
+  → 硬件层面</code></pre>
+  <h4>MQTT 类比</h4>
+  <table>
+    <tr><th>MQTT层</th><th>USB层</th></tr>
+    <tr><td>应用层 (Topic/Payload)</td><td>功能层 (业务数据)</td></tr>
+    <tr><td>MQTT协议 (QoS/PacketID)</td><td>USB设备层 (端点/管道/传输)</td></tr>
+    <tr><td>传输层 (TCP/IP)</td><td>总线接口层 (包/D+/D-)</td></tr>
+  </table>
+  <h4>数据流转示例（读设备描述符）</h4>
+  <pre><code>功能层: "我要VID/PID"
+  ↓
+设备层: 组装 GET_DESCRIPTOR(Device), bmReqType=0x80, bReq=0x06
+  ↓
+总线接口层: SETUP Token + DATA0(8B) → IN Token×3 → DATA+ACK ×3
+  ↓
+设备层: 拼回18字节 Device Descriptor
+  ↓
+功能层: 拿到 VID=0x046D, PID=0xC077 → "罗技鼠标"</code></pre>
+  <!-- Three-layer model SVG added in Task 9 -->
+</article>
+
+<!-- 2.2 -->
+<article class="card" id="kp-2-2">
+  <h3>2.2 端点 (Endpoint) 深入</h3>
+  <h4>定义</h4>
+  <p><strong>端点 = 设备内部的一段 FIFO 缓冲区。</strong>硬件概念，芯片设计时就要决定数量/大小/类型。</p>
+  <h4>端点地址编码</h4>
+  <pre><code>Token包中 ENDP 字段 = 4 bits → 端点号 0~15
+
+完整端点地址:
+  Bit7 = 方向 (1=IN, 0=OUT) — 在端点描述符中
+  Bit3-0 = 端点号
+
+  IN = Device → Host (Host "收进来")
+  OUT = Host → Device (Host "发出去")
+
+方向永远从Host视角看！
+0x81 = IN, EP1    0x02 = OUT, EP2</code></pre>
+  <h4>端点0 (EP0)</h4>
+  <table>
+    <tr><th>属性</th><th>值</th></tr>
+    <tr><td>端点号</td><td>固定0</td></tr>
+    <tr><td>方向</td><td>双向</td></tr>
+    <tr><td>传输类型</td><td>只能是控制传输</td></tr>
+    <tr><td>职责</td><td>枚举、配置、类特定控制请求</td></tr>
+    <tr><td>LS MaxPacketSize</td><td>固定8B</td></tr>
+    <tr><td>FS MaxPacketSize</td><td>8/16/32/64</td></tr>
+    <tr><td>HS MaxPacketSize</td><td>固定64B</td></tr>
+  </table>
+  <h4>最大包大小 (MaxPacketSize)</h4>
+  <table>
+    <tr><th>速度</th><th>控制</th><th>中断</th><th>批量</th><th>等时</th></tr>
+    <tr><td>LS</td><td>8</td><td>1~8</td><td>❌</td><td>❌</td></tr>
+    <tr><td>FS</td><td>8/16/32/64</td><td>1~64</td><td>8/16/32/64</td><td>1~1023</td></tr>
+    <tr><td>HS</td><td>64</td><td>1~1024</td><td>512</td><td>1~1024</td></tr>
+  </table>
+  <h4>典型设备端点布局</h4>
+  <pre><code>HID键盘(LS): EP0(控制8B), EP1 IN(中断8B)
+CDC串口(FS): EP0(控制64B), EP1 IN(中断16B), EP2 IN(批量64B), EP3 OUT(批量64B)
+UVC摄像头(HS): EP0(控制64B), EP1 IN(中断16B可选), EP2 IN(等时512B)</code></pre>
+</article>
+
+<!-- 2.3 -->
+<article class="card" id="kp-2-3">
+  <h3>2.3 管道 (Pipe) 深入</h3>
+  <h4>定义</h4>
+  <p><strong>管道 = Host软件到端点之间的逻辑通信通道。</strong></p>
+  <h4>两种管道</h4>
+  <table>
+    <tr><th></th><th>消息管道 (Message Pipe)</th><th>流管道 (Stream Pipe)</th></tr>
+    <tr><td>方向</td><td>双向</td><td>单向</td></tr>
+    <tr><td>结构</td><td>请求→响应格式</td><td>原始字节流</td></tr>
+    <tr><td>连接端点</td><td>只能连EP0</td><td>连EP1~15</td></tr>
+    <tr><td>传输类型</td><td>只能控制传输</td><td>中断/批量/等时</td></tr>
+    <tr><td>MQTT类比</td><td>CONNECT/CONNACK</td><td>PUBLISH body</td></tr>
+  </table>
+  <h4>映射关系</h4>
+  <pre><code>消息管道 = 控制传输 = EP0 = 双向
+流管道 = 中断/批量/等时传输 = 非0端点 = 单向</code></pre>
+</article>
+
+<!-- 2.4 -->
+<article class="card" id="kp-2-4">
+  <h3>2.4 四种传输类型全景</h3>
+  <table>
+    <tr><th>维度</th><th>控制</th><th>中断</th><th>批量</th><th>等时</th></tr>
+    <tr><td>可靠性</td><td>✅ ACK+重试</td><td>✅ ACK+重试</td><td>✅ ACK+重试</td><td>❌ 无握手</td></tr>
+    <tr><td>延迟保证</td><td>不保证</td><td>✅ bInterval</td><td>❌</td><td>✅ 带宽保留</td></tr>
+    <tr><td>带宽保证</td><td>10%保留</td><td>有限保留</td><td>❌ 吃剩饭</td><td>✅ 预约</td></tr>
+    <tr><td>方向</td><td>双向</td><td>单向</td><td>单向</td><td>单向</td></tr>
+    <tr><td>管道</td><td>消息管道</td><td>流管道</td><td>流管道</td><td>流管道</td></tr>
+    <tr><td>LS支持</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
+    <tr><td>HS最大包</td><td>64</td><td>1024</td><td>512</td><td>1024</td></tr>
+    <tr><td>典型设备</td><td>所有设备</td><td>键盘/鼠标</td><td>U盘/串口</td><td>摄像头/音频</td></tr>
+  </table>
+  <h4>帧内带宽分配优先级</h4>
+  <pre><code>等时(最高) → 中断 → 控制(至少10%) → 批量(吃剩饭)</code></pre>
+  <!-- Four transfer types comparison SVG added in Task 9 -->
+</article>
+
+<!-- 2.5 -->
+<article class="card" id="kp-2-5">
+  <h3>2.5 传输/事务/包 三层映射</h3>
+  <h4>核心公式</h4>
+  <pre><code>1 Transfer (传输) = N 个 Transaction (事务)
+1 Transaction (事务) = 最多 3 个 Packet (包)</code></pre>
+  <h4>每种传输的事务模式</h4>
+  <table>
+    <tr><th>传输类型</th><th>事务组成</th><th>Token</th><th>Data</th><th>Handshake</th></tr>
+    <tr><td>控制</td><td>SETUP + [DATA×N] + STATUS</td><td>SETUP/IN/OUT</td><td>✅</td><td>✅</td></tr>
+    <tr><td>中断IN</td><td>1个IN事务</td><td>IN</td><td>✅</td><td>✅</td></tr>
+    <tr><td>中断OUT</td><td>1个OUT事务</td><td>OUT</td><td>✅</td><td>✅</td></tr>
+    <tr><td>批量IN</td><td>1个IN事务</td><td>IN</td><td>✅</td><td>✅</td></tr>
+    <tr><td>批量OUT</td><td>1个OUT事务</td><td>OUT</td><td>✅</td><td>✅</td></tr>
+    <tr><td>等时IN</td><td>1个IN事务</td><td>IN</td><td>✅</td><td>❌</td></tr>
+    <tr><td>等时OUT</td><td>1个OUT事务</td><td>OUT</td><td>✅</td><td>❌</td></tr>
+  </table>
+  <h4>DATA0/DATA1 翻转</h4>
+  <ul>
+    <li>端点初始化→Toggle=DATA0</li>
+    <li>每成功传输(收到ACK)→Toggle翻转</li>
+    <li>收到NAK→Toggle不翻转</li>
+    <li>目的：区分"Host重发"和"Host发了相同内容"</li>
+  </ul>
+  <!-- Transfer→Transaction→Packet mapping SVG added in Task 9 -->
+</article>
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Open `usb-notes.html`.
+- Verify: Phase 2 header visible, 5 cards (2.1–2.5) rendered with all tables and code blocks.
+- Verify: sidebar Phase 2 links navigate to correct cards.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: add Phase 2 content cards part 1 (2.1–2.5)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 6: Phase 2 content cards — Part 2: PID, Token, Data, Handshake (2.6–2.9)
+
+**Files:**
+- Modify: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` (append to `<main>` after 2.5)
+
+**Interfaces:**
+- Consumes: sidebar links `#kp-2-6` through `#kp-2-9` from Task 2
+- Produces: 4 cards with PID tables and packet structure descriptions
+- Produces: `<div class="packet-diagram-wrapper">` containers for packet diagrams (rendered in Task 8)
+
+- [ ] **Step 1: Add cards 2.6–2.9**
+
+Append after the 2.5 card closing `</article>`:
+
+```html
+<!-- 2.6 -->
+<article class="card" id="kp-2-6">
+  <h3>2.6 <span class="badge-pack">⛁ 逐比特</span> PID 编码表</h3>
+  <h4>PID 8位结构</h4>
+  <pre><code>Bit7~Bit4 = ~Bit3~Bit0 (按位取反)
+
+例: ACK
+  低4位(类型码) = 0010 (0x2)
+  高4位(校验)   = 1101 (~0010)
+  完整PID       = 1101 0010 = 0xD2</code></pre>
+  <p>错误检测：高4位≠~低4位→PID损坏→忽略整个包</p>
+  <h4>PID 低2位分类</h4>
+  <pre><code>Bit1-0 = 00 → SPECIAL类
+Bit1-0 = 01 → TOKEN类
+Bit1-0 = 10 → HANDSHAKE类
+Bit1-0 = 11 → DATA类</code></pre>
+  <h4>16种PID全集</h4>
+  <p><strong>TOKEN类：</strong></p>
+  <table>
+    <tr><th>PID</th><th>低4位</th><th>完整(hex)</th><th>含义</th></tr>
+    <tr><td>OUT</td><td>0001</td><td>0xE1</td><td>Host→Device数据</td></tr>
+    <tr><td>IN</td><td>1001</td><td>0x69</td><td>Host←Device数据</td></tr>
+    <tr><td>SOF</td><td>0101</td><td>0xA5</td><td>帧起始</td></tr>
+    <tr><td>SETUP</td><td>1101</td><td>0x2D</td><td>控制传输SETUP阶段</td></tr>
+  </table>
+  <p><strong>DATA类：</strong></p>
+  <table>
+    <tr><th>PID</th><th>低4位</th><th>完整(hex)</th><th>含义</th></tr>
+    <tr><td>DATA0</td><td>0011</td><td>0xC3</td><td>翻转位=0</td></tr>
+    <tr><td>DATA1</td><td>1011</td><td>0x4B</td><td>翻转位=1</td></tr>
+    <tr><td>DATA2</td><td>0111</td><td>0x87</td><td>HS等时微帧多包</td></tr>
+    <tr><td>MDATA</td><td>1111</td><td>0x0F</td><td>HS等时Split</td></tr>
+  </table>
+  <p><strong>HANDSHAKE类：</strong></p>
+  <table>
+    <tr><th>PID</th><th>低4位</th><th>完整(hex)</th><th>含义</th></tr>
+    <tr><td>ACK</td><td>0010</td><td>0xD2</td><td>正确接收</td></tr>
+    <tr><td>NAK</td><td>1010</td><td>0x5A</td><td>暂时忙/无数据</td></tr>
+    <tr><td>STALL</td><td>1110</td><td>0x1E</td><td>端点Halted/请求不支持</td></tr>
+    <tr><td>NYET</td><td>0110</td><td>0x96</td><td>HS批量OUT: FIFO满了(PING协议)</td></tr>
+  </table>
+  <p><strong>SPECIAL类：</strong></p>
+  <table>
+    <tr><th>PID</th><th>低4位</th><th>完整(hex)</th><th>含义</th></tr>
+    <tr><td>PRE</td><td>1100</td><td>0x3C</td><td>LS Preamble</td></tr>
+    <tr><td>ERR</td><td>1100</td><td>0x3C</td><td>Split Transaction出错</td></tr>
+    <tr><td>SPLIT</td><td>1000</td><td>0x78</td><td>HS Split开始</td></tr>
+    <tr><td>PING</td><td>0100</td><td>0xB4</td><td>HS批量OUT流控探测</td></tr>
+    <tr><td>EXT</td><td>0000</td><td>0xF0</td><td>扩展PID(保留)</td></tr>
+  </table>
+</article>
+
+<!-- 2.7 -->
+<article class="card" id="kp-2-7">
+  <h3>2.7 <span class="badge-pack">⛁ 逐比特</span> Token 包逐位解析</h3>
+  <h4>IN/OUT/SETUP Token (24 bits)</h4>
+  <pre><code>SYNC(8b) | PID(8b) | ADDR(7b) | ENDP(4b) | CRC5(5b) | EOP(3b)</code></pre>
+  <h4>SYNC字段 (8 bits)</h4>
+  <p><code>00000001</code> (0x80, LSB first)。7个0→NRZI连续7次跳变→接收方PLL锁定时钟。最后1→停止跳变→标志SYNC结束。</p>
+  <h4>ADDR字段 (7 bits)</h4>
+  <p>范围 0x00~0x7F (0~127)。0x00 = 默认地址，0x01~0x7F = 可分配地址(127个)。</p>
+  <h4>ENDP字段 (4 bits)</h4>
+  <p>范围 0~15。方向由PID决定(IN PID=读, OUT PID=写)。EP3 IN和EP3 OUT是硬件上两个不同的FIFO。</p>
+  <h4>CRC5字段 (5 bits)</h4>
+  <p>多项式: G(x) = x⁵ + x² + 1 (100101 = 0x25)。校验范围: ADDR(7b) + ENDP(4b) = 11 bits。</p>
+  <!-- Token & SOF packet diagrams rendered in Task 8 -->
+  <p class="packet-title">Token 包 (IN/OUT/SETUP)</p>
+  <div class="packet-diagram-wrapper" id="pkt-token"></div>
+  <h4>SOF Token (结构不同)</h4>
+  <pre><code>SYNC(8b) | PID=SOF(0xA5) | Frame Number(11b) | CRC5(5b) | EOP</code></pre>
+  <p>Frame Number: 0~2047。FS: 1帧=1ms→~2秒回卷。HS: 1微帧=125μs→256ms回卷。</p>
+  <p class="packet-title">SOF Token 包</p>
+  <div class="packet-diagram-wrapper" id="pkt-sof"></div>
+</article>
+
+<!-- 2.8 -->
+<article class="card" id="kp-2-8">
+  <h3>2.8 <span class="badge-pack">⛁ 逐比特</span> Data 包逐位解析</h3>
+  <h4>结构</h4>
+  <pre><code>SYNC(8b) | PID(8b) | DATA(0~1024B) | CRC16(16b) | EOP(3b)</code></pre>
+  <h4>CRC16</h4>
+  <p>多项式: G(x) = x¹⁶ + x¹⁵ + x² + 1。截断多项式: 0x8005。校验范围: DATA字段全部字节。</p>
+  <h4>短包终止</h4>
+  <p>如果数据长度 &lt; MaxPacketSize → 短包 = 传输结束信号。如果恰好等于MaxPacketSize → 追加零长度DATA包标记结束。</p>
+  <h4>DATA0/DATA1翻转机制</h4>
+  <ul>
+    <li>初始化: Toggle = DATA0</li>
+    <li>成功(收到ACK): Toggle翻转</li>
+    <li>NAK: Toggle不变</li>
+    <li>接收方检测到Toggle与预期不一致→知道是重传→回ACK但丢弃数据</li>
+  </ul>
+  <p class="packet-title">Data 包 (DATA0/DATA1/DATA2/MDATA)</p>
+  <div class="packet-diagram-wrapper" id="pkt-data"></div>
+</article>
+
+<!-- 2.9 -->
+<article class="card" id="kp-2-9">
+  <h3>2.9 <span class="badge-pack">⛁ 逐比特</span> Handshake 包逐位解析</h3>
+  <h4>结构（USB最短的包）</h4>
+  <pre><code>SYNC(8b) | PID(8b) | EOP(3b)</code></pre>
+  <p>没有DATA、没有CRC。PID自身的高4位=~低4位校验已足够。</p>
+  <h4>ACK (0xD2)</h4>
+  <p><code>1101 0010</code> — 数据被正确接收。发送方翻转Toggle，事务完成。</p>
+  <h4>NAK (0x5A)</h4>
+  <p><code>0101 1010</code> — 暂时忙/无数据。Toggle不翻转。NAK总是Device给Host的。<strong>不是错误</strong>，是正常流控。</p>
+  <h4>STALL (0x1E)</h4>
+  <p><code>0001 1110</code> — 端点Halted或请求不支持。NAK="等等再来" vs STALL="别试了，需要人来修"。</p>
+  <h4>NYET (0x96, HS only)</h4>
+  <p><code>1001 0110</code> — HS批量OUT: 数据收了但FIFO满了。PING协议的一部分。</p>
+  <p class="packet-title">Handshake 包 (ACK/NAK/STALL/NYET)</p>
+  <div class="packet-diagram-wrapper" id="pkt-handshake"></div>
+</article>
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Open `usb-notes.html`.
+- Verify: 4 new cards (2.6–2.9) with all tables, empty packet diagram containers visible (will be filled in Task 8).
+- Verify: ⛁ badge visible next to card titles.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: add Phase 2 PID/Token/Data/Handshake cards (2.6–2.9)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 7: Phase 2 content cards — Part 3: Transfer types detail (2.10–2.16)
+
+**Files:**
+- Modify: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` (append to `<main>` after 2.9)
+
+**Interfaces:**
+- Consumes: sidebar links `#kp-2-10` through `#kp-2-16` from Task 2
+- Produces: 7 knowledge cards
+
+- [ ] **Step 1: Add cards 2.10–2.16**
+
+Append after the 2.9 card closing `</article>`:
+
+```html
+<!-- 2.10 -->
+<article class="card" id="kp-2-10">
+  <h3>2.10 控制传输逐事务拆解</h3>
+  <h4>三阶段模型</h4>
+  <pre><code>必含: SETUP + STATUS
+可选: DATA (wLength=0则跳过)</code></pre>
+  <h4>SETUP阶段</h4>
+  <pre><code>Host → SETUP Token (0x2D, ADDR, EP0)
+Host → DATA0 (8B SETUP包)
+Host ← ACK (设备必须ACK! 不能NAK)</code></pre>
+  <h4>SETUP包8字节</h4>
+  <table>
+    <tr><th>偏移</th><th>字段</th><th>大小</th><th>示例(GET_DESCRIPTOR)</th></tr>
+    <tr><td>+0</td><td>bmRequestType</td><td>1B</td><td>0x80 (D2H, Standard, Device)</td></tr>
+    <tr><td>+1</td><td>bRequest</td><td>1B</td><td>0x06 (GET_DESCRIPTOR)</td></tr>
+    <tr><td>+2</td><td>wValue</td><td>2B</td><td>0x0100 (Device Desc, Index=0)</td></tr>
+    <tr><td>+4</td><td>wIndex</td><td>2B</td><td>0x0000</td></tr>
+    <tr><td>+6</td><td>wLength</td><td>2B</td><td>0x0012 (18 bytes)</td></tr>
+  </table>
+  <h4>STATUS阶段</h4>
+  <ul>
+    <li>方向总是跟DATA阶段相反</li>
+    <li>STATUS数据包永远是DATA1</li>
+    <li>接收STATUS的那方必须回ACK→控制传输才正式闭环</li>
+  </ul>
+  <h4>三种类型</h4>
+  <ol>
+    <li>控制读(Read): SETUP→DATA(IN)×N→STATUS(OUT)</li>
+    <li>控制写(Write): SETUP→DATA(OUT)×N→STATUS(IN)</li>
+    <li>无数据(No Data): SETUP→STATUS(IN)</li>
+  </ol>
+  <!-- Control transfer sequence SVG added in Task 9 -->
+</article>
+
+<!-- 2.11 -->
+<article class="card" id="kp-2-11">
+  <h3>2.11 中断传输逐事务拆解</h3>
+  <h4>基本结构</h4>
+  <pre><code>Host发IN Token→Device回应:
+  有数据: DATA(1~64B FS/1~1024B HS)→Host ACK
+  无数据: NAK (Host下个周期再问)
+  出错:   STALL</code></pre>
+  <h4>bInterval 延迟保证</h4>
+  <pre><code>LS/FS: bInterval = N ms
+HS: 实际间隔 = 2^(bInterval-1) × 125μs
+
+最快延迟: HS bInterval=1 → 125μs
+典型鼠标: FS bInterval=10 → 10ms</code></pre>
+  <h4>选型: 中断 vs 批量</h4>
+  <table>
+    <tr><th>维度</th><th>中断</th><th>批量</th></tr>
+    <tr><td>延迟</td><td>有保证</td><td>无保证</td></tr>
+    <tr><td>数据量</td><td>小</td><td>大</td></tr>
+    <tr><td>CPU</td><td>必须定期轮询</td><td>按需</td></tr>
+    <tr><td>用途</td><td>状态/按键/传感器</td><td>文件/串口流</td></tr>
+  </table>
+</article>
+
+<!-- 2.12 -->
+<article class="card" id="kp-2-12">
+  <h3>2.12 批量传输逐事务拆解</h3>
+  <h4>帧内优先级</h4>
+  <pre><code>等时 > 中断 > 控制(≥10%) > 批量(吃剩饭)</code></pre>
+  <h4>HS PING流控</h4>
+  <pre><code>FS/LS: 直接OUT→可能被NAK(浪费带宽)
+HS: 先PING探测空间→ACK→再OUT→避免浪费
+
+PING流程:
+Host→PING Token→Device回ACK(有空间)/NAK(满)
+ACK→OUT Token+DATA→Device回ACK/NYET
+NYET: 数据收了但满了，下次先PING再发</code></pre>
+  <h4>理论吞吐</h4>
+  <p>HS: 13×512B/125μs ≈ 53.2 MB/s (理论)。实际: 20-35 MB/s。</p>
+  <h4>结束条件</h4>
+  <ol>
+    <li>客户端指定了传输长度</li>
+    <li>短包终止 (&lt; MaxPacketSize)</li>
+    <li>零长度包 (设备不想NAK)</li>
+  </ol>
+</article>
+
+<!-- 2.13 -->
+<article class="card" id="kp-2-13">
+  <h3>2.13 等时传输逐事务拆解</h3>
+  <h4>基本结构（无握手包！）</h4>
+  <pre><code>IN:  Host→IN Token ←DATA (结束!)
+OUT: Host→OUT Token→DATA (结束!)</code></pre>
+  <p>没有ACK, 没有NAK, 没有STALL。</p>
+  <h4>为什么不要握手</h4>
+  <p>实时>可靠性: 30fps视频(33ms/帧), 重传延迟比丢几帧更致命。人脑对5-10%帧丢失不敏感，但对>50ms延迟非常敏感。</p>
+  <h4>HS微帧多包</h4>
+  <pre><code>一个微帧最多3包:
+IN+DATA2(1024B)→IN+DATA1(1024B)→IN+DATA0(1024B)
+= 3072B/125μs ≈ 24.6 MB/s</code></pre>
+  <h4>同步类型 (bmAttributes Bit2-3)</h4>
+  <ul>
+    <li>00=Asynchronous (异步, 各走各时钟, 如USB音箱)</li>
+    <li>01=Adaptive (自适应, 如USB话筒)</li>
+    <li>10=Synchronous (同步, 锁定SOF, 如UVC摄像头)</li>
+  </ul>
+</article>
+
+<!-- 2.14 -->
+<article class="card" id="kp-2-14">
+  <h3>2.14 SOF 包与帧结构</h3>
+  <h4>SOF包结构</h4>
+  <pre><code>SYNC(8b) | PID=SOF(0xA5) | Frame Number(11b) | CRC5(5b) | EOP(3b)</code></pre>
+  <p>SOF是广播包(没有ADDR/ENDP)，总线上所有设备都收到。</p>
+  <h4>Frame Number = 0~2047</h4>
+  <pre><code>FS: 1帧=1ms→Frame Number每ms+1→~2.048秒回卷
+HS: 1微帧=125μs→每125μs发SOF→但Frame Number每1ms才+1
+    8个微帧=1ms=1个HS帧
+    设备自己计微帧号(0~7)</code></pre>
+  <h4>Suspend检测</h4>
+  <p>连续3ms(FS)或3个微帧(HS)没看到SOF→设备进入Suspend→电流≤2.5mA</p>
+</article>
+
+<!-- 2.15 -->
+<article class="card" id="kp-2-15">
+  <h3>2.15 HS 高速模式补充</h3>
+  <h4>微帧结构</h4>
+  <p>8个微帧=1ms HS帧。μF0~μF7，Frame Number相同，下一组μF0的Frame Number+1。</p>
+  <h4>Split Transaction</h4>
+  <p><strong>问题</strong>: HS Hub后挂FS/LS设备，Hub必须做速度翻译。</p>
+  <p><strong>Phase 1: Start-Split (SSPLIT)</strong></p>
+  <pre><code>Host→SSPLIT Token→Hub翻译成FS/LS信号→跟FS/LS设备交互→数据暂存Hub缓冲区
+SSPLIT字段: Hub Addr(7b) | SC=0 | Port(7b) | S(0=FS,1=LS) | E=0 | ET(2b) | CRC5</code></pre>
+  <p><strong>Phase 2: Complete-Split (CSPLIT)</strong></p>
+  <pre><code>Host→CSPLIT Token→Hub返回之前暂存的数据
+CSPLIT字段: Hub Addr(7b) | SC=1 | Port(7b) | S | U(0=未完,1=完成) | ET(2b)</code></pre>
+</article>
+
+<!-- 2.16 -->
+<article class="card" id="kp-2-16">
+  <h3>2.16 USB 3.x SuperSpeed 概览</h3>
+  <h4>双总线架构</h4>
+  <p>USB 3.0端口 = USB 2.0总线 + SuperSpeed总线 (并行运行，互不抢占)。</p>
+  <h4>广播式 vs 路由式</h4>
+  <pre><code>USB 2.0: Host喊一嗓子，所有设备都听→功耗随设备数增加
+USB 3.0: 路由式转发→只有目标设备接收→功耗常数</code></pre>
+  <h4>USB 2.0 vs 3.0 核心对比</h4>
+  <table>
+    <tr><th>维度</th><th>USB 2.0</th><th>USB 3.x</th></tr>
+    <tr><td>拓扑</td><td>广播式</td><td>路由式</td></tr>
+    <tr><td>编码</td><td>NRZI</td><td>8b/10b→128b/132b</td></tr>
+    <tr><td>流控</td><td>NAK/NYET/PING</td><td>链路层信用(Credit-based)</td></tr>
+    <tr><td>链路管理</td><td>SE0复位</td><td>LTSSM状态机</td></tr>
+    <tr><td>中断</td><td>定期轮询</td><td>设备可主动发ERDY</td></tr>
+    <tr><td>EP0</td><td>64B</td><td>512B</td></tr>
+  </table>
+</article>
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Open `usb-notes.html`.
+- Verify: All 7 cards (2.10–2.16) rendered with tables, code blocks.
+- Verify: sidebar Phase 2 links for 2.10–2.16 navigate correctly.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: add Phase 2 transfer type detail cards (2.10–2.16)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 8: Packet diagram JS engine + render all 4 packet diagrams
+
+**Files:**
+- Modify: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` (fill `<script>` with packet data + renderer + init)
+
+**Interfaces:**
+- Consumes: `<div class="packet-diagram-wrapper" id="pkt-token">` etc. from Task 6
+- Produces: 4 rendered packet diagrams with hover tooltips
+
+- [ ] **Step 1: Write packet data definitions + renderer JS**
+
+Replace the `<script>` block content with:
+
+```js
+// ===== Packet Diagram Data =====
+const PACKET_COLORS = {
+  'sync-pid': 'color-sync-pid',
+  'addr':     'color-addr',
+  'data':     'color-data',
+  'crc':      'color-crc',
+  'eop':      'color-eop',
+  'frame':    'color-frame',
+};
+
+const PACKET_DATA = [
+  {
+    id: 'pkt-token',
+    title: 'Token 包 (IN/OUT/SETUP) — 共 35 bits',
+    fields: [
+      { name: 'SYNC',     bits: 8, val: '00000001', desc: '同步序列, LSB first。7个0让接收方PLL锁定时钟', color: 'sync-pid' },
+      { name: 'PID',      bits: 8, val: 'IN=0x69, OUT=0xE1, SETUP=0x2D', desc: '包标识符, 高4位=~低4位。IN=1001, OUT=0001, SETUP=1101', color: 'sync-pid' },
+      { name: 'ADDR',     bits: 7, val: '0x01~0x7F', desc: '设备地址。7bit → 128个, 0x00保留, 可分配1~127。Host分配地址, 设备被动接受', color: 'addr' },
+      { name: 'ENDP',     bits: 4, val: '0x0~0xF', desc: '端点号。4bit → 0~15。EP0固定用于控制传输', color: 'addr' },
+      { name: 'CRC5',     bits: 5, val: '校验和', desc: '多项式 x⁵+x²+1 (0x25), 校验范围 ADDR(7b)+ENDP(4b)=11bits。CRC5不匹配→地址或端点号损坏→丢弃包', color: 'crc' },
+      { name: 'EOP',      bits: 3, val: 'SE0+J', desc: '包结束信号。SE0持续2个bit时间 + J状态1个bit时间', color: 'eop' },
+    ]
+  },
+  {
+    id: 'pkt-sof',
+    title: 'SOF Token 包 — 共 35 bits',
+    fields: [
+      { name: 'SYNC',     bits: 8, val: '00000001', desc: '同步序列, LSB first', color: 'sync-pid' },
+      { name: 'PID',      bits: 8, val: 'SOF=0xA5', desc: 'SOF PID=0101(低4位)→0xA5。SOF无ADDR/ENDP, 是广播包', color: 'sync-pid' },
+      { name: 'Frame #',  bits:11, val: '0x000~0x7FF', desc: '帧号。11bit → 0~2047。FS: 1ms一帧→2.048s回卷。HS: 125μs微帧→每8微帧才+1', color: 'frame' },
+      { name: 'CRC5',     bits: 5, val: '校验和', desc: '多项式 x⁵+x²+1, 校验11bit帧号', color: 'crc' },
+      { name: 'EOP',      bits: 3, val: 'SE0+J', desc: '包结束信号', color: 'eop' },
+    ]
+  },
+  {
+    id: 'pkt-data',
+    title: 'Data 包 (DATA0/DATA1/DATA2/MDATA) — 27 + 0~8192 bits',
+    fields: [
+      { name: 'SYNC',     bits: 8, val: '00000001', desc: '同步序列', color: 'sync-pid' },
+      { name: 'PID',      bits: 8, val: 'DATA0=0xC3, DATA1=0x4B', desc: 'DATA0(0011)/DATA1(1011)/DATA2(0111)/MDATA(1111)。Toggle翻转区分重传和新数据', color: 'sync-pid' },
+      { name: 'DATA',     bits: 0, val: '0~1024 Bytes', desc: '有效载荷。0B时Data包只含PID+CRC16。>MaxPacketSize的载荷被拆成多个Data包', color: 'data', flexFactor: 8 },
+      { name: 'CRC16',    bits:16, val: '校验和', desc: '多项式 x¹⁶+x¹⁵+x²+1 (0x8005)。校验范围: DATA字段全部字节。16bit能检测几乎所有多bit错误', color: 'crc' },
+      { name: 'EOP',      bits: 3, val: 'SE0+J', desc: '包结束信号', color: 'eop' },
+    ]
+  },
+  {
+    id: 'pkt-handshake',
+    title: 'Handshake 包 (ACK/NAK/STALL/NYET) — 共 19 bits',
+    fields: [
+      { name: 'SYNC',     bits: 8, val: '00000001', desc: '同步序列', color: 'sync-pid' },
+      { name: 'PID',      bits: 8, val: 'ACK=0xD2, NAK=0x5A, STALL=0x1E, NYET=0x96', desc: 'ACK(0010):正确接收。NAK(1010):暂时忙。STALL(1110):端点停用。NYET(0110,HS):FIFO满了', color: 'sync-pid' },
+      { name: 'EOP',      bits: 3, val: 'SE0+J', desc: '包结束信号。Handshake包是USB总线上最短的包(仅19bit), 无DATA无CRC', color: 'eop' },
+    ]
+  },
+];
+
+// ===== Packet Diagram Renderer =====
+function renderPacket(data) {
+  const container = document.getElementById(data.id);
+  if (!container) return;
+
+  // Calculate total bits for flex proportions
+  const totalBits = data.fields.reduce((sum, f) => sum + (f.flexFactor || f.bits), 0);
+
+  const diagram = document.createElement('div');
+  diagram.className = 'packet-diagram';
+
+  data.fields.forEach(field => {
+    const widthBits = field.flexFactor || field.bits;
+    const flexGrow = widthBits;
+
+    const div = document.createElement('div');
+    div.className = 'field ' + (PACKET_COLORS[field.color] || 'color-sync-pid');
+    div.style.flexGrow = flexGrow;
+    div.style.flexBasis = (widthBits / totalBits * 100) + '%';
+
+    div.innerHTML = `
+      <span class="fname">${field.name}</span>
+      <span class="fbits">${field.bits === 0 ? '0~8192' : field.bits + ' bit'}</span>
+      <span class="fval">${field.val}</span>
+      <span class="tooltip">${field.desc}</span>
+    `;
+
+    diagram.appendChild(div);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(diagram);
+}
+
+// ===== Render all packet diagrams on load =====
+document.addEventListener('DOMContentLoaded', () => {
+  PACKET_DATA.forEach(renderPacket);
+});
+
+// ===== Theme Toggle =====
+const themeBtn = document.getElementById('themeToggle');
+const html = document.documentElement;
+
+// Load saved theme
+const savedTheme = localStorage.getItem('usb-notes-theme');
+if (savedTheme === 'dark') {
+  html.classList.add('dark');
+  themeBtn.textContent = '🌙';
+} else {
+  themeBtn.textContent = '☀';
+}
+
+themeBtn.addEventListener('click', () => {
+  const isDark = html.classList.toggle('dark');
+  themeBtn.textContent = isDark ? '🌙' : '☀';
+  localStorage.setItem('usb-notes-theme', isDark ? 'dark' : 'light');
+});
+
+// ===== Scroll Spy (from Task 2) =====
+const sidebarLinks = document.querySelectorAll('.sidebar .sub-item');
+const cards = document.querySelectorAll('.card[id]');
+
+function highlightNav() {
+  let current = null;
+  cards.forEach(card => {
+    const rect = card.getBoundingClientRect();
+    if (rect.top <= 120) current = card.id;
+  });
+  sidebarLinks.forEach(link => {
+    link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+  });
+}
+
+window.addEventListener('scroll', highlightNav, { passive: true });
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Open `usb-notes.html`.
+- Verify: 4 packet diagrams rendered with colored blocks proportional to bit width.
+- Verify: Hover over each block → tooltip appears.
+- Verify: Dark mode toggle works (☀ ↔ 🌙), page reload retains preference.
+- Verify: Scroll spy highlights sidebar links as you scroll.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: add packet diagram JS engine + render 4 diagrams + theme toggle
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 9: Phase 2 SVG architecture diagrams (4 diagrams)
+
+**Files:**
+- Modify: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` (insert SVGs into cards 2.1, 2.4, 2.5, 2.10)
+
+**Interfaces:**
+- Consumes: card `#kp-2-1`, `#kp-2-4`, `#kp-2-5`, `#kp-2-10` from Tasks 5 and 7
+
+- [ ] **Step 1: Add three-layer model SVG to card 2.1**
+
+Replace `<!-- Three-layer model SVG added in Task 9 -->` in card 2.1 with:
+
+```html
+<div class="diagram-container">
+<svg width="560" height="240" viewBox="0 0 560 240" xmlns="http://www.w3.org/2000/svg">
+  <g font-family="sans-serif">
+    <!-- Function Layer -->
+    <rect x="80" y="10" width="400" height="46" rx="8" fill="var(--color-sync-pid)" opacity="0.15" stroke="var(--color-sync-pid)" stroke-width="2"/>
+    <text x="280" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="var(--svg-text)">功能层 (Function Layer)</text>
+    <text x="280" y="46" text-anchor="middle" font-size="11" fill="var(--text-muted)">你的SDK · 业务逻辑 · HID按键→按键码 · CDC→字节流 · UVC→视频帧</text>
+    <!-- Down arrow -->
+    <line x1="280" y1="56" x2="280" y2="78" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <text x="320" y="72" font-size="10" fill="var(--text-muted)">"做什么"</text>
+    <!-- Device Layer -->
+    <rect x="80" y="76" width="400" height="46" rx="8" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="2"/>
+    <text x="280" y="96" text-anchor="middle" font-size="14" font-weight="700" fill="var(--svg-text)">USB 设备层 (USB Device Layer)</text>
+    <text x="280" y="112" text-anchor="middle" font-size="11" fill="var(--text-muted)">端点 · 管道 · 传输类型 · 描述符 · 把包的碎片组织成有意义的传输</text>
+    <!-- Down arrow -->
+    <line x1="280" y1="122" x2="280" y2="144" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <text x="330" y="138" font-size="10" fill="var(--text-muted)">"怎么组织"</text>
+    <!-- Bus Interface Layer -->
+    <rect x="80" y="142" width="400" height="46" rx="8" fill="var(--color-frame)" opacity="0.15" stroke="var(--color-frame)" stroke-width="2"/>
+    <text x="280" y="162" text-anchor="middle" font-size="14" font-weight="700" fill="var(--svg-text)">总线接口层 (Bus Interface Layer)</text>
+    <text x="280" y="178" text-anchor="middle" font-size="11" fill="var(--text-muted)">包(Packet) · NRZI编码 · D+/D-差分信号 · 硬件层面</text>
+    <!-- Down arrow -->
+    <line x1="280" y1="188" x2="280" y2="210" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <text x="335" y="204" font-size="10" fill="var(--text-muted)">"怎么传"</text>
+    <!-- Physical -->
+    <rect x="160" y="208" width="240" height="28" rx="6" fill="var(--color-eop)" opacity="0.2" stroke="var(--color-eop)" stroke-width="1.5"/>
+    <text x="280" y="227" text-anchor="middle" font-size="11" font-weight="600" fill="var(--svg-text)">D+ / D- 物理线缆</text>
+  </g>
+  <defs>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--svg-line)"/>
+    </marker>
+  </defs>
+</svg>
+</div>
+```
+
+- [ ] **Step 2: Add four-transfer-types comparison SVG to card 2.4**
+
+Replace `<!-- Four transfer types comparison SVG added in Task 9 -->` in card 2.4 with:
+
+```html
+<div class="diagram-container">
+<svg width="700" height="220" viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg">
+  <g font-family="sans-serif" font-size="11" fill="var(--svg-text)">
+    <!-- Control -->
+    <rect x="10" y="10" width="160" height="40" rx="6" fill="var(--color-sync-pid)" opacity="0.2" stroke="var(--color-sync-pid)" stroke-width="1.5"/>
+    <text x="90" y="28" text-anchor="middle" font-size="12" font-weight="700">控制传输</text>
+    <text x="90" y="42" text-anchor="middle" font-size="10" fill="var(--text-muted)">EP0 · ACK+重试</text>
+    <text x="20" y="68" font-size="10">SETUP</text><rect x="65" y="58" width="28" height="16" rx="3" fill="var(--color-sync-pid)"/><text x="79" y="70" text-anchor="middle" font-size="9" fill="#fff">S</text>
+    <text x="98" y="68" font-size="10">DATA0</text><rect x="137" y="58" width="28" height="16" rx="3" fill="var(--color-data)"/><text x="151" y="70" text-anchor="middle" font-size="9" fill="#fff">D</text>
+    <text x="20" y="88" font-size="10">ACK</text><rect x="48" y="78" width="28" height="16" rx="3" fill="var(--color-crc)"/><text x="62" y="90" text-anchor="middle" font-size="9" fill="#fff">A</text>
+    <text x="98" y="88" font-size="10">DATAx</text><rect x="137" y="78" width="28" height="16" rx="3" fill="var(--color-data)"/><text x="151" y="90" text-anchor="middle" font-size="9" fill="#fff">D</text>
+    <text x="20" y="108" font-size="10">STATUS</text><rect x="65" y="98" width="28" height="16" rx="3" fill="var(--color-sync-pid)"/><text x="79" y="110" text-anchor="middle" font-size="9" fill="#fff">S</text>
+    <text x="90" y="128" text-anchor="middle" font-size="9" fill="var(--color-sync-pid)" font-weight="600">三阶段 · 双向 · 必含EP0</text>
+    <!-- Interrupt -->
+    <rect x="185" y="10" width="160" height="40" rx="6" fill="var(--color-addr)" opacity="0.2" stroke="var(--color-addr)" stroke-width="1.5"/>
+    <text x="265" y="28" text-anchor="middle" font-size="12" font-weight="700">中断传输</text>
+    <text x="265" y="42" text-anchor="middle" font-size="10" fill="var(--text-muted)">bInterval · ACK+重试</text>
+    <text x="195" y="68" font-size="10">IN</text><rect x="210" y="58" width="28" height="16" rx="3" fill="var(--color-sync-pid)"/><text x="224" y="70" text-anchor="middle" font-size="9" fill="#fff">T</text>
+    <text x="268" y="68" font-size="10">DATA</text><rect x="300" y="58" width="28" height="16" rx="3" fill="var(--color-data)"/><text x="314" y="70" text-anchor="middle" font-size="9" fill="#fff">D</text>
+    <text x="195" y="88" font-size="10">ACK</text><rect x="223" y="78" width="28" height="16" rx="3" fill="var(--color-crc)"/><text x="237" y="90" text-anchor="middle" font-size="9" fill="#fff">A</text>
+    <text x="195" y="108" font-size="10">NAK</text><rect x="223" y="98" width="28" height="16" rx="3" fill="var(--color-crc)"/><text x="237" y="110" text-anchor="middle" font-size="9" fill="#fff">N</text>
+    <text x="265" y="128" text-anchor="middle" font-size="9" fill="var(--color-addr)" font-weight="600">周期轮询 · 低延迟</text>
+    <!-- Bulk -->
+    <rect x="360" y="10" width="160" height="40" rx="6" fill="var(--color-data)" opacity="0.2" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="440" y="28" text-anchor="middle" font-size="12" font-weight="700">批量传输</text>
+    <text x="440" y="42" text-anchor="middle" font-size="10" fill="var(--text-muted)">吃剩饭 · ACK+重试</text>
+    <text x="370" y="68" font-size="10">OUT</text><rect x="395" y="58" width="28" height="16" rx="3" fill="var(--color-sync-pid)"/><text x="409" y="70" text-anchor="middle" font-size="9" fill="#fff">T</text>
+    <text x="453" y="68" font-size="10">DATA</text><rect x="485" y="58" width="28" height="16" rx="3" fill="var(--color-data)"/><text x="499" y="70" text-anchor="middle" font-size="9" fill="#fff">D</text>
+    <text x="370" y="88" font-size="10">ACK</text><rect x="398" y="78" width="28" height="16" rx="3" fill="var(--color-crc)"/><text x="412" y="90" text-anchor="middle" font-size="9" fill="#fff">A</text>
+    <text x="370" y="108" font-size="10">PING</text><rect x="400" y="98" width="28" height="16" rx="3" fill="var(--color-crc)"/><text x="414" y="110" text-anchor="middle" font-size="9" fill="#fff">P</text>
+    <text x="440" y="128" text-anchor="middle" font-size="9" fill="var(--color-data)" font-weight="600">无延迟保证 · 大数据量</text>
+    <!-- Isochronous -->
+    <rect x="535" y="10" width="160" height="40" rx="6" fill="var(--color-frame)" opacity="0.2" stroke="var(--color-frame)" stroke-width="1.5"/>
+    <text x="615" y="28" text-anchor="middle" font-size="12" font-weight="700">等时传输</text>
+    <text x="615" y="42" text-anchor="middle" font-size="10" fill="var(--text-muted)">预约带宽 · 无握手</text>
+    <text x="545" y="68" font-size="10">IN</text><rect x="563" y="58" width="28" height="16" rx="3" fill="var(--color-sync-pid)"/><text x="577" y="70" text-anchor="middle" font-size="9" fill="#fff">T</text>
+    <text x="625" y="68" font-size="10">DATA</text><rect x="657" y="58" width="28" height="16" rx="3" fill="var(--color-data)"/><text x="671" y="70" text-anchor="middle" font-size="9" fill="#fff">D</text>
+    <text x="615" y="108" text-anchor="middle" font-size="9" fill="var(--text-muted)">→ 无ACK/NAK</text>
+    <text x="615" y="128" text-anchor="middle" font-size="9" fill="var(--color-frame)" font-weight="600">实时优先 · 丢数据不重传</text>
+    <!-- Priority bar at bottom -->
+    <rect x="10" y="155" width="690" height="26" rx="6" fill="var(--code-bg)" stroke="var(--border)" stroke-width="1"/>
+    <text x="355" y="173" text-anchor="middle" font-size="11" fill="var(--svg-text)">帧内优先级: <tspan fill="var(--color-frame)" font-weight="600">等时(最高)</tspan> → <tspan fill="var(--color-addr)" font-weight="600">中断</tspan> → <tspan fill="var(--color-sync-pid)" font-weight="600">控制(≥10%)</tspan> → <tspan fill="var(--color-data)" font-weight="600">批量(吃剩饭)</tspan></text>
+  </g>
+</svg>
+</div>
+```
+
+- [ ] **Step 3: Add transfer mapping SVG to card 2.5**
+
+Replace `<!-- Transfer→Transaction→Packet mapping SVG added in Task 9 -->` in card 2.5 with:
+
+```html
+<div class="diagram-container">
+<svg width="600" height="200" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+  <g font-family="sans-serif">
+    <!-- Transfer -->
+    <rect x="20" y="50" width="120" height="80" rx="10" fill="var(--color-sync-pid)" opacity="0.15" stroke="var(--color-sync-pid)" stroke-width="2.5"/>
+    <text x="80" y="80" text-anchor="middle" font-size="15" font-weight="700" fill="var(--svg-text)">1 Transfer</text>
+    <text x="80" y="98" text-anchor="middle" font-size="11" fill="var(--text-muted)">(传输)</text>
+    <text x="80" y="118" text-anchor="middle" font-size="10" fill="var(--text-muted)">读1次描述符</text>
+    <!-- Arrow 1→N -->
+    <line x1="140" y1="90" x2="195" y2="90" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <text x="167" y="82" text-anchor="middle" font-size="9" fill="var(--text-muted)">= N×</text>
+    <!-- Transaction x3 -->
+    <rect x="200" y="10" width="120" height="50" rx="8" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="260" y="32" text-anchor="middle" font-size="13" font-weight="700" fill="var(--svg-text)">Transaction #1</text>
+    <text x="260" y="48" text-anchor="middle" font-size="10" fill="var(--text-muted)">SETUP事务</text>
+    <rect x="200" y="68" width="120" height="50" rx="8" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="260" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="var(--svg-text)">Transaction #2</text>
+    <text x="260" y="106" text-anchor="middle" font-size="10" fill="var(--text-muted)">IN事务 (DATA)</text>
+    <rect x="200" y="126" width="120" height="50" rx="8" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="260" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="var(--svg-text)">Transaction #3</text>
+    <text x="260" y="164" text-anchor="middle" font-size="10" fill="var(--text-muted)">IN事务 (STATUS)</text>
+    <!-- Arrow 1 Transaction = 3 Packets -->
+    <line x1="320" y1="90" x2="375" y2="90" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <text x="347" y="82" text-anchor="middle" font-size="9" fill="var(--text-muted)">≤3×</text>
+    <!-- Packets -->
+    <rect x="380" y="20" width="95" height="28" rx="6" fill="var(--color-sync-pid)" opacity="0.2" stroke="var(--color-sync-pid)" stroke-width="1.5"/>
+    <text x="427" y="39" text-anchor="middle" font-size="11" font-weight="600" fill="var(--svg-text)">Token 包</text>
+    <rect x="480" y="20" width="95" height="28" rx="6" fill="var(--color-data)" opacity="0.2" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="527" y="39" text-anchor="middle" font-size="11" font-weight="600" fill="var(--svg-text)">Data 包</text>
+    <rect x="430" y="56" width="95" height="28" rx="6" fill="var(--color-crc)" opacity="0.2" stroke="var(--color-crc)" stroke-width="1.5"/>
+    <text x="477" y="75" text-anchor="middle" font-size="11" font-weight="600" fill="var(--svg-text)">Handshake 包</text>
+    <!-- Braces -->
+    <line x1="475" y1="50" x2="475" y2="60" stroke="var(--svg-line)" stroke-width="1"/>
+    <line x1="380" y1="50" x2="575" y2="50" stroke="var(--svg-line)" stroke-width="1"/>
+    <line x1="380" y1="48" x2="380" y2="20" stroke="var(--svg-line)" stroke-width="1"/>
+    <line x1="575" y1="48" x2="575" y2="20" stroke="var(--svg-line)" stroke-width="1"/>
+  </g>
+</svg>
+</div>
+```
+
+- [ ] **Step 4: Add control transfer sequence SVG to card 2.10**
+
+Replace `<!-- Control transfer sequence SVG added in Task 9 -->` in card 2.10 with:
+
+```html
+<div class="diagram-container">
+<svg width="640" height="260" viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg">
+  <g font-family="sans-serif" font-size="12" fill="var(--svg-text)">
+    <!-- Labels -->
+    <text x="10" y="20" font-size="12" font-weight="700">Host</text>
+    <text x="600" y="20" font-size="12" font-weight="700" text-anchor="end">Device</text>
+    <!-- SETUP Phase -->
+    <rect x="8" y="32" width="260" height="28" rx="6" fill="var(--color-sync-pid)" opacity="0.15" stroke="var(--color-sync-pid)" stroke-width="1.5"/>
+    <text x="138" y="50" text-anchor="middle" font-size="11">SETUP Token (PID=0x2D, ADDR, EP0)</text>
+    <line x1="268" y1="46" x2="310" y2="46" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+    <rect x="8" y="64" width="260" height="28" rx="6" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="138" y="82" text-anchor="middle" font-size="11">DATA0 (8B SETUP包)</text>
+    <line x1="268" y1="78" x2="310" y2="78" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+    <rect x="312" y="96" width="260" height="28" rx="6" fill="var(--color-crc)" opacity="0.15" stroke="var(--color-crc)" stroke-width="1.5"/>
+    <text x="442" y="114" text-anchor="middle" font-size="11">ACK (设备必须ACK, 不能NAK!)</text>
+    <line x1="312" y1="110" x2="272" y2="110" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow4)"/>
+    <!-- Phase separator -->
+    <text x="320" y="142" text-anchor="middle" font-size="10" fill="var(--text-muted)">━━ SETUP阶段结束 ━━</text>
+    <!-- DATA Phase (IN example) -->
+    <rect x="8" y="156" width="260" height="28" rx="6" fill="var(--color-sync-pid)" opacity="0.15" stroke="var(--color-sync-pid)" stroke-width="1.5"/>
+    <text x="138" y="174" text-anchor="middle" font-size="11">IN Token</text>
+    <line x1="268" y1="170" x2="310" y2="170" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+    <rect x="312" y="188" width="260" height="28" rx="6" fill="var(--color-data)" opacity="0.15" stroke="var(--color-data)" stroke-width="1.5"/>
+    <text x="442" y="206" text-anchor="middle" font-size="11">DATA1 (Toggle翻转, 18B描述符)</text>
+    <line x1="312" y1="202" x2="272" y2="202" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow4)"/>
+    <rect x="8" y="220" width="260" height="28" rx="6" fill="var(--color-crc)" opacity="0.15" stroke="var(--color-crc)" stroke-width="1.5"/>
+    <text x="138" y="238" text-anchor="middle" font-size="11">ACK</text>
+    <line x1="268" y1="234" x2="310" y2="234" stroke="var(--svg-line)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+  </g>
+  <defs>
+    <marker id="arrow3" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-sync-pid)"/>
+    </marker>
+    <marker id="arrow4" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-crc)"/>
+    </marker>
+  </defs>
+</svg>
+</div>
+```
+
+- [ ] **Step 5: Open in browser and verify**
+
+Open `usb-notes.html`.
+- Verify: 4 SVG diagrams rendered correctly in their cards.
+- Verify: Three-layer model with arrows, transfer mapping with nested blocks, transfer types with 4-column comparison, control transfer sequence with Host↔Device arrows.
+- Toggle dark mode → SVG colors adapt.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: add Phase 2 SVG diagrams (3-layer model, transfer comparison, mapping, control sequence)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 10: Phase 3–8 placeholders + final polish
+
+**Files:**
+- Modify: `D:\CC\personal-lr-notes\CCNotes\USB\usb-notes.html` (append placeholder sections after Phase 2)
+
+**Interfaces:**
+- Consumes: sidebar links `#kp-3-1` through `#kp-8-5` from Task 2
+- Produces: Placeholder cards for all future phases
+
+- [ ] **Step 1: Add placeholder cards for Phases 3-8**
+
+Append after the last Phase 2 card (2.16) closing `</article>`:
+
+```html
+<!-- ===== Phase 3 Placeholder ===== -->
+<div class="phase-header" id="phase-3"><h2>Phase 3: USB 描述符体系 — 逐字节解剖 <span style="font-size:14px;color:var(--color-data);margin-left:8px;">◐ 待学习</span></h2></div>
+<div class="placeholder">
+  <h3>第三阶段 — 11 个知识点</h3>
+  <p>描述符层级关系 → Device Descriptor(18字节逐位) → Configuration Descriptor(9字节逐位) → Interface Descriptor(9字节逐位) → Endpoint Descriptor(7字节逐位) → String Descriptor(UNICODE) → Qualifier/BOS Descriptor</p>
+  <ul>
+    <li>3.1 描述符层级关系 · 3.2 ⛁ Device Descriptor · 3.3 bcdUSB BCD编码</li>
+    <li>3.4 ⛁ Configuration Descriptor · 3.5 ⛁ Interface Descriptor · 3.6 ⛁ Endpoint Descriptor</li>
+    <li>3.7 bInterval含义 · 3.8 ⛁ String Descriptor · 3.9 Qualifier · 3.10 BOS · 3.11 类型码全集</li>
+  </ul>
+</div>
+
+<!-- ===== Phase 4 Placeholder ===== -->
+<div class="phase-header" id="phase-4"><h2>Phase 4: USB 枚举过程 — 逐包逐事务追踪 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+<div class="placeholder">
+  <h3>第四阶段 — 12 个知识点</h3>
+  <p>插入检测→总线复位→Get_Descriptor(Device)×2→Set_Address→Get_Descriptor(Config)×2→Get_Descriptor(String)→Set_Configuration→Wireshark抓包验证</p>
+</div>
+
+<!-- ===== Phase 5 Placeholder ===== -->
+<div class="phase-header" id="phase-5"><h2>Phase 5: 标准请求与 Setup 包深度解析 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+<div class="placeholder">
+  <h3>第五阶段 — 6 个知识点</h3>
+  <p>⛁ SETUP包8字节逐位 · 11种标准设备请求全集 · GET_STATUS / SET_FEATURE / CLEAR_FEATURE · SET_INTERFACE / GET_INTERFACE · wValue/wIndex/wLength速查表</p>
+</div>
+
+<!-- ===== Phase 6 Placeholder ===== -->
+<div class="phase-header" id="phase-6"><h2>Phase 6: 设备类协议逐字节解析 (HID / CDC / UVC) <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+<div class="placeholder">
+  <h3>第六阶段 — 26 个知识点</h3>
+  <p><strong>HID类:</strong> ⛁ HID Descriptor · ⛁ Report Descriptor Item编码 · Main/Global/Local Item全集 · 键盘Report范例 · HID Report协议</p>
+  <p><strong>CDC类:</strong> ⛁ CDC功能描述符链 · Header/ACM/Union/Call Mgmt Descriptor · CDC类请求 · 数据流</p>
+  <p><strong>UVC类:</strong> ⛁ UVC接口组织 · VC/VS描述符链 · Probe/Commit协商 · ⛁ Payload Header</p>
+</div>
+
+<!-- ===== Phase 7 Placeholder ===== -->
+<div class="phase-header" id="phase-7"><h2>Phase 7: 协议分析工具与实操 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+<div class="placeholder">
+  <h3>第七阶段 — 7 个知识点</h3>
+  <p>lsusb -v完整输出解读 · Wireshark+USBpcap安装配置 · 抓取HID/CDC/UVC枚举与数据流 · USB Tree Viewer</p>
+</div>
+
+<!-- ===== Phase 8 Placeholder ===== -->
+<div class="phase-header" id="phase-8"><h2>Phase 8: libusb 编程衔接 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+<div class="placeholder">
+  <h3>第八阶段 — 5 个知识点</h3>
+  <p>libusb架构概览(同步/异步模型) · 设备发现与枚举 · 控制传输编程 · 批量/中断/等时传输编程 · 热插拔检测</p>
+</div>
+```
+
+- [ ] **Step 2: Open in browser and verify final result**
+
+Open `usb-notes.html`.
+- Verify: All 21 content cards visible for Phase 1 and 2.
+- Verify: 4 packet diagrams rendered with correct colors and hover tooltips.
+- Verify: 7 SVG architecture diagrams rendered correctly.
+- Verify: Theme toggle works and remembers preference.
+- Verify: Sidebar navigation smooth-scrolls to each card.
+- Verify: Scroll spy highlights active nav item while scrolling.
+- Verify: Phase 3-8 show dashed-border placeholder cards.
+- Verify: File opens without any console errors.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add CCNotes/USB/usb-notes.html
+git commit -m "feat: add Phase 3-8 placeholders and final polish
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+## Post-Implementation
+
+After all tasks are complete, verify the full deliverable:
+
+- [ ] File size is between 150-300KB
+- [ ] Opens in Chrome/Edge/Firefox without errors
+- [ ] All 21 cards render correctly
+- [ ] All 4 packet diagrams display with correct color coding
+- [ ] All 7 SVG diagrams render with correct structure
+- [ ] Theme toggle works (light ↔ dark)
+- [ ] Theme preference persists across page reloads
+- [ ] Sidebar navigation and scroll spy functional
+- [ ] No external network requests (fully offline)
+- [ ] Phase 3-8 placeholders visible with dashed borders
