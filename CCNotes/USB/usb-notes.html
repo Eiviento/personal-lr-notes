@@ -669,6 +669,119 @@ UVC摄像头(HS): EP0(控制64B), EP1 IN(中断16B可选), EP2 IN(等时512B)</c
     </ul>
     <!-- Transfer→Transaction→Packet mapping SVG added in Task 9 -->
   </article>
+
+  <!-- 2.6 -->
+  <article class="card" id="kp-2-6">
+    <h3>2.6 <span class="badge-pack">⛁ 逐比特</span> PID 编码表</h3>
+    <h4>PID 8位结构</h4>
+    <pre><code>Bit7~Bit4 = ~Bit3~Bit0 (按位取反)
+
+例: ACK
+  低4位(类型码) = 0010 (0x2)
+  高4位(校验)   = 1101 (~0010)
+  完整PID       = 1101 0010 = 0xD2</code></pre>
+    <p>错误检测：高4位≠~低4位→PID损坏→忽略整个包</p>
+    <h4>PID 低2位分类</h4>
+    <pre><code>Bit1-0 = 00 → SPECIAL类
+Bit1-0 = 01 → TOKEN类
+Bit1-0 = 10 → HANDSHAKE类
+Bit1-0 = 11 → DATA类</code></pre>
+    <h4>16种PID全集</h4>
+    <p><strong>TOKEN类：</strong></p>
+    <table>
+      <tr><th>PID</th><th>低4位</th><th>完整(hex)</th><th>含义</th></tr>
+      <tr><td>OUT</td><td>0001</td><td>0xE1</td><td>Host→Device数据</td></tr>
+      <tr><td>IN</td><td>1001</td><td>0x69</td><td>Host←Device数据</td></tr>
+      <tr><td>SOF</td><td>0101</td><td>0xA5</td><td>帧起始</td></tr>
+      <tr><td>SETUP</td><td>1101</td><td>0x2D</td><td>控制传输SETUP阶段</td></tr>
+    </table>
+    <p><strong>DATA类：</strong></p>
+    <table>
+      <tr><th>PID</th><th>低4位</th><th>完整(hex)</th><th>含义</th></tr>
+      <tr><td>DATA0</td><td>0011</td><td>0xC3</td><td>翻转位=0</td></tr>
+      <tr><td>DATA1</td><td>1011</td><td>0x4B</td><td>翻转位=1</td></tr>
+      <tr><td>DATA2</td><td>0111</td><td>0x87</td><td>HS等时微帧多包</td></tr>
+      <tr><td>MDATA</td><td>1111</td><td>0x0F</td><td>HS等时Split</td></tr>
+    </table>
+    <p><strong>HANDSHAKE类：</strong></p>
+    <table>
+      <tr><th>PID</th><th>低4位</th><th>完整(hex)</th><th>含义</th></tr>
+      <tr><td>ACK</td><td>0010</td><td>0xD2</td><td>正确接收</td></tr>
+      <tr><td>NAK</td><td>1010</td><td>0x5A</td><td>暂时忙/无数据</td></tr>
+      <tr><td>STALL</td><td>1110</td><td>0x1E</td><td>端点Halted/请求不支持</td></tr>
+      <tr><td>NYET</td><td>0110</td><td>0x96</td><td>HS批量OUT: FIFO满了(PING协议)</td></tr>
+    </table>
+    <p><strong>SPECIAL类：</strong></p>
+    <table>
+      <tr><th>PID</th><th>低4位</th><th>完整(hex)</th><th>含义</th></tr>
+      <tr><td>PRE</td><td>1100</td><td>0x3C</td><td>LS Preamble</td></tr>
+      <tr><td>ERR</td><td>1100</td><td>0x3C</td><td>Split Transaction出错</td></tr>
+      <tr><td>SPLIT</td><td>1000</td><td>0x78</td><td>HS Split开始</td></tr>
+      <tr><td>PING</td><td>0100</td><td>0xB4</td><td>HS批量OUT流控探测</td></tr>
+      <tr><td>EXT</td><td>0000</td><td>0xF0</td><td>扩展PID(保留)</td></tr>
+    </table>
+  </article>
+
+  <!-- 2.7 -->
+  <article class="card" id="kp-2-7">
+    <h3>2.7 <span class="badge-pack">⛁ 逐比特</span> Token 包逐位解析</h3>
+    <h4>IN/OUT/SETUP Token (24 bits)</h4>
+    <pre><code>SYNC(8b) | PID(8b) | ADDR(7b) | ENDP(4b) | CRC5(5b) | EOP(3b)</code></pre>
+    <h4>SYNC字段 (8 bits)</h4>
+    <p><code>00000001</code> (0x80, LSB first)。7个0→NRZI连续7次跳变→接收方PLL锁定时钟。最后1→停止跳变→标志SYNC结束。</p>
+    <h4>ADDR字段 (7 bits)</h4>
+    <p>范围 0x00~0x7F (0~127)。0x00 = 默认地址，0x01~0x7F = 可分配地址(127个)。</p>
+    <h4>ENDP字段 (4 bits)</h4>
+    <p>范围 0~15。方向由PID决定(IN PID=读, OUT PID=写)。EP3 IN和EP3 OUT是硬件上两个不同的FIFO。</p>
+    <h4>CRC5字段 (5 bits)</h4>
+    <p>多项式: G(x) = x⁵ + x² + 1 (100101 = 0x25)。校验范围: ADDR(7b) + ENDP(4b) = 11 bits。</p>
+    <!-- Token & SOF packet diagrams rendered in Task 8 -->
+    <p class="packet-title">Token 包 (IN/OUT/SETUP)</p>
+    <div class="packet-diagram-wrapper" id="pkt-token"></div>
+    <h4>SOF Token (结构不同)</h4>
+    <pre><code>SYNC(8b) | PID=SOF(0xA5) | Frame Number(11b) | CRC5(5b) | EOP</code></pre>
+    <p>Frame Number: 0~2047。FS: 1帧=1ms→~2秒回卷。HS: 1微帧=125μs→256ms回卷。</p>
+    <p class="packet-title">SOF Token 包</p>
+    <div class="packet-diagram-wrapper" id="pkt-sof"></div>
+  </article>
+
+  <!-- 2.8 -->
+  <article class="card" id="kp-2-8">
+    <h3>2.8 <span class="badge-pack">⛁ 逐比特</span> Data 包逐位解析</h3>
+    <h4>结构</h4>
+    <pre><code>SYNC(8b) | PID(8b) | DATA(0~1024B) | CRC16(16b) | EOP(3b)</code></pre>
+    <h4>CRC16</h4>
+    <p>多项式: G(x) = x¹⁶ + x¹⁵ + x² + 1。截断多项式: 0x8005。校验范围: DATA字段全部字节。</p>
+    <h4>短包终止</h4>
+    <p>如果数据长度 &lt; MaxPacketSize → 短包 = 传输结束信号。如果恰好等于MaxPacketSize → 追加零长度DATA包标记结束。</p>
+    <h4>DATA0/DATA1翻转机制</h4>
+    <ul>
+      <li>初始化: Toggle = DATA0</li>
+      <li>成功(收到ACK): Toggle翻转</li>
+      <li>NAK: Toggle不变</li>
+      <li>接收方检测到Toggle与预期不一致→知道是重传→回ACK但丢弃数据</li>
+    </ul>
+    <p class="packet-title">Data 包 (DATA0/DATA1/DATA2/MDATA)</p>
+    <div class="packet-diagram-wrapper" id="pkt-data"></div>
+  </article>
+
+  <!-- 2.9 -->
+  <article class="card" id="kp-2-9">
+    <h3>2.9 <span class="badge-pack">⛁ 逐比特</span> Handshake 包逐位解析</h3>
+    <h4>结构（USB最短的包）</h4>
+    <pre><code>SYNC(8b) | PID(8b) | EOP(3b)</code></pre>
+    <p>没有DATA、没有CRC。PID自身的高4位=~低4位校验已足够。</p>
+    <h4>ACK (0xD2)</h4>
+    <p><code>1101 0010</code> — 数据被正确接收。发送方翻转Toggle，事务完成。</p>
+    <h4>NAK (0x5A)</h4>
+    <p><code>0101 1010</code> — 暂时忙/无数据。Toggle不翻转。NAK总是Device给Host的。<strong>不是错误</strong>，是正常流控。</p>
+    <h4>STALL (0x1E)</h4>
+    <p><code>0001 1110</code> — 端点Halted或请求不支持。NAK="等等再来" vs STALL="别试了，需要人来修"。</p>
+    <h4>NYET (0x96, HS only)</h4>
+    <p><code>1001 0110</code> — HS批量OUT: 数据收了但FIFO满了。PING协议的一部分。</p>
+    <p class="packet-title">Handshake 包 (ACK/NAK/STALL/NYET)</p>
+    <div class="packet-diagram-wrapper" id="pkt-handshake"></div>
+  </article>
 </main>
 
 <div class="theme-bar">
