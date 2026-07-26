@@ -212,7 +212,69 @@ body {
 
 <nav class="sidebar">
   <h2>USB 协议学习笔记</h2>
-  <!-- Sidebar content added in Task 2 -->
+  <details open>
+    <summary><span>📡 Phase 1: USB 概览与总线拓扑</span><span class="badge phase-done">5/5 ✓</span></summary>
+    <a class="sub-item" href="#kp-1-1">1.1 USB 设计目标与历史</a>
+    <a class="sub-item" href="#kp-1-2">1.2 USB 版本演进全景</a>
+    <a class="sub-item" href="#kp-1-3">1.3 总线拓扑结构</a>
+    <a class="sub-item" href="#kp-1-4">1.4 主机控制器类型</a>
+    <a class="sub-item" href="#kp-1-5">1.5 物理层与电气特性</a>
+  </details>
+
+  <details open>
+    <summary><span>📡 Phase 2: USB 通信模型</span><span class="badge phase-done">16/16 ✓</span></summary>
+    <a class="sub-item" href="#kp-2-1">2.1 三层通信模型</a>
+    <a class="sub-item" href="#kp-2-2">2.2 端点(Endpoint)深入</a>
+    <a class="sub-item" href="#kp-2-3">2.3 管道(Pipe)深入</a>
+    <a class="sub-item" href="#kp-2-4">2.4 四种传输类型全景</a>
+    <a class="sub-item" href="#kp-2-5">2.5 传输/事务/包三层映射</a>
+    <a class="sub-item" href="#kp-2-6">⛁ 2.6 PID 编码表</a>
+    <a class="sub-item" href="#kp-2-7">⛁ 2.7 Token 包逐位解析</a>
+    <a class="sub-item" href="#kp-2-8">⛁ 2.8 Data 包逐位解析</a>
+    <a class="sub-item" href="#kp-2-9">⛁ 2.9 Handshake 包逐位解析</a>
+    <a class="sub-item" href="#kp-2-10">2.10 控制传输逐事务拆解</a>
+    <a class="sub-item" href="#kp-2-11">2.11 中断传输逐事务拆解</a>
+    <a class="sub-item" href="#kp-2-12">2.12 批量传输逐事务拆解</a>
+    <a class="sub-item" href="#kp-2-13">2.13 等时传输逐事务拆解</a>
+    <a class="sub-item" href="#kp-2-14">2.14 SOF 包与帧结构</a>
+    <a class="sub-item" href="#kp-2-15">2.15 HS 高速模式补充</a>
+    <a class="sub-item" href="#kp-2-16">2.16 USB 3.x SuperSpeed 概览</a>
+  </details>
+
+  <details>
+    <summary><span>📡 Phase 3: 描述符体系</span><span class="badge phase-current">0/11 ◐</span></summary>
+    <a class="sub-item" href="#kp-3-1">3.1 描述符层级关系</a>
+    <a class="sub-item" href="#kp-3-2">⛁ 3.2 Device Descriptor</a>
+    <a class="sub-item" href="#kp-3-3">3.3 bcdUSB BCD 编码</a>
+    <a class="sub-item" href="#kp-3-4">⛁ 3.4 Configuration Descriptor</a>
+    <a class="sub-item" href="#kp-3-5">⛁ 3.5 Interface Descriptor</a>
+    <a class="sub-item" href="#kp-3-6">⛁ 3.6 Endpoint Descriptor</a>
+    <a class="sub-item" href="#kp-3-7">3.7 bInterval 速率含义</a>
+    <a class="sub-item" href="#kp-3-8">⛁ 3.8 String Descriptor</a>
+    <a class="sub-item" href="#kp-3-9">3.9 Qualifier Descriptor</a>
+    <a class="sub-item" href="#kp-3-10">3.10 BOS Descriptor</a>
+    <a class="sub-item" href="#kp-3-11">3.11 描述符类型码全集</a>
+  </details>
+
+  <details>
+    <summary><span>📡 Phase 4: 枚举过程</span><span class="badge phase-pending">0/12 ○</span></summary>
+  </details>
+
+  <details>
+    <summary><span>📡 Phase 5: 标准请求</span><span class="badge phase-pending">0/6 ○</span></summary>
+  </details>
+
+  <details>
+    <summary><span>📡 Phase 6: HID/CDC/UVC</span><span class="badge phase-pending">0/26 ○</span></summary>
+  </details>
+
+  <details>
+    <summary><span>📡 Phase 7: 协议分析工具</span><span class="badge phase-pending">0/7 ○</span></summary>
+  </details>
+
+  <details>
+    <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-pending">0/5 ○</span></summary>
+  </details>
 </nav>
 
 <main class="main">
@@ -225,6 +287,23 @@ body {
 
 <script>
 // JS added in Tasks 2, 8, 10
+
+// Scroll spy — highlight active nav item
+const sidebarLinks = document.querySelectorAll('.sidebar .sub-item');
+const cards = document.querySelectorAll('.card[id]');
+
+function highlightNav() {
+  let current = null;
+  cards.forEach(card => {
+    const rect = card.getBoundingClientRect();
+    if (rect.top <= 120) current = card.id;
+  });
+  sidebarLinks.forEach(link => {
+    link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+  });
+}
+
+window.addEventListener('scroll', highlightNav, { passive: true });
 </script>
 
 </body>
