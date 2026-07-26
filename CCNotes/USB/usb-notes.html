@@ -278,7 +278,160 @@ body {
 </nav>
 
 <main class="main">
-  <!-- Content added in Tasks 3-7, 9-10 -->
+  <div class="phase-header" id="phase-1"><h2>Phase 1: USB 概览与总线拓扑</h2></div>
+
+  <!-- 1.1 -->
+  <article class="card" id="kp-1-1">
+    <h3>1.1 USB 设计目标与历史</h3>
+    <h4>USB 之前的七种接口和七种痛</h4>
+    <table>
+      <tr><th>接口</th><th>痛点</th></tr>
+      <tr><td>RS-232 串口</td><td>速度慢(115.2kbps)、不能热插拔、一端口一设备、需手动设参数</td></tr>
+      <tr><td>并口(LPT)</td><td>电缆粗贵、速度~150KB/s、只能接打印机</td></tr>
+      <tr><td>PS/2</td><td>不能热插拔、键盘鼠标不通用</td></tr>
+      <tr><td>SCSI</td><td>贵、需专用卡、终端电阻/ID需跳线</td></tr>
+      <tr><td>Game Port</td><td>只能一个游戏杆、CPU占用极高</td></tr>
+      <tr><td>VGA</td><td>只传视频不传数据/供电</td></tr>
+      <tr><td>各类专用</td><td>每加设备可能要加卡，IRQ/DMA/IO冲突</td></tr>
+    </table>
+    <h4>USB 七大设计目标</h4>
+    <table>
+      <tr><th>#</th><th>目标</th><th>对应设计决策</th></tr>
+      <tr><td>1</td><td>一根线接所有外设</td><td>统一物理层+协议层</td></tr>
+      <tr><td>2</td><td>热插拔</td><td>Host主动检测总线电平变化+枚举协议</td></tr>
+      <tr><td>3</td><td>自动配置</td><td>描述符→自动识别→不需要手动设地址</td></tr>
+      <tr><td>4</td><td>支持多种速度</td><td>1.5M/12M/480M/5G+ 分级</td></tr>
+      <tr><td>5</td><td>总线供电</td><td>VBUS 5V，低功耗设备不额外供电</td></tr>
+      <tr><td>6</td><td>可扩展</td><td>Hub级联，最多127设备</td></tr>
+      <tr><td>7</td><td>低成本</td><td>低速简单设备+分层协议</td></tr>
+    </table>
+    <h4>核心设计哲学</h4>
+    <p><strong>Host 中心化</strong>：所有通信由 Host 发起，Device 只能被动应答。</p>
+    <p>跟 MQTT 的根本差异：MQTT Client 可以随时 PUBLISH，USB Device 连打招呼的权利都没有。</p>
+    <h4>名字含义</h4>
+    <ul>
+      <li><strong>U</strong>niversal — 通用</li>
+      <li><strong>S</strong>erial — 串行</li>
+      <li><strong>B</strong>us — 总线</li>
+    </ul>
+  </article>
+
+  <!-- 1.2 -->
+  <article class="card" id="kp-1-2">
+    <h3>1.2 USB 版本演进全景</h3>
+    <table>
+      <tr><th>版本</th><th>发布年</th><th>速度</th><th>编码</th><th>供电</th><th>连接器</th></tr>
+      <tr><td>USB 1.0</td><td>1996</td><td>1.5 Mbps</td><td>NRZI</td><td>5V/100mA</td><td>Type-A/B</td></tr>
+      <tr><td>USB 1.1</td><td>1998</td><td>1.5/12 Mbps</td><td>NRZI</td><td>5V/500mA</td><td>同上</td></tr>
+      <tr><td>USB 2.0</td><td>2000</td><td>+480 Mbps</td><td>NRZI</td><td>5V/500mA</td><td>+Mini/Micro</td></tr>
+      <tr><td>USB 3.0</td><td>2008</td><td>+5 Gbps</td><td>8b/10b</td><td>5V/900mA</td><td>新增5根差分线</td></tr>
+      <tr><td>USB 3.1</td><td>2013</td><td>+10 Gbps</td><td>128b/132b</td><td>可协商到20V/5A</td><td>Type-C引入</td></tr>
+      <tr><td>USB 3.2</td><td>2017</td><td>+20 Gbps</td><td>128b/132b</td><td>同上</td><td>Type-C双通道</td></tr>
+      <tr><td>USB4</td><td>2019</td><td>20/40 Gbps</td><td>64b/66b</td><td>同上</td><td>仅Type-C</td></tr>
+    </table>
+    <h4>关键速度等级</h4>
+    <ul>
+      <li><strong>Low Speed (LS)</strong>: 1.5Mbps — 键盘、鼠标</li>
+      <li><strong>Full Speed (FS)</strong>: 12Mbps — 打印机、老摄像头</li>
+      <li><strong>High Speed (HS)</strong>: 480Mbps — U盘、移动硬盘、高清摄像头</li>
+      <li><strong>SuperSpeed (SS)</strong>: 5Gbps+ — 固态硬盘、4K摄像头</li>
+    </ul>
+    <h4>为什么基于 USB 2.0 学协议</h4>
+    <ol>
+      <li>包结构可直接读(NRZI简单)</li>
+      <li>广播总线(Wireshark一个口看所有通信)</li>
+      <li>四种传输类型都有</li>
+      <li>HID/CDC/UVC在2.0上完整工作</li>
+      <li>3.0只是加了速度和路由，概念基础一样</li>
+    </ol>
+    <!-- Version timeline SVG added in Task 4 -->
+  </article>
+
+  <!-- 1.3 -->
+  <article class="card" id="kp-1-3">
+    <h3>1.3 总线拓扑结构</h3>
+    <h4>树形拓扑规则</h4>
+    <table>
+      <tr><th>规则</th><th>数值</th></tr>
+      <tr><td>最多层数</td><td>7层(Tier)，Root Hub = Tier 1</td></tr>
+      <tr><td>最多设备</td><td>127个（ADDR字段7bit，0x00保留）</td></tr>
+      <tr><td>最多非Root Hub</td><td>5个</td></tr>
+      <tr><td>每段电缆最长</td><td>5米(FS/LS)，总长30米</td></tr>
+    </table>
+    <h4>地址范围</h4>
+    <pre><code>ADDR字段 7 bit → 0x00~0x7F (128个)
+0x00 = 默认地址（Default Address），设备刚复位后使用
+剩余 1~127 = 127个可分配地址 → 127设备上限</code></pre>
+    <h4>三种角色</h4>
+    <ul>
+      <li><strong>Host</strong>: 发起所有通信、提供VBUS(5V)、枚举、带宽调度、内置Root Hub</li>
+      <li><strong>Hub</strong>: 扩展端口、检测插拔、端口供电、HS↔FS/LS速度翻译(Split Transaction)、本身也是USB Device</li>
+      <li><strong>Device (Function)</strong>: 响应请求、提供描述符、实现功能逻辑、管理电源</li>
+    </ul>
+    <h4>Compound vs Composite</h4>
+    <ul>
+      <li><strong>Compound Device</strong>: 一个壳子多个地址（内含Hub+多个独立Device）</li>
+      <li><strong>Composite Device</strong>: 一个地址多个Interface（一个芯片多功能，如摄像头+麦克风）</li>
+    </ul>
+    <!-- Topology tree SVG added in Task 4 -->
+  </article>
+
+  <!-- 1.4 -->
+  <article class="card" id="kp-1-4">
+    <h3>1.4 主机控制器类型</h3>
+    <table>
+      <tr><th>缩写</th><th>全称</th><th>管什么速度</th><th>存亡状态</th></tr>
+      <tr><td>UHCI</td><td>Universal HCI</td><td>LS+FS</td><td>已死亡(Intel)</td></tr>
+      <tr><td>OHCI</td><td>Open HCI</td><td>LS+FS</td><td>已死亡(Compaq等)</td></tr>
+      <tr><td>EHCI</td><td>Enhanced HCI</td><td>HS + 兼容LS/FS</td><td>存量设备</td></tr>
+      <tr><td>xHCI</td><td>eXtensible HCI</td><td>LS/FS/HS/SS全管</td><td>现代标准</td></tr>
+    </table>
+    <h4>xHCI 统一架构</h4>
+    <p>一个控制器管所有速度，不再需要Companion Controller。通过Transfer Ring (TRB环形链表) 统一管理所有传输。</p>
+    <!-- Software stack SVG added in Task 4 -->
+  </article>
+
+  <!-- 1.5 -->
+  <article class="card" id="kp-1-5">
+    <h3>1.5 物理层与电气特性</h3>
+    <h4>USB 2.0 线缆 (4根线)</h4>
+    <table>
+      <tr><th>线色</th><th>信号</th><th>用途</th></tr>
+      <tr><td>红</td><td>VBUS</td><td>5V供电</td></tr>
+      <tr><td>白</td><td>D-</td><td>差分数据-</td></tr>
+      <tr><td>绿</td><td>D+</td><td>差分数据+</td></tr>
+      <tr><td>黑</td><td>GND</td><td>地线</td></tr>
+    </table>
+    <h4>VBUS 供电规范</h4>
+    <table>
+      <tr><th>状态</th><th>最大电流</th></tr>
+      <tr><td>未配置(枚举前)</td><td>100 mA</td></tr>
+      <tr><td>配置后 USB 2.0</td><td>500 mA</td></tr>
+      <tr><td>配置后 USB 3.0</td><td>900 mA</td></tr>
+      <tr><td>挂起态</td><td>2.5 mA</td></tr>
+    </table>
+    <p>电压: 4.40V ~ 5.25V (标称5.0V)</p>
+    <h4>差分信号原理</h4>
+    <p>D+和D-传差分信号：接收方计算 D+减D- 的差值。外部共模噪声同时影响两根线 → 相减后噪声抵消。</p>
+    <h4>J/K 状态</h4>
+    <table>
+      <tr><th>状态</th><th>D+</th><th>D-</th><th>LS含义</th><th>FS含义</th></tr>
+      <tr><td>J (Diff 1)</td><td>高</td><td>低</td><td>Idle</td><td>Data 1</td></tr>
+      <tr><td>K (Diff 0)</td><td>低</td><td>高</td><td>Data 1</td><td>Idle</td></tr>
+    </table>
+    <h4>速度识别（电阻决定）</h4>
+    <pre><code>Host/Hub侧: D+和D-各有15KΩ下拉到GND
+设备侧:
+  FS/HS设备: D+ → 1.5KΩ上拉到3.3V → 插入后D+变高
+  LS设备:    D- → 1.5KΩ上拉到3.3V → 插入后D-变高</code></pre>
+    <h4>HS Chirp 协商</h4>
+    <p>HS设备先冒充FS(D+上拉) → Host复位 → 设备发Chirp K → Host回Chirp K/J交替 → 设备切换HS终端电阻 → 协商成功，后续以480Mbps通信。</p>
+    <h4>NRZI 编码 + Bit Stuffing</h4>
+    <ul>
+      <li>NRZI: 0=跳变, 1=保持</li>
+      <li>Bit Stuffing: 连续6个1后强制插1个0(产生跳变维持时钟同步)</li>
+    </ul>
+  </article>
 </main>
 
 <div class="theme-bar">
