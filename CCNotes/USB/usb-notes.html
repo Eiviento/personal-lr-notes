@@ -941,9 +941,121 @@ USB 3.0: 路由式转发→只有目标设备接收→功耗常数</code></pre>
 </div>
 
 <script>
-// JS added in Tasks 2, 8, 10
+// ===== Packet Diagram Data =====
+const PACKET_COLORS = {
+  'sync-pid': 'color-sync-pid',
+  'addr':     'color-addr',
+  'data':     'color-data',
+  'crc':      'color-crc',
+  'eop':      'color-eop',
+  'frame':    'color-frame',
+};
 
-// Scroll spy — highlight active nav item
+const PACKET_DATA = [
+  {
+    id: 'pkt-token',
+    title: 'Token 包 (IN/OUT/SETUP) — 共 35 bits',
+    fields: [
+      { name: 'SYNC',     bits: 8, val: '00000001', desc: '同步序列, LSB first。7个0让接收方PLL锁定时钟', color: 'sync-pid' },
+      { name: 'PID',      bits: 8, val: 'IN=0x69, OUT=0xE1, SETUP=0x2D', desc: '包标识符, 高4位=~低4位。IN=1001, OUT=0001, SETUP=1101', color: 'sync-pid' },
+      { name: 'ADDR',     bits: 7, val: '0x01~0x7F', desc: '设备地址。7bit → 128个, 0x00保留, 可分配1~127。Host分配地址, 设备被动接受', color: 'addr' },
+      { name: 'ENDP',     bits: 4, val: '0x0~0xF', desc: '端点号。4bit → 0~15。EP0固定用于控制传输', color: 'addr' },
+      { name: 'CRC5',     bits: 5, val: '校验和', desc: '多项式 x⁵+x²+1 (0x25), 校验范围 ADDR(7b)+ENDP(4b)=11bits。CRC5不匹配→地址或端点号损坏→丢弃包', color: 'crc' },
+      { name: 'EOP',      bits: 3, val: 'SE0+J', desc: '包结束信号。SE0持续2个bit时间 + J状态1个bit时间', color: 'eop' },
+    ]
+  },
+  {
+    id: 'pkt-sof',
+    title: 'SOF Token 包 — 共 35 bits',
+    fields: [
+      { name: 'SYNC',     bits: 8, val: '00000001', desc: '同步序列, LSB first', color: 'sync-pid' },
+      { name: 'PID',      bits: 8, val: 'SOF=0xA5', desc: 'SOF PID=0101(低4位)→0xA5。SOF无ADDR/ENDP, 是广播包', color: 'sync-pid' },
+      { name: 'Frame #',  bits:11, val: '0x000~0x7FF', desc: '帧号。11bit → 0~2047。FS: 1ms一帧→2.048s回卷。HS: 125μs微帧→每8微帧才+1', color: 'frame' },
+      { name: 'CRC5',     bits: 5, val: '校验和', desc: '多项式 x⁵+x²+1, 校验11bit帧号', color: 'crc' },
+      { name: 'EOP',      bits: 3, val: 'SE0+J', desc: '包结束信号', color: 'eop' },
+    ]
+  },
+  {
+    id: 'pkt-data',
+    title: 'Data 包 (DATA0/DATA1/DATA2/MDATA) — 27 + 0~8192 bits',
+    fields: [
+      { name: 'SYNC',     bits: 8, val: '00000001', desc: '同步序列', color: 'sync-pid' },
+      { name: 'PID',      bits: 8, val: 'DATA0=0xC3, DATA1=0x4B', desc: 'DATA0(0011)/DATA1(1011)/DATA2(0111)/MDATA(1111)。Toggle翻转区分重传和新数据', color: 'sync-pid' },
+      { name: 'DATA',     bits: 0, val: '0~1024 Bytes', desc: '有效载荷。0B时Data包只含PID+CRC16。>MaxPacketSize的载荷被拆成多个Data包', color: 'data', flexFactor: 8 },
+      { name: 'CRC16',    bits:16, val: '校验和', desc: '多项式 x¹⁶+x¹⁵+x²+1 (0x8005)。校验范围: DATA字段全部字节。16bit能检测几乎所有多bit错误', color: 'crc' },
+      { name: 'EOP',      bits: 3, val: 'SE0+J', desc: '包结束信号', color: 'eop' },
+    ]
+  },
+  {
+    id: 'pkt-handshake',
+    title: 'Handshake 包 (ACK/NAK/STALL/NYET) — 共 19 bits',
+    fields: [
+      { name: 'SYNC',     bits: 8, val: '00000001', desc: '同步序列', color: 'sync-pid' },
+      { name: 'PID',      bits: 8, val: 'ACK=0xD2, NAK=0x5A, STALL=0x1E, NYET=0x96', desc: 'ACK(0010):正确接收。NAK(1010):暂时忙。STALL(1110):端点停用。NYET(0110,HS):FIFO满了', color: 'sync-pid' },
+      { name: 'EOP',      bits: 3, val: 'SE0+J', desc: '包结束信号。Handshake包是USB总线上最短的包(仅19bit), 无DATA无CRC', color: 'eop' },
+    ]
+  },
+];
+
+// ===== Packet Diagram Renderer =====
+function renderPacket(data) {
+  const container = document.getElementById(data.id);
+  if (!container) return;
+
+  // Calculate total bits for flex proportions
+  const totalBits = data.fields.reduce((sum, f) => sum + (f.flexFactor || f.bits), 0);
+
+  const diagram = document.createElement('div');
+  diagram.className = 'packet-diagram';
+
+  data.fields.forEach(field => {
+    const widthBits = field.flexFactor || field.bits;
+    const flexGrow = widthBits;
+
+    const div = document.createElement('div');
+    div.className = 'field ' + (PACKET_COLORS[field.color] || 'color-sync-pid');
+    div.style.flexGrow = flexGrow;
+    div.style.flexBasis = (widthBits / totalBits * 100) + '%';
+
+    div.innerHTML = `
+      <span class="fname">${field.name}</span>
+      <span class="fbits">${field.bits === 0 ? '0~8192' : field.bits + ' bit'}</span>
+      <span class="fval">${field.val}</span>
+      <span class="tooltip">${field.desc}</span>
+    `;
+
+    diagram.appendChild(div);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(diagram);
+}
+
+// ===== Render all packet diagrams on load =====
+document.addEventListener('DOMContentLoaded', () => {
+  PACKET_DATA.forEach(renderPacket);
+});
+
+// ===== Theme Toggle =====
+const themeBtn = document.getElementById('themeToggle');
+const html = document.documentElement;
+
+// Load saved theme
+const savedTheme = localStorage.getItem('usb-notes-theme');
+if (savedTheme === 'dark') {
+  html.classList.add('dark');
+  themeBtn.textContent = '\u{1F319}';
+} else {
+  themeBtn.textContent = '\u{2600}';
+}
+
+themeBtn.addEventListener('click', () => {
+  const isDark = html.classList.toggle('dark');
+  themeBtn.textContent = isDark ? '\u{1F319}' : '\u{2600}';
+  localStorage.setItem('usb-notes-theme', isDark ? 'dark' : 'light');
+});
+
+// ===== Scroll Spy (from Task 2) =====
 const sidebarLinks = document.querySelectorAll('.sidebar .sub-item');
 const cards = document.querySelectorAll('.card[id]');
 
