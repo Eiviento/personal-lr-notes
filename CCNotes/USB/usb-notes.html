@@ -317,6 +317,51 @@ body {
   font-size: 13px; color: var(--color-data);
 }
 .txn-detail .txn-note { border-left: 3px solid var(--color-data); }
+
+/* ===== Foldable details ===== */
+.txn-fold {
+  margin: 16px 0;
+}
+.txn-fold > summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.txn-fold > summary:hover {
+  background: color-mix(in srgb, var(--color-sync-pid) 8%, var(--code-bg));
+  border-color: var(--color-sync-pid);
+}
+.txn-fold > summary::-webkit-details-marker { display: none; }
+.txn-fold > summary::before {
+  content: '▸'; font-size: 12px; transition: transform 0.25s;
+  display: inline-block; color: var(--color-sync-pid);
+}
+.txn-fold[open] > summary::before { transform: rotate(90deg); }
+.txn-fold[open] > summary {
+  border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+  border-color: var(--color-sync-pid);
+}
+.txn-fold .fold-title {
+  font-weight: 700; font-size: 15px; color: var(--heading);
+}
+.txn-fold .fold-hint {
+  font-size: 12px; color: var(--text-muted); margin-left: auto;
+}
+.txn-fold .fold-content {
+  padding: 20px 16px;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background: var(--card-bg);
+}
+.txn-fold .fold-content h4 {
+  margin: 16px 0 8px; font-size: 15px; color: var(--heading);
+}
+.txn-fold .fold-content h4:first-child { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -333,7 +378,7 @@ body {
   </details>
 
   <details open>
-    <summary><span>📡 Phase 2: USB 通信模型</span><span class="badge phase-done">18/18 ✓</span></summary>
+    <summary><span>📡 Phase 2: USB 通信模型</span><span class="badge phase-done">19/19 ✓</span></summary>
     <a class="sub-item" href="#kp-2-1">2.1 三层通信模型</a>
     <a class="sub-item" href="#kp-2-2">2.2 端点(Endpoint)深入</a>
     <a class="sub-item" href="#kp-2-3">2.3 管道(Pipe)深入</a>
@@ -352,6 +397,7 @@ body {
     <a class="sub-item" href="#kp-2-16">2.16 USB 3.x SuperSpeed 概览</a>
     <a class="sub-item" href="#kp-2-17">2.17 SETUP 为什么必须 ACK</a>
     <a class="sub-item" href="#kp-2-18">⟐ 2.18 完整帧内数据全景图</a>
+    <a class="sub-item" href="#kp-2-19">2.19 127设备一帧照顾得过来？</a>
   </details>
 
   <details>
@@ -1317,6 +1363,64 @@ SETUP（不可NAK）:
       <div id="txnDetailBody"></div>
     </div>
   </article>
+
+  <!-- 2.19: 127 devices bandwidth analysis -->
+  <article class="card" id="kp-2-19">
+    <h3>2.19 127 个设备一帧照顾得过来吗？</h3>
+    <p>ADDR = 7 bit → 最多 127 个设备。但如果 127 个设备同时有数据，一帧能搞定吗？</p>
+
+    <details class="txn-fold">
+      <summary>
+        <span class="fold-title">📊 展开完整分析</span>
+        <span class="fold-hint">理论极限 × 现实制约 × 硬约束</span>
+      </summary>
+      <div class="fold-content">
+
+        <h4>理论极限：127 个最小事务能塞进一帧吗？</h4>
+        <p>FS（12Mbps）下，一帧 = 1ms = <strong>12,000 bit times</strong>。</p>
+        <p>一个最小事务（IN Token → NAK）只需：</p>
+        <pre><code>IN Token:  SYNC(8) + PID(8) + ADDR(7) + ENDP(4) + CRC5(5) + EOP(3) ≈ 35 bit times
+NAK:       SYNC(8) + PID(8) + EOP(3)                              ≈ 19 bit times
+总线间隙/翻转                                                       ≈  6 bit times
+合计:                                                               ≈ 60 bit times</code></pre>
+        <p>127 个设备各问一句（全 NAK，纯点名式轮询）：</p>
+        <pre><code>127 × 60 + SOF(35) ≈ 7,655 bit times → 占 64%，理论上还有余量</code></pre>
+
+        <h4>但纯 NAK 毫无意义——有数据立刻爆</h4>
+        <table>
+          <tr><th>事务类型</th><th>典型大小</th><th>单次耗时</th><th>127 设备总耗时</th></tr>
+          <tr><td>IN + NAK</td><td>0B</td><td>~60 bit times</td><td>~7,655 ✅</td></tr>
+          <tr><td>IN + DATA + ACK（鼠标 8B）</td><td>8B</td><td>~200 bit times</td><td style="color:var(--txn-interrupt)">~25,400 ❌ 2帧+</td></tr>
+          <tr><td>批量 OUT + 512B + ACK</td><td>512B</td><td>~4,300 bit times</td><td style="color:var(--txn-interrupt)">~546,000 ❌ 45帧</td></tr>
+          <tr><td>等时 IN + 1023B（无握手）</td><td>1023B</td><td>~8,400 bit times</td><td style="color:var(--txn-interrupt)">❌ 一个占 70%</td></tr>
+        </table>
+        <p><strong>一个 U 盘发 512 字节，13 个类似设备就能吞掉一整帧。</strong></p>
+
+        <h4>带宽分配机制（USB 的真正防线）</h4>
+        <pre><code>一帧带宽 = 100%
+├── 等时/中断：Host 控制器预留"固定时段"
+│   └── 规范要求预留 ≤ 90% 给等时+中断（FS）
+├── 批量/控制：吃剩饭（等时+中断剩下的才给）
+│   └── 如果等时吃掉 80%，批量只剩 20%
+└── SOF 开销：每帧 ~35 bit times</code></pre>
+        <p><strong>关键：Host 在枚举阶段就会算账。</strong>当设备声明"我是等时设备，每帧要 800 字节"，Host 的带宽管理器检查剩余带宽。如果不够，<strong>直接拒绝配置</strong>（SetConfiguration 失败）。所以根本不会出现"127 个设备都配好然后帧爆"——Host 在分配时就拦住了。</p>
+
+        <h4>其他硬约束</h4>
+        <table>
+          <tr><th>约束</th><th>瓶颈</th></tr>
+          <tr><td>供电</td><td>Root Hub 只出 500mA，127 个 Bus-powered 需要 12.7A——物理上不可能不靠外部供电 Hub</td></tr>
+          <tr><td>Hub 层级</td><td>USB 最多 5 层 Hub，127 个地址包括 Hub 自身</td></tr>
+          <tr><td>Host 控制器</td><td>多数控制器硬件调度表只能容纳几十个并发传输</td></tr>
+          <tr><td>实用场景</td><td>鼠标键盘 bInterval=10ms（每 10 帧才应答一次），U 盘只在传文件时活跃——大部分时间大部分设备在静默</td></tr>
+        </table>
+
+        <h4>结论</h4>
+        <p style="font-weight:700;color:var(--color-sync-pid);font-size:16px;">127 是地址空间的上限，不是并发能力的承诺。ADDR 7 bit 给你 127 个 IP 地址——但不保证 127 个设备同时满速通信。USB 靠的是"多数设备多数时间不说话"假设，而不是"每帧问候所有设备一遍"的设计。真需要 127 个等时设备并发流数据，USB 不是该用的总线。</p>
+
+      </div>
+    </details>
+  </article>
+
 	<div class="phase-header" id="phase-3"><h2>Phase 3: USB 描述符体系 — 逐字节解剖 <span style="font-size:14px;color:var(--color-data);margin-left:8px;">◐ 待学习</span></h2></div>
 	<div class="placeholder">
 	  <h3>第三阶段 — 11 个知识点</h3>
