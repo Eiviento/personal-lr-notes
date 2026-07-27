@@ -361,31 +361,67 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
 
   <h3 class="section-subtitle" id="sec-overview-stack">1.1 协议栈树状图</h3>
 
-  <pre class="ascii-diagram">                           应用层 (App)
+  <pre class="ascii-diagram">                    ┌──────────────────────┐
+                    │     应用层 (App)      │
+                    │    调用 BLE API       │
+                    └──────────┬───────────┘
                                │
-                    ┌──────────┴──────────┐
-                    │                     │
-              SMP (CID=0x0006)      ATT (CID=0x0004)
-              安全管理器               属性协议
-              [配对待加密]            [读写通知]
-                    │                     │
-                    └──────────┬──────────┘
+                    ┌──────────┴───────────┐
+                    │         GAP          │  ← Profile 层（规则，不产生 PDU）
+                    │     通用访问规范       │
+                    │ ┌───────────────────┐ │
+                    │ │ 角色: Central /   │ │
+                    │ │ Peripheral /      │ │
+                    │ │ Broadcaster /     │ │
+                    │ │ Observer          │ │
+                    │ ├───────────────────┤ │
+                    │ │ 发现与连接流程      │ │
+                    │ │ 安全模式与等级      │ │
+                    │ │ 绑定与重连规则      │ │
+                    │ └───────────────────┘ │
+                    └──────────┬───────────┘
                                │
-                         L2CAP 层 (CID 复用/分片重组)
-                               │
-                         HCI (Host↔Controller 内部接口，不过空中)
-                               │
-                    链路层 (Link Layer)
-                    ┌──────────┴──────────┐
-                    │                     │
-              广告信道 (37/38/39)     数据信道 (0~36)
-              ADV_IND / SCAN /        LL Data PDU / LL Control PDU
-              CONNECT_IND             [跳频 + 加密]
-                    │                     │
-                    └──────────┬──────────┘
-                               │
-                          物理层 (PHY)
-                    2.4GHz GFSK, Preamble + Access Address</pre>
+              ┌────────────────┼────────────────┐
+              │                │                │
+              ▼                ▼                ▼
+    ┌─────────────────┐  ┌──────────────┐  (安全模式
+    │       SMP       │  │    GATT      │   同时约束
+    │  (CID=0x0006)   │  │  通用属性规范  │   两路)
+    │   安全管理器      │  │ [数据组织框架] │
+    │ [配对·加密·密钥]  │  └──────┬───────┘
+    └────────┬────────┘         │
+             │            ATT (CID=0x0004)
+             │            属性协议 [读写·通知]
+             └────────┬─────────┘
+                      │
+              ┌───────┴───────┐
+              │    L2CAP      │  ← 协议复用（CID）+ 分片重组
+              └───────┬───────┘
+                      │
+              ┌───────┴───────┐
+              │     HCI       │  ← Host↔Controller 内部接口
+              │   (不过空中)   │
+              └───────┬───────┘
+                      │
+              ┌───────┴───────┐
+              │  链路层 (LL)   │
+              │ ┌───────────┐ │
+              │ │ 广告信道    │ │
+              │ │ 37/38/39  │ │
+              │ ├───────────┤ │
+              │ │ 数据信道    │ │
+              │ │ 0~36      │ │
+              │ └───────────┘ │
+              │ [广播/连接/跳频]│
+              └───────┬───────┘
+                      │
+              ┌───────┴───────┐
+              │  物理层 (PHY)  │
+              │ 2.4GHz GFSK   │
+              │ Preamble + AA │
+              └───────────────┘</pre>
+
+  <blockquote class="callout"><strong>GAP 是 Profile（规范），不是 Protocol（协议）——它不产生自己的 PDU。</strong>GAP 是整个 BLE Host 的"总规则层"：定义了四种设备角色、发现与连接流程、安全模式等级、绑定与重连规则。它 <strong>同时管着 SMP（安全路）和 GATT/ATT（数据路）</strong>——例如 GAP 的安全模式决定"什么样的 Attribute 需要什么等级的加密才能访问"，这一条规则就同时约束了 SMP（得先配对出密钥）和 ATT（读之前要检查加密状态）。手册中第 2~9 章的所有报文，都在 GAP 的规则下运作。GAP 是<strong>"剧本"</strong>（谁在什么时候做什么），下层协议是<strong>"演员"</strong>（具体怎么演，包长什么样）。</blockquote>
 
   <h3 class="section-subtitle" id="sec-overview-layers">1.2 各层一句话定位</h3>
 
@@ -399,7 +435,9 @@ code{font-family:var(--font-mono);font-size:12px;background:var(--surface-hover)
       <tr><td><strong>HCI</strong></td><td>芯片内部 Host↔Controller 通信</td><td>不过空中，ATA 抓包看不到</td></tr>
       <tr><td><strong>L2CAP</strong></td><td>协议复用（给 SMP 还是 ATT？）、分片重组</td><td>CID 字段</td></tr>
       <tr><td><strong>SMP</strong></td><td>配对、密钥交换、身份认证</td><td>CID=0x0006, 7 种 PDU Code</td></tr>
-      <tr><td><strong>ATT/GATT</strong></td><td>数据读写通知的"语言"和数据组织</td><td>CID=0x0004, 20+ 种 Opcode</td></tr>
+      <tr><td><strong>GAP</strong></td><td>设备角色定义/发现流程/连接管理/安全模式（是"规则"不是"协议"，不产生 PDU）</td><td>Central/Peripheral/Broadcaster/Observer</td></tr>
+      <tr><td><strong>GATT</strong></td><td>应用数据组织框架（Service→Characteristic→Descriptor 层级）</td><td>GATT Profile Hierarchy</td></tr>
+      <tr><td><strong>ATT</strong></td><td>属性协议——数据读写通知的"传输语言"</td><td>CID=0x0004, 20+ 种 Opcode</td></tr>
     </tbody>
   </table>
 
@@ -2986,11 +3024,13 @@ SKDm/SKDs 每次连接都是全新随机数
   // ==================== Protocol Stack Component (Task 7) ====================
   function renderProtocolStack(container) {
     var layers = [
-      { name: '应用层', tag: '发起 GATT 操作，处理用户数据', color: '#6366F1', anchor: 'sec-att' },
-      { name: 'SMP', tag: '安全管理器，配对待加密', color: 'var(--purple)', anchor: 'sec-smp' },
-      { name: 'ATT', tag: '属性协议，数据读写通知', color: 'var(--purple)', anchor: 'sec-att' },
+      { name: '应用层', tag: '调用 BLE API，处理用户数据', color: '#6366F1', anchor: 'sec-overview' },
+      { name: 'GAP', tag: '通用访问规范：角色/发现/连接管理/安全模式（规则，非协议）', color: '#F59E0B', anchor: 'sec-overview-stack' },
+      { name: 'GATT', tag: '通用属性规范：Service→Characteristic→Descriptor 数据框架', color: '#F59E0B', anchor: 'sec-gatt' },
+      { name: 'ATT', tag: '属性协议——GATT 的传输实现', color: 'var(--orange)', anchor: 'sec-att' },
+      { name: 'SMP', tag: '安全管理器——配对/加密/密钥分发', color: 'var(--purple)', anchor: 'sec-smp' },
       { name: 'L2CAP', tag: '协议复用（CID）+ 分片重组', color: 'var(--cyan)', anchor: 'sec-l2cap' },
-      { name: 'HCI', tag: 'Host↔Controller 内部接口', color: 'var(--gray)', anchor: 'sec-hci' },
+      { name: 'HCI', tag: 'Host↔Controller 内部接口（不过空中）', color: 'var(--gray)', anchor: 'sec-hci' },
       { name: '链路层', tag: '广播/连接/跳频/加密', color: 'var(--blue)', anchor: 'sec-ll-adv' },
       { name: '物理层', tag: '2.4GHz GFSK 调制', color: '#EC4899', anchor: 'sec-phy' }
     ];
