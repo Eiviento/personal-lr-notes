@@ -29,6 +29,12 @@
   --shadow: 0 1px 3px rgba(0,0,0,0.08);
   --card-hover-shadow: 0 2px 8px rgba(0,0,0,0.12);
   --prose-max-width: 780px;
+  --txn-control: #845ef7;
+  --txn-interrupt: #ff6b6b;
+  --txn-bulk: #20c997;
+  --txn-isoch: #51cf66;
+  --txn-sof: #adb5bd;
+  --txn-nak: #ffa94d;
 }
 
 .dark {
@@ -53,6 +59,12 @@
   --table-stripe: #25262b;
   --shadow: 0 1px 3px rgba(0,0,0,0.3);
   --card-hover-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  --txn-control: #b197fc;
+  --txn-interrupt: #ff8787;
+  --txn-bulk: #63e6be;
+  --txn-isoch: #69db7c;
+  --txn-sof: #dee2e6;
+  --txn-nak: #ffc078;
 }
 
 /* ===== Reset & Base ===== */
@@ -206,6 +218,105 @@ body {
   .sidebar { display: none; }
   .main { grid-column: 1; padding: 16px; }
 }
+
+/* ===== Frame Timeline ===== */
+.txn-legend {
+  display: flex; flex-wrap: wrap; gap: 16px; margin: 12px 0 16px;
+  font-size: 13px; color: var(--text-muted);
+}
+.txn-legend-item { display: flex; align-items: center; gap: 6px; }
+.txn-dot {
+  display: inline-block; width: 12px; height: 12px; border-radius: 3px;
+}
+.txn-dot.txn-sof      { background: var(--txn-sof); }
+.txn-dot.txn-control  { background: var(--txn-control); }
+.txn-dot.txn-interrupt{ background: var(--txn-interrupt); }
+.txn-dot.txn-bulk     { background: var(--txn-bulk); }
+.txn-dot.txn-isoch    { background: var(--txn-isoch); }
+.txn-dot.txn-nak      { background: var(--txn-nak); }
+
+.frame-axis {
+  width: 100%; height: 30px; display: block;
+}
+
+.frame-timeline {
+  display: flex; gap: 2px; margin: 4px 0 16px;
+  overflow-x: auto; padding-bottom: 4px;
+}
+
+.txn-block {
+  flex-shrink: 0;
+  border-radius: 6px; padding: 8px 6px;
+  cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; min-width: 36px;
+  position: relative;
+}
+.txn-block:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.txn-block:focus { outline: 2px solid var(--color-sync-pid); outline-offset: 2px; }
+.txn-block.txn-sof       { background: color-mix(in srgb, var(--txn-sof) 25%, var(--card-bg)); border: 1px solid var(--txn-sof); }
+.txn-block.txn-control   { background: color-mix(in srgb, var(--txn-control) 20%, var(--card-bg)); border: 1px solid var(--txn-control); }
+.txn-block.txn-interrupt { background: color-mix(in srgb, var(--txn-interrupt) 20%, var(--card-bg)); border: 1px solid var(--txn-interrupt); }
+.txn-block.txn-bulk      { background: color-mix(in srgb, var(--txn-bulk) 20%, var(--card-bg)); border: 1px solid var(--txn-bulk); }
+.txn-block.txn-isoch     { background: color-mix(in srgb, var(--txn-isoch) 20%, var(--card-bg)); border: 1px solid var(--txn-isoch); }
+.txn-block.txn-nak       { background: color-mix(in srgb, var(--txn-nak) 25%, var(--card-bg)); border: 1px dashed var(--txn-nak); }
+.txn-block .txn-device   { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.txn-block .txn-label    { font-size: 11px; font-weight: 600; color: var(--heading); white-space: nowrap; }
+.txn-block .txn-type     { font-size: 9px; color: var(--text-muted); white-space: nowrap; }
+.txn-block .txn-hint     { font-size: 9px; color: var(--color-sync-pid); margin-top: 2px; }
+
+/* Detail panel */
+.txn-detail {
+  margin: 0 0 20px; border: 1px solid var(--color-sync-pid);
+  border-radius: 8px; padding: 16px; background: var(--code-bg);
+  animation: txnSlideIn 0.2s ease-out;
+}
+@keyframes txnSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.txn-detail-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.txn-detail-header span { font-weight: 700; font-size: 15px; color: var(--heading); }
+.txn-detail-close {
+  background: none; border: 1px solid var(--border); color: var(--text-muted);
+  cursor: pointer; font-size: 14px; width: 28px; height: 28px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+.txn-detail-close:hover { color: var(--text); border-color: var(--text); }
+
+.txn-packet-list { display: flex; flex-direction: column; gap: 6px; }
+.txn-packet-item {
+  background: var(--card-bg); border-radius: 6px; padding: 8px 12px;
+  border: 1px solid var(--border);
+}
+.txn-packet-item .pkt-name {
+  font-weight: 600; font-size: 13px; color: var(--heading); margin-bottom: 4px;
+}
+.txn-packet-flow {
+  display: flex; flex-wrap: wrap; gap: 2px; align-items: center;
+  margin-top: 4px;
+}
+.txn-packet-flow .pkt-bit {
+  padding: 2px 6px; border-radius: 3px; font-size: 10px; font-family: 'Consolas', 'Cascadia Code', monospace;
+  color: #fff; white-space: nowrap; cursor: default;
+  transition: filter 0.15s;
+}
+.txn-packet-flow .pkt-bit:hover { filter: brightness(1.2); }
+.txn-packet-flow .pkt-arrow { font-size: 12px; color: var(--text-muted); margin: 0 2px; }
+
+.txn-note {
+  margin-top: 10px; padding: 8px 12px; border-radius: 4px;
+  background: color-mix(in srgb, var(--color-data) 15%, var(--card-bg));
+  font-size: 13px; color: var(--color-data);
+}
+.txn-detail .txn-note { border-left: 3px solid var(--color-data); }
 </style>
 </head>
 <body>
@@ -222,7 +333,7 @@ body {
   </details>
 
   <details open>
-    <summary><span>📡 Phase 2: USB 通信模型</span><span class="badge phase-done">16/16 ✓</span></summary>
+    <summary><span>📡 Phase 2: USB 通信模型</span><span class="badge phase-done">18/18 ✓</span></summary>
     <a class="sub-item" href="#kp-2-1">2.1 三层通信模型</a>
     <a class="sub-item" href="#kp-2-2">2.2 端点(Endpoint)深入</a>
     <a class="sub-item" href="#kp-2-3">2.3 管道(Pipe)深入</a>
@@ -239,6 +350,8 @@ body {
     <a class="sub-item" href="#kp-2-14">2.14 SOF 包与帧结构</a>
     <a class="sub-item" href="#kp-2-15">2.15 HS 高速模式补充</a>
     <a class="sub-item" href="#kp-2-16">2.16 USB 3.x SuperSpeed 概览</a>
+    <a class="sub-item" href="#kp-2-17">2.17 SETUP 为什么必须 ACK</a>
+    <a class="sub-item" href="#kp-2-18">⟐ 2.18 完整帧内数据全景图</a>
   </details>
 
   <details>
@@ -1052,6 +1165,20 @@ HS: 1微帧=125μs→每125μs发SOF→但Frame Number每1ms才+1
     设备自己计微帧号(0~7)</code></pre>
     <h4>Suspend检测</h4>
     <p>连续3ms(FS)或3个微帧(HS)没看到SOF→设备进入Suspend→电流≤2.5mA</p>
+
+    <h4>⟐ SOF Token vs SETUP Token 对比</h4>
+    <p>两者虽同属 Token 包（PID[1:0]=<code>01</code>），但定位截然不同：</p>
+    <table>
+      <tr><th>维度</th><th>SOF Token</th><th>SETUP Token</th></tr>
+      <tr><td>目标</td><td><strong>广播</strong>（全体设备）</td><td><strong>点对点</strong>（特定设备+EP0）</td></tr>
+      <tr><td>包含 ADDR/ENDP</td><td>❌ 不包含</td><td>✅ ADDR(7) + ENDP(4)</td></tr>
+      <tr><td>特有字段</td><td>Frame Number(11 bit)</td><td>无（ADDR+ENDP 替代）</td></tr>
+      <tr><td>发送频率</td><td>FS: 1ms一次; HS: 125μs一次</td><td>只在控制传输开始时发一次</td></tr>
+      <tr><td>PID 值</td><td><code>0xA5</code></td><td><code>0x2D</code></td></tr>
+      <tr><td>触发动作</td><td>设备据此同步帧计时、防Suspend</td><td>设备必须接收后续 DATA0</td></tr>
+      <tr><td>包格式</td><td>SYNC+PID+Frame#(11)+CRC5+EOP</td><td>SYNC+PID+ADDR(7)+ENDP(4)+CRC5+EOP</td></tr>
+    </table>
+    <p><strong>本质区别：</strong>SOF = 学校广播打铃声（全体听见，只是告知节奏）；SETUP = 老师走到一个学生面前喊名字让他回答问题（指定对象，必须响应）。SOF 不含地址是故意的——它是告示性质的广播；SOF 包实质上把 ADDR+ENDP 的 11 bit 挪用作帧号字段。</p>
   </article>
 
   <!-- 2.15 -->
@@ -1089,7 +1216,107 @@ USB 3.0: 路由式转发→只有目标设备接收→功耗常数</code></pre>
     </table>
   </article>
 
-	<!-- ===== Phase 3 Placeholder ===== -->
+  <!-- 2.17: SETUP must ACK -->
+  <article class="card" id="kp-2-17">
+    <h3>2.17 为什么 SETUP 事务必须 ACK，不能 NAK？</h3>
+    <p>SETUP 是控制传输最特殊的阶段——设备<strong>不能用 NAK 拒绝</strong>。先看对比：</p>
+    <pre><code>正常 OUT（可NAK）:
+  Host→OUT Token→DATA0→设备回 NAK("忙")
+  Host 稍后重试→OUT Token→DATA0→设备回 ACK("收到")
+  重试是安全的——数据还是那些数据
+
+SETUP（不可NAK）:
+  Host→SETUP Token→DATA0(8B Setup Packet)→设备必须 ACK
+  如果设备可以 NAK→Host 重试→但 SETUP ="开始新控制传输"
+  →第一次 SETUP 已触发状态机转移→第二次 SETUP 是什么？语义混乱</code></pre>
+
+    <h4>三个根因</h4>
+    <p><strong>① SETUP = 状态机清零信号：</strong>SETUP Token 一到达，USB 硬件自动做两件事：清空之前未完成的控制传输状态；强制复位 Data Toggle（SETUP 永远用 DATA0）。SETUP 是 Hard Reset——不仅带命令，还隐含"之前的事一笔勾销"。如果允许 NAK，硬件就得维护"挂起的 SETUP"状态来记住刚才有个 SETUP 没处理完，这跟清零信号设计自相矛盾。</p>
+    <p><strong>② EP0 硬件保证——SETUP 缓冲永远可用：</strong>USB 规范在硅片层面做了保证：EP0 必须预留专用 SETUP 缓冲区（8 字节 FIFO，恰好容纳一个 Setup Packet），这个缓冲区跟普通数据 FIFO 分离。固件来不及取走时硬件也能接收，绝不会"缓冲区满"。就像每个 USB 设备的 EP0 都有一个"永远不上锁的 SETUP 信箱"——邮差随时可投递。</p>
+    <p><strong>③ USB 协议不允许 SETUP 重试的语义：</strong>NAK ≠ 无响应。NAK = "包正确但我忙"。但控制请求很多不是幂等的（如 <code>SetConfiguration()</code>——第二次 Set 同一个配置是什么行为？），重试制造歧义。USB 规范第 9 章明确规定 SETUP 阶段的 DATA0 包<strong>不能</strong>被 NAK 拒绝。如果设备检测到 CRC 错误，应<strong>静默丢弃不回应</strong>（超时），而非 NAK。</p>
+
+    <h4>SETUP 异常处理</h4>
+    <table>
+      <tr><th>情况</th><th>设备行为</th><th>Host 处理</th></tr>
+      <tr><td>SETUP 包 CRC 校验错</td><td>静默丢弃（不响应）</td><td>超时，判定总线错误，重发 SETUP 事务</td></tr>
+      <tr><td>SETUP 正确、但设备不支持该命令</td><td>DATA 阶段正常走完，<strong>STATUS 阶段返回 STALL</strong></td><td>收到 STALL，知道"设备不支持"</td></tr>
+      <tr><td>SETUP 正确、固件来不及处理</td><td>硬件自动 ACK（不依赖固件）</td><td>继续发送下一事务</td></tr>
+    </table>
+    <p><strong>关键：</strong>即使设备不支持 SETUP 里的命令，SETUP 阶段本身也照样 ACK。拒绝在 STATUS 阶段用 STALL 表达——"命令我听懂了，但我不支持/做不到"。</p>
+  </article>
+
+  <!-- 2.18: Complete Frame Timeline -->
+  <article class="card" id="kp-2-18">
+    <h3>⟐ 2.18 完整帧内数据全景图</h3>
+    <p>以下展示一个典型的 <strong>FS 1ms 帧</strong>内的总线活动。总线上挂有<strong>摄像头（地址3）</strong>、<strong>鼠标（地址1）</strong>、<strong>U盘（地址2）</strong>三个设备。一帧内覆盖全部四种传输类型，且包含有数据和无数据两种事务状态。</p>
+
+    <h4>总线拓扑</h4>
+    <table>
+      <tr><th>地址</th><th>设备</th><th>传输类型</th><th>端点</th><th>本帧事务</th></tr>
+      <tr><td>—</td><td>广播</td><td>SOF</td><td>—</td><td>SOF 起手（心跳）</td></tr>
+      <tr><td>3</td><td>摄像头</td><td>等时 IN</td><td>EP2</td><td>IN → DATA0（不等握手）</td></tr>
+      <tr><td>1</td><td>鼠标</td><td>中断 IN</td><td>EP1</td><td>IN → DATA0 → ACK（有按键）</td></tr>
+      <tr><td>2</td><td>U盘</td><td>控制 SETUP</td><td>EP0</td><td>SETUP → DATA0 → ACK（读描述符）</td></tr>
+      <tr><td>2</td><td>U盘</td><td>控制 IN</td><td>EP0</td><td>IN → DATA1 → ACK（设备回描述符）</td></tr>
+      <tr><td>2</td><td>U盘</td><td>控制 OUT</td><td>EP0</td><td>OUT → 0长度DATA1 → ACK（STATUS）</td></tr>
+      <tr><td>3</td><td>摄像头</td><td>控制 SETUP</td><td>EP0</td><td>SETUP → DATA0 → ACK（设置亮度）</td></tr>
+      <tr><td>3</td><td>摄像头</td><td>控制 IN</td><td>EP0</td><td>IN → DATA1 → ACK（读回亮度）</td></tr>
+      <tr><td>3</td><td>摄像头</td><td>控制 OUT</td><td>EP0</td><td>OUT → ACK（STATUS）</td></tr>
+      <tr><td>2</td><td>U盘</td><td>批量 OUT</td><td>EP2</td><td>OUT → DATA0(512B) → ACK</td></tr>
+      <tr><td>1</td><td>鼠标</td><td>中断 IN</td><td>EP1</td><td>IN → <strong>NAK</strong>（无新按键）</td></tr>
+      <tr><td>2</td><td>U盘</td><td>批量 IN</td><td>EP1</td><td>IN → <strong>NAK</strong>（无数据可读）</td></tr>
+    </table>
+
+    <h4>覆盖矩阵</h4>
+    <table>
+      <tr><th>传输类型</th><th>✅ 有数据事务</th><th>✅ 无数据事务</th></tr>
+      <tr><td>控制</td><td>SETUP+ACK, IN+DATA+ACK, OUT+ACK（2组）</td><td>—</td></tr>
+      <tr><td>中断</td><td>IN+DATA+ACK（鼠标按键）</td><td>IN+NAK（鼠标无按键）</td></tr>
+      <tr><td>批量</td><td>OUT+DATA+ACK（U盘写入）</td><td>IN+NAK（U盘无数据）</td></tr>
+      <tr><td>等时</td><td>IN+DATA（无握手，摄像头帧数据）</td><td>—</td></tr>
+    </table>
+
+    <h4>帧内时间线 <span style="font-size:12px;color:var(--text-muted);">（点击事务块展开内部包细节）</span></h4>
+
+    <!-- Legend -->
+    <div class="txn-legend">
+      <span class="txn-legend-item"><span class="txn-dot txn-sof"></span>SOF/帧</span>
+      <span class="txn-legend-item"><span class="txn-dot txn-control"></span>控制传输</span>
+      <span class="txn-legend-item"><span class="txn-dot txn-interrupt"></span>中断传输</span>
+      <span class="txn-legend-item"><span class="txn-dot txn-bulk"></span>批量传输</span>
+      <span class="txn-legend-item"><span class="txn-dot txn-isoch"></span>等时传输</span>
+      <span class="txn-legend-item"><span class="txn-dot txn-nak"></span>NAK（无数据）</span>
+    </div>
+
+    <!-- Time axis -->
+    <svg class="frame-axis" viewBox="0 0 1000 30" preserveAspectRatio="none">
+      <line x1="0" y1="25" x2="1000" y2="25" stroke="var(--svg-line)" stroke-width="1"/>
+      <line x1="0" y1="25" x2="0" y2="18" stroke="var(--svg-line)" stroke-width="1"/>
+      <text x="0" y="14" text-anchor="middle" font-size="10" fill="var(--text-muted)">0</text>
+      <line x1="250" y1="25" x2="250" y2="18" stroke="var(--svg-line)" stroke-width="1"/>
+      <text x="250" y="14" text-anchor="middle" font-size="10" fill="var(--text-muted)">250μs</text>
+      <line x1="500" y1="25" x2="500" y2="18" stroke="var(--svg-line)" stroke-width="1"/>
+      <text x="500" y="14" text-anchor="middle" font-size="10" fill="var(--text-muted)">500μs</text>
+      <line x1="750" y1="25" x2="750" y2="18" stroke="var(--svg-line)" stroke-width="1"/>
+      <text x="750" y="14" text-anchor="middle" font-size="10" fill="var(--text-muted)">750μs</text>
+      <line x1="1000" y1="25" x2="1000" y2="18" stroke="var(--svg-line)" stroke-width="1"/>
+      <text x="1000" y="14" text-anchor="middle" font-size="10" fill="var(--text-muted)">1ms</text>
+    </svg>
+
+    <!-- Transaction timeline blocks -->
+    <div class="frame-timeline" id="frameTimeline">
+      <!-- Rendered by JS -->
+    </div>
+
+    <!-- Expanded packet detail -->
+    <div class="txn-detail" id="txnDetail" style="display:none;">
+      <div class="txn-detail-header">
+        <span id="txnDetailTitle"></span>
+        <button class="txn-detail-close" id="txnDetailClose">✕</button>
+      </div>
+      <div id="txnDetailBody"></div>
+    </div>
+  </article>
 	<div class="phase-header" id="phase-3"><h2>Phase 3: USB 描述符体系 — 逐字节解剖 <span style="font-size:14px;color:var(--color-data);margin-left:8px;">◐ 待学习</span></h2></div>
 	<div class="placeholder">
 	  <h3>第三阶段 — 11 个知识点</h3>
@@ -1275,6 +1502,538 @@ function highlightNav() {
 }
 
 window.addEventListener('scroll', highlightNav, { passive: true });
+
+// ===== Frame Timeline Data & Rendering =====
+const TXN_COLORS = {
+  sof:       'txn-sof',
+  control:   'txn-control',
+  interrupt: 'txn-interrupt',
+  bulk:      'txn-bulk',
+  isoch:     'txn-isoch',
+  nak:       'txn-nak',
+};
+
+// Map JS color class back to CSS variable for inline styling detail packets
+const TXN_COLOR_VARS = {
+  sof:       'var(--txn-sof)',
+  control:   'var(--txn-control)',
+  interrupt: 'var(--txn-interrupt)',
+  bulk:      'var(--txn-bulk)',
+  isoch:     'var(--txn-isoch)',
+  nak:       'var(--txn-nak)',
+};
+
+const FRAME_TRANSACTIONS = [
+  {
+    id: 'sof', label: 'SOF', device: '广播', addr: '—', type: 'sof',
+    width: 3, hasData: true, transferType: 'SOF 广播',
+    packets: [
+      {
+        name: 'SOF Token 包',
+        direction: 'Host → 全体',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=0xA5', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'Frame#', bits: '11', color: 'var(--color-frame)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: 'SOF 是广播心跳包，不含设备地址。Frame Number 每 1ms +1，用于帧同步和防 Suspend。'
+  },
+  {
+    id: 'isoch-in-cam', label: '等时 IN', device: '摄像头', addr: '3/EP2', type: 'isoch',
+    width: 21, hasData: true, transferType: '等时传输',
+    packets: [
+      {
+        name: 'IN Token 包',
+        direction: 'Host → 摄像头(3)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=IN', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=3', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=2', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'DATA0 包（视频帧数据，≤1024 Bytes）',
+        direction: '摄像头(3) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=DATA0', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: '视频数据', bits: '≤8192', color: 'var(--color-data)' },
+          { text: 'CRC16', bits: '16', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: '⚠️ 等时传输无握手！设备发完 DATA 不等 ACK/NAK。如果 CRC 错，Host 丢弃但不重传。实时优先，正确性可妥协。'
+  },
+  {
+    id: 'intr-in-mouse', label: '中断 IN', device: '鼠标', addr: '1/EP1', type: 'interrupt',
+    width: 5, hasData: true, transferType: '中断传输',
+    packets: [
+      {
+        name: 'IN Token 包',
+        direction: 'Host → 鼠标(1)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=IN', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=1', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=1', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'DATA0 包（按键报告，≤8 Bytes）',
+        direction: '鼠标(1) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=DATA0', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: '按键数据', bits: '≤64', color: 'var(--color-data)' },
+          { text: 'CRC16', bits: '16', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'ACK Handshake 包',
+        direction: 'Host → 鼠标(1)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=ACK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: 'Host 周期性地轮询鼠标（bInterval 决定间隔）。这次鼠标有按键数据，正常 DATA+ACK 流程。'
+  },
+  {
+    id: 'ctrl-setup-udisk', label: '控制 SETUP', device: 'U盘', addr: '2/EP0', type: 'control',
+    width: 5, hasData: true, transferType: '控制传输（SETUP 阶段）',
+    packets: [
+      {
+        name: 'SETUP Token 包',
+        direction: 'Host → U盘(2)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=SETUP', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=2', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=0', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'DATA0 包（8 字节 Setup Packet = Get_Descriptor 请求）',
+        direction: 'Host → U盘(2)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=DATA0', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'bmReqType+bReq+wValue+wIndex+wLength(8B)', bits: '64', color: 'var(--color-data)' },
+          { text: 'CRC16', bits: '16', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'ACK Handshake 包',
+        direction: 'U盘(2) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=ACK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: '⚠️ SETUP 阶段设备必须 ACK，不能 NAK。EP0 硬件有独立 SETUP 缓冲保证永远能接收。Data Toggle 被强制复位为 DATA0。'
+  },
+  {
+    id: 'ctrl-in-udisk', label: '控制 IN', device: 'U盘', addr: '2/EP0', type: 'control',
+    width: 7, hasData: true, transferType: '控制传输（DATA 阶段）',
+    packets: [
+      {
+        name: 'IN Token 包',
+        direction: 'Host → U盘(2)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=IN', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=2', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=0', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'DATA1 包（18 字节 Device Descriptor）',
+        direction: 'U盘(2) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=DATA1', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: '描述符数据', bits: '144', color: 'var(--color-data)' },
+          { text: 'CRC16', bits: '16', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'ACK Handshake 包',
+        direction: 'Host → U盘(2)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=ACK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: 'DATA 阶段用 DATA1（SETUP 后第一个 DATA 阶段翻转）。Data Toggle: SETUP=DATA0, 第一个 IN=DATA1, 交替。'
+  },
+  {
+    id: 'ctrl-out-udisk', label: '控制 OUT', device: 'U盘', addr: '2/EP0', type: 'control',
+    width: 4, hasData: true, transferType: '控制传输（STATUS 阶段）',
+    packets: [
+      {
+        name: 'OUT Token 包',
+        direction: 'Host → U盘(2)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=OUT', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=2', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=0', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'DATA1 包（0 长度 = ZLP）',
+        direction: 'Host → U盘(2)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=DATA1', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: '(空)', bits: '0', color: 'var(--color-data)' },
+          { text: 'CRC16', bits: '16', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'ACK Handshake 包',
+        direction: 'U盘(2) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=ACK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: 'STATUS 阶段方向与 DATA 相反。DATA 是 IN（设备发数据），STATUS 就是 OUT（Host 确认）。0 长度 DATA 包 = Zero-Length Packet (ZLP)。'
+  },
+  {
+    id: 'ctrl-setup-cam', label: '控制 SETUP', device: '摄像头', addr: '3/EP0', type: 'control',
+    width: 5, hasData: true, transferType: '控制传输（SETUP 阶段）',
+    packets: [
+      {
+        name: 'SETUP Token 包',
+        direction: 'Host → 摄像头(3)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=SETUP', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=3', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=0', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'DATA0 包（8 字节 Setup Packet = 设置亮度）',
+        direction: 'Host → 摄像头(3)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=DATA0', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'bmReqType+bReq+wValue+wIndex+wLength(8B)', bits: '64', color: 'var(--color-data)' },
+          { text: 'CRC16', bits: '16', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'ACK Handshake 包',
+        direction: '摄像头(3) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=ACK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: '摄像头虽然主要用等时传输，但 EP0 控制传输仍然存在——用来做亮度、对比度等参数配置。'
+  },
+  {
+    id: 'ctrl-in-cam', label: '控制 IN', device: '摄像头', addr: '3/EP0', type: 'control',
+    width: 5, hasData: true, transferType: '控制传输（DATA 阶段）',
+    packets: [
+      {
+        name: 'IN Token 包',
+        direction: 'Host → 摄像头(3)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=IN', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=3', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=0', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'DATA1 包（读回当前亮度值）',
+        direction: '摄像头(3) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=DATA1', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: '亮度数据', bits: '≤16', color: 'var(--color-data)' },
+          { text: 'CRC16', bits: '16', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'ACK Handshake 包',
+        direction: 'Host → 摄像头(3)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=ACK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: '读回亮度属于控制传输的 DATA(IN) 阶段，用 DATA1 包。方向是 Device→Host（IN）。'
+  },
+  {
+    id: 'ctrl-out-cam', label: '控制 OUT', device: '摄像头', addr: '3/EP0', type: 'control',
+    width: 4, hasData: true, transferType: '控制传输（STATUS 阶段）',
+    packets: [
+      {
+        name: 'OUT Token 包',
+        direction: 'Host → 摄像头(3)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=OUT', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=3', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=0', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'DATA1 包（ZLP）',
+        direction: 'Host → 摄像头(3)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=DATA1', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: '(空)', bits: '0', color: 'var(--color-data)' },
+          { text: 'CRC16', bits: '16', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'ACK Handshake 包',
+        direction: '摄像头(3) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=ACK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: 'STATUS 阶段：因为 DATA 是 IN（读亮度），STATUS 就是 OUT（Host 发 ZLP 确认收到）。方向永远与 DATA 阶段相反。'
+  },
+  {
+    id: 'bulk-out-udisk', label: '批量 OUT', device: 'U盘', addr: '2/EP2', type: 'bulk',
+    width: 21, hasData: true, transferType: '批量传输',
+    packets: [
+      {
+        name: 'OUT Token 包',
+        direction: 'Host → U盘(2)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=OUT', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=2', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=2', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'DATA0 包（512 字节文件数据）',
+        direction: 'Host → U盘(2)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=DATA0', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: '文件数据(512B)', bits: '4096', color: 'var(--color-data)' },
+          { text: 'CRC16', bits: '16', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'ACK Handshake 包',
+        direction: 'U盘(2) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=ACK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: '批量传输"吃剩饭"——用等时和中断之后的剩余带宽。512B 是 FS 最大批量包。HS 最大 512B 亦同。DATA0/DATA1 Toggle 在每次成功 ACK 后翻转。'
+  },
+  {
+    id: 'intr-in-nak', label: '中断 IN', device: '鼠标', addr: '1/EP1', type: 'nak',
+    width: 2, hasData: false, transferType: '中断传输（无数据）',
+    packets: [
+      {
+        name: 'IN Token 包',
+        direction: 'Host → 鼠标(1)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=IN', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=1', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=1', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'NAK Handshake 包',
+        direction: '鼠标(1) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=NAK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: '❌ 无数据情况：Host 又一次轮询鼠标，但这次没有新按键。鼠标回 NAK——"我收到了，但没有新数据"。Token + NAK，总线上只走了 54 bits（最短事务之一）。'
+  },
+  {
+    id: 'bulk-in-nak', label: '批量 IN', device: 'U盘', addr: '2/EP1', type: 'nak',
+    width: 2, hasData: false, transferType: '批量传输（无数据）',
+    packets: [
+      {
+        name: 'IN Token 包',
+        direction: 'Host → U盘(2)',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=IN', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'ADDR=2', bits: '7', color: 'var(--color-addr)' },
+          { text: 'ENDP=1', bits: '4', color: 'var(--color-addr)' },
+          { text: 'CRC5', bits: '5', color: 'var(--color-crc)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      },
+      {
+        name: 'NAK Handshake 包',
+        direction: 'U盘(2) → Host',
+        flow: [
+          { text: 'SYNC', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'PID=NAK', bits: '8', color: 'var(--color-sync-pid)' },
+          { text: 'EOP', bits: '3', color: 'var(--color-eop)' },
+        ]
+      }
+    ],
+    note: '❌ 无数据情况：Host 想从 U 盘读数据，但 U 盘固件还没准备好。回 NAK——"暂时没数据，一会再问"。Host 稍后会重试此事务。批量传输被 NAK 可以无限重试（直到超时或 Host 放弃）。'
+  }
+];
+
+function renderTxnTimeline() {
+  const container = document.getElementById('frameTimeline');
+  if (!container) return;
+
+  const totalWidth = FRAME_TRANSACTIONS.reduce((s, t) => s + t.width, 0);
+
+  FRAME_TRANSACTIONS.forEach(txn => {
+    const block = document.createElement('div');
+    block.className = 'txn-block ' + (TXN_COLORS[txn.type] || 'txn-sof');
+    block.style.flexGrow = txn.width;
+    block.style.flexBasis = (txn.width / totalWidth * 100) + '%';
+    block.setAttribute('tabindex', '0');
+    block.setAttribute('role', 'button');
+    block.setAttribute('aria-expanded', 'false');
+    block.title = '点击查看 ' + txn.label + ' 内部包细节';
+
+    const dataIndicator = txn.hasData ? '' : ' ❌';
+    block.innerHTML = `
+      <span class="txn-device">${txn.device} (Addr${txn.addr})</span>
+      <span class="txn-label">${txn.label}${dataIndicator}</span>
+      <span class="txn-type">${txn.transferType}</span>
+      <span class="txn-hint">🔍 点击展开</span>
+    `;
+
+    block.addEventListener('click', () => showTxnDetail(txn, block));
+    block.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showTxnDetail(txn, block); }
+    });
+
+    container.appendChild(block);
+  });
+}
+
+let activeTxnBlock = null;
+
+function showTxnDetail(txn, block) {
+  const detail = document.getElementById('txnDetail');
+  const title = document.getElementById('txnDetailTitle');
+  const body = document.getElementById('txnDetailBody');
+  const closeBtn = document.getElementById('txnDetailClose');
+
+  // Update active state
+  if (activeTxnBlock) {
+    activeTxnBlock.setAttribute('aria-expanded', 'false');
+    activeTxnBlock.style.boxShadow = '';
+  }
+  activeTxnBlock = block;
+  block.setAttribute('aria-expanded', 'true');
+  block.style.boxShadow = '0 0 0 3px ' + TXN_COLOR_VARS[txn.type];
+
+  // Populate detail
+  const dataBadge = txn.hasData
+    ? '<span style="color:var(--txn-isoch);font-size:12px;">✅ 有数据</span>'
+    : '<span style="color:var(--txn-nak);font-size:12px;">❌ 无数据（NAK）</span>';
+
+  title.innerHTML = txn.device + ' → ' + txn.label + ' (' + txn.transferType + ') ' + dataBadge;
+
+  let html = '';
+  txn.packets.forEach((pkt, i) => {
+    html += '<div class="txn-packet-item">';
+    html += '<div class="pkt-name">' + (i === 0 ? '▶ ' : '↑ ') + pkt.name + ' <span style="font-size:11px;color:var(--text-muted);">' + pkt.direction + '</span></div>';
+    html += '<div class="txn-packet-flow">';
+    pkt.flow.forEach((seg, j) => {
+      html += (j > 0 ? '<span class="pkt-arrow">▸</span>' : '');
+      html += '<span class="pkt-bit" style="background:' + seg.color + ';" title="' + seg.bits + ' bits">' + seg.text + ' (' + seg.bits + 'b)</span>';
+    });
+    html += '</div></div>';
+  });
+
+  if (txn.note) {
+    html += '<div class="txn-note">💡 ' + txn.note + '</div>';
+  }
+
+  body.innerHTML = html;
+  detail.style.display = 'block';
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Close button
+  closeBtn.onclick = () => {
+    detail.style.display = 'none';
+    if (activeTxnBlock) {
+      activeTxnBlock.setAttribute('aria-expanded', 'false');
+      activeTxnBlock.style.boxShadow = '';
+      activeTxnBlock = null;
+    }
+  };
+}
+
+// Render timeline on load
+document.addEventListener('DOMContentLoaded', () => {
+  renderTxnTimeline();
+});
 </script>
 
 </body>
