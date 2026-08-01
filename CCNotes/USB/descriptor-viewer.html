@@ -353,7 +353,85 @@ body {
 
 <!-- Main content placeholder -->
 <main class="main" id="mainContent">
-  <!-- Descriptor sections will be added in Tasks 4-6 -->
+  <div class="section-header" id="desc-device">
+    <h2>Device Descriptor (设备描述符) — 18 字节</h2>
+    <p class="section-desc">设备级别的"身份证"。每个 USB 设备有且仅有一个 Device Descriptor。</p>
+  </div>
+
+  <div class="card">
+    <h3>📐 标准 byte-map</h3>
+    <div class="desc-byte-map">
+      <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">0x12</span><span class="dlabel">bLength</span></div>
+      <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">1</span><span class="dval">0x01</span><span class="dlabel">bDescType</span></div>
+      <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">2-3</span><span class="dval">bcdUSB</span><span class="dlabel">USB版本</span></div>
+      <div class="dcell dc-bg-class" style="flex:1"><span class="doff">4</span><span class="dval">bDevCls</span><span class="dlabel">设备类</span></div>
+      <div class="dcell dc-bg-class" style="flex:1"><span class="doff">5</span><span class="dval">bDevSub</span><span class="dlabel">子类</span></div>
+      <div class="dcell dc-bg-class" style="flex:1"><span class="doff">6</span><span class="dval">bDevProt</span><span class="dlabel">协议</span></div>
+      <div class="dcell dc-bg-ep0" style="flex:1"><span class="doff">7</span><span class="dval">EP0Max</span><span class="dlabel">EP0包大小</span></div>
+      <div class="dcell dc-bg-vidpid" style="flex:2"><span class="doff">8-9</span><span class="dval">idVendor</span><span class="dlabel">VID</span></div>
+      <div class="dcell dc-bg-vidpid" style="flex:2"><span class="doff">10-11</span><span class="dval">idProduct</span><span class="dlabel">PID</span></div>
+      <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">12-13</span><span class="dval">bcdDevice</span><span class="dlabel">设备版本</span></div>
+      <div class="dcell dc-bg-str" style="flex:1"><span class="doff">14</span><span class="dval">iManuf</span><span class="dlabel">制造商</span></div>
+      <div class="dcell dc-bg-str" style="flex:1"><span class="doff">15</span><span class="dval">iProd</span><span class="dlabel">产品名</span></div>
+      <div class="dcell dc-bg-str" style="flex:1"><span class="doff">16</span><span class="dval">iSerial</span><span class="dlabel">序列号</span></div>
+      <div class="dcell dc-bg-config" style="flex:1"><span class="doff">17</span><span class="dval">nConf</span><span class="dlabel">配置数</span></div>
+    </div>
+
+    <h4>📊 三设备对照表</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">字段 (Offset)</th><th class="col-dev1">设备1 (HikCamera #1)</th><th class="col-dev2">设备2 (HikCamera #2)</th><th class="col-dev3">设备3 (2K Camera)</th><th class="col-note">解读</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>bLength (0)</td><td>0x12 (18)</td><td>0x12 (18)</td><td class="row-missing">无数据</td><td>USB spec 规定 Device Descriptor 固定 18 字节</td></tr>
+        <tr><td>bDescriptorType (1)</td><td>0x01</td><td>0x01</td><td class="row-missing">无数据</td><td>0x01 = Device Descriptor</td></tr>
+        <tr><td>bcdUSB (2-3)</td><td>0x0200 (USB 2.0)</td><td>0x0200 (USB 2.0)</td><td class="row-missing">无数据</td><td>BCD 编码，0x0200=2.0。不能直接当整数比较</td></tr>
+        <tr><td>bDeviceClass (4)</td><td>0xEF (Misc)</td><td>0xEF (Misc)</td><td class="row-missing">无数据</td><td>⚠️ 为什么不是 0x0E(Video)？见下方详解</td></tr>
+        <tr><td>bDeviceSubClass (5)</td><td>0x02</td><td>0x02</td><td class="row-missing">无数据</td><td>0xEF+0x02+0x01 = IAD 模式</td></tr>
+        <tr><td>bDeviceProtocol (6)</td><td>0x01 (IAD)</td><td>0x01 (IAD)</td><td class="row-missing">无数据</td><td>告诉 Host：用 IAD 而非逐个 Interface 解析</td></tr>
+        <tr><td>bMaxPacketSize0 (7)</td><td>0x40 (64B)</td><td>0x40 (64B)</td><td class="row-missing">无数据</td><td>HS 设备 EP0 固定 64 字节。FS 可选 8/16/32/64</td></tr>
+        <tr><td>idVendor (8-9)</td><td>0x2BDF (Hikvision)</td><td>0x2BDF (Hikvision)</td><td>0x2BDF (Hikvision)</td><td>三台设备同一厂商，VID 由 USB-IF 分配</td></tr>
+        <tr><td>idProduct (10-11)</td><td>0x0101</td><td>0x0101</td><td>0x028A</td><td>PID 不同 → 不同产品型号。设备1&2 同型号</td></tr>
+        <tr><td>bcdDevice (12-13)</td><td>0x0409</td><td>0x0409</td><td class="row-missing">无数据</td><td>设备版本号 4.09，固件版本标识</td></tr>
+        <tr><td>iManufacturer (14)</td><td>0x01 → "HIK"</td><td>0x01 → "HIK"</td><td class="row-missing">无数据</td><td>指向 String Descriptor 1</td></tr>
+        <tr><td>iProduct (15)</td><td>0x02 → "HikCamera"</td><td>0x02 → "HikCamera"</td><td class="row-missing">无数据</td><td>指向 String Descriptor 2</td></tr>
+        <tr><td>iSerialNumber (16)</td><td>0x03 → "G11376317"</td><td class="row-diff">0x03 → "E83518457"</td><td class="row-missing">无数据</td><td>⚠️ 同型号不同序列号——唯一差异字段</td></tr>
+        <tr><td>bNumConfigurations (17)</td><td>0x01</td><td>0x01</td><td class="row-missing">无数据</td><td>仅 1 套配置</td></tr>
+      </tbody>
+    </table>
+
+    <h4>🔍 关键字段深入</h4>
+
+    <details class="txn-fold">
+      <summary>bDeviceClass = 0xEF 而不是 0x0E：为什么要"绕路"？</summary>
+      <div class="fold-content">
+        <p>USB spec 规定：如果设备在 Device Descriptor 层面声明了设备类（如 0x0E=Video），那么该设备的<strong>所有 Interface</strong> 都必须属于该类。但我们的设备 3 既有 Camera (Video) 又有 Audio，是复合设备。即使设备 1&2 只有 Video，海康也统一用了 IAD 模式——这是现代 USB 复合设备的最佳实践。</p>
+        <p><code>bDeviceClass=0xEF</code> + <code>bDeviceSubClass=0x02</code> + <code>bDeviceProtocol=0x01</code> 的组合告诉 Host："别在 Device 层面判断我的类型，去读 IAD Descriptor。"</p>
+        <p>好处：每个 Interface 可以有自己的 Class/SubClass/Protocol，由 IAD 将多个 Interface 绑定为一个"功能"。例如 UVC 摄像头 = VC Interface + VS Interface，由 IAD 声明这两个是一体的。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>bMaxPacketSize0 = 0x40 (64 字节)：HS 设备的"硬编码"选择</summary>
+      <div class="fold-content">
+        <p>EP0 是控制端点，用于枚举阶段的描述符请求和标准请求。USB 2.0 spec 规定：</p>
+        <ul>
+          <li>FS 设备：EP0 最大包可选 8、16、32 或 64 字节</li>
+          <li><strong>HS 设备：EP0 最大包固定 64 字节</strong></li>
+        </ul>
+        <p>为什么 HS 固定 64？因为枚举阶段 Host 还不知道设备速度（枚举第一步就是读 Device Descriptor 前 8 字节来判断），HS 设备在这之前就已经被 Hub 检测为 HS 了，Host 直接用 64 字节包通信。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>VID/PID 的 Little-Endian 陷阱</summary>
+      <div class="fold-content">
+        <p>USB 描述符中所有多字节字段都是 <strong>Little-Endian</strong>（小端序）。<code>idVendor = 0x2BDF</code> 在描述符中的实际字节序列是 <code>DF 2B</code>（低字节在前）。</p>
+        <p>这是 USB 新手最容易踩的坑——如果你用 hexdump 看到 <code>DF 2B</code>，不要读成 <code>0xDF2B</code>。</p>
+        <p>同理：<code>bcdUSB = 0x0200</code> 在字节流中是 <code>00 02</code>，<code>idProduct = 0x0101</code> 是 <code>01 01</code>。</p>
+      </div>
+    </details>
+  </div>
 </main>
 
 <!-- JS placeholder -->
