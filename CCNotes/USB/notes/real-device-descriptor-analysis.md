@@ -230,7 +230,7 @@ Windows 下用 USB 描述符抓取工具（如 **USB Device Tree Viewer** 或微
 | 07 | 40 | bMaxPacketSize0 | 64 字节 |
 | 08-09 | DF 2B | idVendor = 0x2BDF | 海康威视 |
 | 10-11 | 01 01 | idProduct = 0x0101 | HikCamera |
-| 12-13 | 09 04 | bcdDevice = 0x0409 | 固件版本 4.9 |
+| 12-13 | 09 04 | bcdDevice = 0x0409 | 固件版本 4.09（BCD 码，与 HW ID 的 REV_0409 一致） |
 | 14 | 01 | iManufacturer | → 字符串 1 "HIK" |
 | 15 | 02 | iProduct | → 字符串 2 "HikCamera" |
 | 16 | 03 | iSerialNumber | → 字符串 3 "G11376317" |
@@ -617,7 +617,7 @@ VC Header 是整个 VC 类专用子链的第一个描述符，相当于"这条�
 | 2 | bDescriptorSubtype | 0x01 | **VC Header** |
 | 3-4 | bcdUVC | 0x0110 | **UVC 版本 1.10**（BCD：0x01.0x10） |
 | 5-6 | wTotalLength | 0x0051 (81) | **VC 类专用子链总长 81 字节** |
-| 7-10 | dwClockFreq | 0x02DC6C00 (48,000,000) | 设备时钟频率 **48 MHz**（帧时间戳 PTS 的计时基准） |
+| 7-10 | dwClockFreq | 0x02DC6C00 (48,000,000) | 设备时钟频率 **48 MHz**（帧时间戳 PTS 的计时基准；小端字节 = `00 6C DC 02`） |
 | 11 | bInCollection | 0x01 | 有 1 个 VS 接口与 VC 关联 |
 | 12 | baInterfaceNr[1] | 0x01 | 关联的 VS 接口号 = 接口 1 |
 
@@ -629,7 +629,7 @@ VC Header 是整个 VC 类专用子链的第一个描述符，相当于"这条�
 +----+----+----+----+----+----+----+----+----+----+----+----+----+
 | H  | H  | C  | S  | S  | N  | N  | N  | N  | N  | N  | N  | N  |  ← 颜色分类
 +----+----+----+----+----+----+----+----+----+----+----+----+----+
-| 0D | 24 | 01 | 10 | 01 | 51 | 00 | 00 | 6C | 2C | 02 | 01 | 01 |  ← 设备 1 字节
+| 0D | 24 | 01 | 10 | 01 | 51 | 00 | 00 | 6C | DC | 02 | 01 | 01 |  ← 设备 1 字节
 +----+----+----+----+----+----+----+----+----+----+----+----+----+
   bL  bDT  bDS  └─bcdUVC─┘  └─wTotalLength─┘  └───dwClockFreq────┘  bIC baIN
 ```
@@ -728,6 +728,33 @@ UAC (USB Audio Class) 与 UVC 对照：
 
 所以虽然设备 3 的原始描述符抓不到，但按 UVC 学的"接口 subclass 分义 + Terminal/Unit 链 + 类型码速查"这套方法，换成 UAC 规范表（0x24/0x25 的 Audio 版本）就能解析它的音频部分。**类专用描述符 = 标准骨架 + 每类规范一套"方言"**。
 
+## 3.6 控制请求是怎么发的（对应用工程师最有用的一节）
+
+描述符只是"声明"，真正控制设备靠 **EP0 上的类请求**。UVC 控制请求的编码（与 UAC 同构）：
+
+```
+SET_CUR : bmRequestType = 0x21 (Host→Device, Class, Interface), bRequest = 0x01
+GET_CUR : bmRequestType = 0xA1 (Device→Host, Class, Interface), bRequest = 0x81
+GET_MIN : 0x82    GET_MAX : 0x83    GET_RES : 0x84
+GET_LEN : 0x85    GET_INFO: 0x86    GET_DEF : 0x87
+
+wValue : 高字节 = Control Selector (CS)，低字节 = Unit/Terminal ID
+wIndex : 接口号（VC 接口 = 0）
+数据阶段 : 控制值（长度由描述符/GET_LEN 决定）
+```
+
+例子——读设备 1 XU（Unit 10）的 vendor control 5 当前值：
+
+| 设置 | 值 | 含义 |
+|---|---|---|
+| bmRequestType | 0xA1 | Device→Host，类请求，目标接口 |
+| bRequest | 0x81 | GET_CUR |
+| wValue | 0x050A | CS=5（控制 5），UnitID=0x0A（10） |
+| wIndex | 0x0000 | 接口 0（VC） |
+| wLength | 控制值长度 | 由 GET_LEN 查询 |
+
+流接口的"切格式/启停流"走 VS 接口（接口 1）上的两个特殊控制：**VS_PROBE_CONTROL (CS=1)** 试探格式，**VS_COMMIT_CONTROL (CS=2)** 提交生效（Q7 里说的"流控制"就是这两个）。用 WinUSB / libusb 实现时，只需组装上面的 SETUP 包发到目标接口即可——这就是描述符之外，类机制的另一半。
+
 ---
 
 # 第 4 章 综合实战
@@ -779,7 +806,7 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔ = VS Input
 | 配置头 | `09 02 B1 01 ...` | 9 字节；wTotalLength 小端 = B1 01 = 0x01B1 |
 | IAD | `08 0B 00 02 0E 03 00 05` | 8 字节；0x0B 类型；function class 0x0E |
 | VC 接口 | `09 04 00 00 01 0E 01 00 05` | subclass 0x01 |
-| VC Header | `0D 24 01 10 01 51 00 00 6C 2C 02 01 01` | 13 字节；bcdUVC 0x0110；wTotalLength 0x0051；48 MHz |
+| VC Header | `0D 24 01 10 01 51 00 00 6C DC 02 01 01` | 13 字节；bcdUVC 0x0110；wTotalLength 0x0051；48 MHz |
 | VC IT | `12 24 02 02 01 02 00 00 00 00 00 00 00 00 03 00 00 00` | 18 字节；ITT_CAMERA 0x0201 |
 | VC PU | `0C 24 05 05 01 00 40 02 00 00 00 09` | 12 字节；bSourceID=1；乘数 0x4000；标准 0x09 |
 | VC XU | `1D 24 06 0A ... 0F 01 02 04 FF 03 00 00 00` | 29 字节；15 控制；bmControls FF 03 00 00 |
@@ -790,7 +817,7 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔ = VS Input
 | VS Header | `10 24 01 03 2A 01 81 00 03 00 00 00 01 00 00 00` | 16 字节；3 格式；wTotalLength 0x012A；bTerminalLink=3 |
 | VS YUY2 | `1B 24 04 01 03 59 55 59 32 ...` | 27 字节；guidFormat 首 4 字节 "YUY2" |
 | VS MJPEG | `0B 24 06 02 03 00 01 00 00 00 00` | 11 字节；3 帧 |
-| VS H.264 | `1C 24 10 03 01 48 36 32 34 ...` | 28 字节；guidFormat 首 4 字节 "H264" |
+| VS H.264 | `1C 24 10 03 01 48 32 36 34 ...` | 28 字节；guidFormat 首 4 字节 "H264" |
 | Color Matching | `06 24 0D 01 01 04` | 6 字节；BT.709 / BT.709 / SMPTE 170M |
 | EP1 Bulk | `07 05 81 02 00 02 00` | 7 字节；0x81 IN EP1；0x02 Bulk；512 B |
 
@@ -1096,6 +1123,9 @@ bCopyProtect = 0x00    bVariableSize = 0x01 (变长)
 ===== VS Frame-Based Frame (30 B) =====
 Frame 1: 240x320  位率 0x007D0000 (8.192 Mbps)  缓冲 153600 B  30 fps
 dwBytesPerLine = 0x0000
+(注: 工具按 UVC 1.5 字段表展开此描述符需要 32 字节，而 bLength 声明 30 字节——
+ 与 VS 子链 wTotalLength=298 的验算一致。属固件长度声明与字段表之间的轻微
+ 不一致，Host 驱动按 bLength 解析即可，不影响使用)
 
 ===== VS Color Matching (6 B) =====
 bLength = 0x06    bDescriptorType = 0x24    bDescriptorSubtype = 0x0D (Color Matching)
