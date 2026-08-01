@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USB 描述符实战剖析 — 三设备对比</title>
+<style>
+/* ===== CSS Variables & Theme ===== */
+:root {
+  /* Base — same palette as usb-notes.html */
+  --bg: #ffffff;
+  --card-bg: #f8f9fa;
+  --text: #212529;
+  --text-muted: #868e96;
+  --code-bg: #f1f3f5;
+  --border: #dee2e6;
+  --sidebar-bg: #f8f9fa;
+  --sidebar-text: #212529;
+  --heading: #1a1b1e;
+  --color-sync-pid: #1e90ff;
+  --color-addr: #20c997;
+  --color-data: #ffa94d;
+  --color-crc: #845ef7;
+  --color-eop: #adb5bd;
+  --color-frame: #51cf66;
+  --svg-line: #495057;
+  --svg-text: #212529;
+  --svg-fill: #f8f9fa;
+  --table-stripe: #f1f3f5;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --card-hover-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  --prose-max-width: 780px;
+  --txn-control: #845ef7;
+  --txn-interrupt: #ff6b6b;
+  --txn-bulk: #20c997;
+  --txn-isoch: #51cf66;
+  --txn-sof: #adb5bd;
+  --txn-nak: #ffa94d;
+  /* New variables for this page */
+  --diff-highlight: #fff3bf;
+  --diff-highlight-dark: #3d3520;
+  --missing: #adb5bd;
+  --missing-dark: #6c757d;
+  --dev1-accent: #845ef7;
+  --dev2-accent: #20c997;
+  --dev3-accent: #ffa94d;
+}
+
+.dark {
+  --bg: #1a1b1e;
+  --card-bg: #2c2e33;
+  --text: #e9ecef;
+  --text-muted: #868e96;
+  --code-bg: #25262b;
+  --border: #495057;
+  --sidebar-bg: #212529;
+  --sidebar-text: #e9ecef;
+  --heading: #f8f9fa;
+  --color-sync-pid: #8ab4f8;
+  --color-addr: #63e6be;
+  --color-data: #ffc078;
+  --color-crc: #b197fc;
+  --color-eop: #dee2e6;
+  --color-frame: #69db7c;
+  --svg-line: #adb5bd;
+  --svg-text: #e9ecef;
+  --svg-fill: #2c2e33;
+  --table-stripe: #25262b;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --card-hover-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  --txn-control: #b197fc;
+  --txn-interrupt: #ff8787;
+  --txn-bulk: #63e6be;
+  --txn-isoch: #69db7c;
+  --txn-sof: #dee2e6;
+  --txn-nak: #ffc078;
+  --diff-highlight: #3d3520;
+  --diff-highlight-dark: #3d3520;
+  --missing: #6c757d;
+  --missing-dark: #6c757d;
+  --dev1-accent: #b197fc;
+  --dev2-accent: #63e6be;
+  --dev3-accent: #ffc078;
+}
+
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 20px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  font-size: 15px; line-height: 1.7; color: var(--text);
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+  position: fixed; top: 0; left: 0; width: 280px; height: 100vh;
+  background: var(--sidebar-bg); border-right: 1px solid var(--border);
+  overflow-y: auto; padding: 20px 16px; z-index: 10;
+}
+.sidebar h2 { font-size: 16px; margin-bottom: 16px; color: var(--heading); }
+.sidebar .nav-section { margin-bottom: 12px; }
+.sidebar .nav-section > summary {
+  cursor: pointer; font-weight: 600; font-size: 14px; padding: 4px 0;
+  color: var(--heading); list-style: none;
+  display: flex; align-items: center; gap: 6px;
+}
+.sidebar .nav-section > summary::-webkit-details-marker { display: none; }
+.sidebar .nav-section > summary::before {
+  content: '▸'; font-size: 10px; transition: transform 0.2s;
+  display: inline-block; width: 12px;
+}
+.sidebar .nav-section[open] > summary::before { transform: rotate(90deg); }
+.sidebar .nav-link {
+  display: block; padding: 3px 0 3px 24px; font-size: 13px;
+  color: var(--text-muted); text-decoration: none; border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.sidebar .nav-link:hover, .sidebar .nav-link.active {
+  color: var(--color-sync-pid); background: rgba(30,144,255,0.08);
+}
+.sidebar .dev-legend { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.sidebar .dev-legend .dev-dot {
+  display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 6px;
+}
+.sidebar .dev-legend .dev-dot .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* Theme toggle */
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border: 1px solid var(--border); border-radius: 14px;
+  cursor: pointer; font-size: 13px; color: var(--text-muted);
+  background: var(--code-bg); margin-bottom: 16px;
+  transition: background 0.2s;
+}
+.theme-toggle:hover { background: var(--border); }
+
+/* ===== Main ===== */
+.main { grid-column: 2; padding: 24px 32px 80px; max-width: 1200px; }
+
+/* ===== Cards ===== */
+.card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 24px 28px; margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+.card:hover { box-shadow: var(--card-hover-shadow); }
+.card h3 { font-size: 18px; color: var(--heading); margin-bottom: 12px; }
+.card h4 { font-size: 15px; color: var(--heading); margin: 16px 0 8px; }
+.card p { margin-bottom: 10px; color: var(--text); }
+.card code {
+  background: var(--code-bg); padding: 1px 5px; border-radius: 3px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 13px;
+}
+.card pre {
+  background: var(--code-bg); padding: 14px 18px; border-radius: 6px;
+  overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.5;
+  border: 1px solid var(--border);
+}
+.card pre code { background: none; padding: 0; }
+
+/* ===== Tables ===== */
+.card table {
+  width: 100%; border-collapse: collapse; margin: 12px 0;
+  font-size: 14px;
+}
+.card table th, .card table td {
+  padding: 8px 12px; border: 1px solid var(--border); text-align: left;
+}
+.card table th { background: var(--code-bg); font-weight: 600; color: var(--heading); }
+.card table tr:nth-child(even) td { background: var(--table-stripe); }
+
+/* ===== Comparison Table (3-column) ===== */
+.cmp-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+.cmp-table th, .cmp-table td {
+  padding: 6px 10px; border: 1px solid var(--border); text-align: left;
+}
+.cmp-table th { background: var(--code-bg); font-weight: 600; color: var(--heading); }
+.cmp-table .col-field { width: 160px; }
+.cmp-table .col-dev1 { width: auto; border-left: 3px solid var(--dev1-accent); }
+.cmp-table .col-dev2 { width: auto; border-left: 3px solid var(--dev2-accent); }
+.cmp-table .col-dev3 { width: auto; border-left: 3px solid var(--dev3-accent); }
+.cmp-table .col-note { width: 200px; font-size: 12px; color: var(--text-muted); }
+.cmp-table .row-diff { background: var(--diff-highlight); }
+.dark .cmp-table .row-diff { background: var(--diff-highlight-dark); }
+.cmp-table .row-missing { color: var(--missing); font-style: italic; }
+.dark .cmp-table .row-missing { color: var(--missing-dark); }
+
+/* ===== Descriptor Byte-Map ===== */
+.desc-byte-map {
+  display: flex; border-radius: 6px; overflow: hidden;
+  margin: 12px 0; border: 1px solid var(--border);
+  font-family: 'Consolas', 'Cascadia Code', monospace; font-size: 11px;
+}
+.desc-byte-map .dcell {
+  flex-shrink: 0; padding: 6px 2px; text-align: center;
+  cursor: default; transition: filter 0.15s;
+  border-right: 1px solid rgba(255,255,255,0.25);
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  min-width: 0;
+}
+.desc-byte-map .dcell:last-child { border-right: none; }
+.desc-byte-map .dcell:hover { filter: brightness(1.15); }
+.dcell .doff { font-size: 9px; color: rgba(255,255,255,0.6); }
+.dcell .dval { font-size: 10px; font-weight: 600; color: #fff; }
+.dcell .dlabel { font-size: 9px; color: rgba(255,255,255,0.8); white-space: nowrap; }
+/* 15 dc-bg-* classes — same as usb-notes.html */
+.dc-bg-bglen   { background: var(--color-sync-pid); }
+.dc-bg-bgtype  { background: var(--color-crc); }
+.dc-bg-bcd     { background: var(--color-frame); }
+.dc-bg-class   { background: var(--color-eop); }
+.dc-bg-ep0     { background: var(--color-addr); }
+.dc-bg-vidpid  { background: var(--color-data); }
+.dc-bg-str     { background: var(--color-sync-pid); opacity:0.7; }
+.dc-bg-config  { background: var(--color-crc); opacity:0.7; }
+.dc-bg-iface   { background: var(--color-addr); }
+.dc-bg-ep      { background: var(--color-data); opacity:0.8; }
+.dc-bg-attr    { background: var(--color-crc); }
+.dc-bg-power   { background: var(--color-frame); opacity:0.7; }
+.dc-bg-ialt    { background: var(--txn-interrupt); }
+.dc-bg-nep     { background: var(--color-eop); opacity:0.7; }
+.dc-bg-qual    { background: var(--color-sync-pid); opacity:0.5; }
+.dc-bg-rsvd    { background: var(--text-muted); }
+/* Additional bg classes for this page */
+.dc-bg-uvc     { background: var(--dev1-accent); opacity: 0.8; }
+.dc-bg-audio   { background: var(--dev3-accent); opacity: 0.8; }
+
+/* ===== Foldable Details ===== */
+.txn-fold {
+  margin: 10px 0; padding: 10px 14px;
+  background: var(--code-bg); border: 1px solid var(--border);
+  border-radius: 6px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.txn-fold:hover { background: var(--table-stripe); border-color: var(--color-sync-pid); }
+.txn-fold > summary {
+  font-weight: 600; font-size: 14px; color: var(--heading); list-style: none;
+  display: flex; align-items: center; gap: 6px;
+}
+.txn-fold > summary::-webkit-details-marker { display: none; }
+.txn-fold > summary::before {
+  content: '▸'; font-size: 10px; transition: transform 0.2s;
+  display: inline-block; width: 14px;
+}
+.txn-fold[open] > summary::before { transform: rotate(90deg); }
+.txn-fold .fold-content { padding-top: 10px; }
+
+/* ===== Breadcrumb ===== */
+.breadcrumb {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 10px 14px; margin-bottom: 20px;
+  background: var(--code-bg); border: 1px solid var(--border);
+  border-radius: 6px; font-size: 13px;
+}
+.breadcrumb .crumb { color: var(--color-sync-pid); text-decoration: none; }
+.breadcrumb .crumb:hover { text-decoration: underline; }
+.breadcrumb .crumb-sep { color: var(--text-muted); }
+.breadcrumb .crumb-current { color: var(--text); font-weight: 600; }
+
+/* ===== Device Tabs ===== */
+.dev-tabs {
+  display: flex; gap: 0; margin: 16px 0;
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+}
+.dev-tab {
+  flex: 1; padding: 8px 16px; text-align: center; cursor: pointer;
+  font-size: 13px; font-weight: 600; border: none;
+  background: var(--code-bg); color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+.dev-tab:not(:last-child) { border-right: 1px solid var(--border); }
+.dev-tab.active { background: var(--card-bg); color: var(--heading); }
+.dev-tab:hover { color: var(--heading); }
+.dev-tab.dev1.active { box-shadow: inset 0 -3px 0 var(--dev1-accent); }
+.dev-tab.dev2.active { box-shadow: inset 0 -3px 0 var(--dev2-accent); }
+.dev-tab.dev3.active { box-shadow: inset 0 -3px 0 var(--dev3-accent); }
+
+/* ===== Section Header ===== */
+.section-header {
+  margin: 32px 0 16px; padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-sync-pid);
+}
+.section-header h2 { font-size: 22px; color: var(--heading); }
+.section-header .section-desc { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  body { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .main { grid-column: 1; padding: 16px; }
+}
+</style>
+</head>
+<body>
+<!-- Sidebar placeholder -->
+<nav class="sidebar" id="sidebar">
+  <h2>📋 USB 描述符剖析</h2>
+  <button class="theme-toggle" id="themeToggle" title="切换暗色/亮色模式">🌓 主题</button>
+  <!-- Navigation tree will be added in Task 3 -->
+</nav>
+
+<!-- Main content placeholder -->
+<main class="main" id="mainContent">
+  <!-- Descriptor sections will be added in Tasks 4-6 -->
+</main>
+
+<!-- JS placeholder -->
+<script>
+// JavaScript will be added in Task 7
+</script>
+
+</body></html>
