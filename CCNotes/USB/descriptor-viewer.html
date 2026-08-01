@@ -299,7 +299,56 @@ body {
 <nav class="sidebar" id="sidebar">
   <h2>📋 USB 描述符剖析</h2>
   <button class="theme-toggle" id="themeToggle" title="切换暗色/亮色模式">🌓 主题</button>
-  <!-- Navigation tree will be added in Task 3 -->
+  <details class="nav-section" open>
+    <summary>📖 概述</summary>
+    <a class="nav-link" href="#overview">描述符是什么</a>
+    <a class="nav-link" href="#device-summary">三台设备速览</a>
+  </details>
+
+  <details class="nav-section" open>
+    <summary>🔧 标准描述符</summary>
+    <a class="nav-link" href="#desc-device">Device Descriptor (18B)</a>
+    <a class="nav-link" href="#desc-config">Configuration Descriptor (9B)</a>
+    <a class="nav-link" href="#desc-iad">IAD Descriptor (8B)</a>
+    <a class="nav-link" href="#desc-interface-vc">Interface — VC (9B)</a>
+    <a class="nav-link" href="#desc-interface-vs">Interface — VS (9B)</a>
+    <a class="nav-link" href="#desc-endpoint-int">Endpoint — Interrupt IN</a>
+    <a class="nav-link" href="#desc-endpoint-bulk">Endpoint — Bulk IN</a>
+  </details>
+
+  <details class="nav-section">
+    <summary>🎯 类专用描述符</summary>
+    <a class="nav-link" href="#class-mechanism">0x24/0x25 分发机制</a>
+    <a class="nav-link" href="#uvc-vc-header">UVC VC Header 拆解</a>
+    <a class="nav-link" href="#uvc-topology">UVC 拓扑图</a>
+    <a class="nav-link" href="#uvc-subtypes">UVC 子类型码速查</a>
+  </details>
+
+  <details class="nav-section">
+    <summary>⚔️ 综合实战</summary>
+    <a class="nav-link" href="#trace-dev1">设备1 433B 全链追踪</a>
+    <a class="nav-link" href="#diff-dev1-dev2">设备1 vs 设备2 差异</a>
+    <a class="nav-link" href="#infer-dev3">设备3 KS反推</a>
+  </details>
+
+  <details class="nav-section">
+    <summary>❓ FAQ</summary>
+    <a class="nav-link" href="#faq">7 个常见问题</a>
+  </details>
+
+  <details class="nav-section">
+    <summary>📎 附录</summary>
+    <a class="nav-link" href="#appendix-a">A: 设备1 原始 dump</a>
+    <a class="nav-link" href="#appendix-b">B: 设备2 原始 dump</a>
+    <a class="nav-link" href="#appendix-c">C: 设备3 KS 数据</a>
+  </details>
+
+  <div class="dev-legend">
+    <div style="font-size:13px;font-weight:600;color:var(--heading);margin-bottom:8px;">设备颜色标识</div>
+    <div class="dev-dot"><span class="dot" style="background:var(--dev1-accent);"></span> 设备1 HikCamera #1</div>
+    <div class="dev-dot"><span class="dot" style="background:var(--dev2-accent);"></span> 设备2 HikCamera #2</div>
+    <div class="dev-dot"><span class="dot" style="background:var(--dev3-accent);"></span> 设备3 2K Camera</div>
+  </div>
 </nav>
 
 <!-- Main content placeholder -->
