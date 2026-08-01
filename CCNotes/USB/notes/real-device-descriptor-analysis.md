@@ -607,7 +607,7 @@ VC Header 是整个 VC 类专用子链的第一个描述符，相当于"这条�
 
 ```
 偏移: 0  1  2  3  4  5  6  7  8  9  10 11 12
-      0D 24 01 10 01 51 00 00 6C 2C 02 01 01
+      0D 24 01 10 01 51 00 00 6C DC 02 01 01
 ```
 
 | 偏移 | 字段 | 值 | 含义 |
@@ -683,7 +683,7 @@ UVC 的 VC 描述符构建了一张**图像处理流水线图**：传感器 → 
 
 ## 3.4 UVC 描述符类型码速查表
 
-下表覆盖本手册用到的全部 subtype（bDescriptorSubtype）。注意：**同一 subtype 数值在 VC 接口与 VS 接口下含义不同**（3.1 的分发原理），所以下表按"所在接口"分列。0x10/0x11（Frame-Based）在 UVC 1.0/1.1 规范里曾编号为 0x0B/0x0C，现行工具与 Linux 内核均按 0x10/0x11 解析——本设备实际发送的就是 0x10/0x11（设备声明 bcdUVC=1.10 却用 1.5 时代的编号，这是现实设备的常见不一致，Windows/Linux 驱动与抓取工具都能容忍）。
+下表覆盖本手册用到的全部 subtype（bDescriptorSubtype）。注意：**同一 subtype 数值在 VC 接口与 VS 接口下含义不同**（3.1 的分发原理），所以下表按"所在接口"分列。0x10/0x11（Frame-Based）就是 UVC 1.1 规范的正式编号（Linux 内核 include/linux/usb/video.h 中 UVC_VS_FORMAT_FRAME_BASED=0x10、UVC_VS_FRAME_FRAME_BASED=0x11 与之一致）；设备声明 bcdUVC=1.10 并使用 0x10/0x11，完全符合规范，不存在"编号不一致"的问题。
 
 | 值 (十进制) | 值 (十六进制) | VC 接口 (subclass 0x01) 下含义 | VS 接口 (subclass 0x02) 下含义 | 设备 1 中出现 |
 |---|---|---|---|---|
@@ -693,14 +693,14 @@ UVC 的 VC 描述符构建了一张**图像处理流水线图**：传感器 → 
 | 4 | 0x04 | Selector Unit | Format: Uncompressed | ✔ VS |
 | 5 | 0x05 | Processing Unit | Frame: Uncompressed | ✔ VC + VS |
 | 6 | 0x06 | Extension Unit | Format: MJPEG | ✔ VC + VS |
-| 7 | 0x07 | 保留 (1.5: 0x10 才是 Encoding Unit) | Frame: MJPEG | ✔ VS |
-| 8 | 0x08 | 保留 | Format: MPEG-2 TS | 无 |
-| 9 | 0x09 | 保留 | Format: DV | 无 |
-| 10 | 0x0A | 保留 | Format: Color (已废弃) | 无 |
-| 11 | 0x0B | 保留 | Format: Frame-Based（旧编号，规范级） | 无 |
-| 12 | 0x0C | 保留 | Frame: Frame-Based（旧编号，规范级） | 无 |
+| 7 | 0x07 | Encoding Unit (UVC 1.5) | Frame: MJPEG | ✔ VS |
+| 8 | 0x08 | 保留 | 保留 | 无 |
+| 9 | 0x09 | 保留 | 保留 | 无 |
+| 10 | 0x0A | 保留 | Format: MPEG-2 TS | 无 |
+| 11 | 0x0B | 保留 | 保留 | 无 |
+| 12 | 0x0C | 保留 | Format: DV | 无 |
 | 13 | 0x0D | 保留 | **Color Matching**（颜色匹配） | ✔ VS |
-| 16 | 0x10 | Encoding Unit (UVC 1.5) | Format: Frame-Based（现行编号） | ✔ VS (H.264) |
+| 16 | 0x10 | 保留 | Format: Frame-Based（现行编号） | ✔ VS (H.264) |
 | 17 | 0x11 | 保留 | Frame: Frame-Based（现行编号） | ✔ VS (H.264) |
 
 设备 1 用到的组合：VC = 1,2,3,5,6（Header/IT/OT/PU/XU）；VS = 1,4,5,6,7,0x0D,0x10,0x11。
