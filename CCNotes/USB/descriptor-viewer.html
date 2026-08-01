@@ -432,6 +432,323 @@ body {
       </div>
     </details>
   </div>
+
+  <!-- ===== Task 5: Config / IAD / Interface / Endpoint sections ===== -->
+
+  <div class="section-header" id="desc-config">
+    <h2>Configuration Descriptor (配置描述符) — 9 字节</h2>
+    <p class="section-desc">定义设备的"运行模式"：功耗、接口数量、自供电/总线供电。</p>
+  </div>
+
+  <div class="card">
+    <h3>📐 标准 byte-map</h3>
+    <div class="desc-byte-map">
+      <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">0x09</span><span class="dlabel">bLength</span></div>
+      <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">1</span><span class="dval">0x02</span><span class="dlabel">bDescType</span></div>
+      <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">2-3</span><span class="dval">0x01B1</span><span class="dlabel">wTotalLength</span></div>
+      <div class="dcell dc-bg-iface" style="flex:1"><span class="doff">4</span><span class="dval">0x02</span><span class="dlabel">bNumInterfaces</span></div>
+      <div class="dcell dc-bg-config" style="flex:1"><span class="doff">5</span><span class="dval">0x01</span><span class="dlabel">bConfigValue</span></div>
+      <div class="dcell dc-bg-class" style="flex:1"><span class="doff">6</span><span class="dval">0x04</span><span class="dlabel">iConfiguration</span></div>
+      <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">7</span><span class="dval">0xC0</span><span class="dlabel">bmAttributes</span></div>
+      <div class="dcell dc-bg-power" style="flex:1"><span class="doff">8</span><span class="dval">0x01</span><span class="dlabel">MaxPower</span></div>
+    </div>
+
+    <h4>📊 三设备对照表</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">字段 (Offset)</th><th class="col-dev1">设备1 (HikCamera #1)</th><th class="col-dev2">设备2 (HikCamera #2)</th><th class="col-dev3">设备3 (2K Camera)</th><th class="col-note">解读</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>bLength (0)</td><td>0x09</td><td>0x09</td><td class="row-missing">无数据</td><td>标准 9 字节</td></tr>
+        <tr><td>bDescriptorType (1)</td><td>0x02</td><td>0x02</td><td class="row-missing">无数据</td><td>0x02 = Configuration</td></tr>
+        <tr><td>wTotalLength (2-3)</td><td>0x01B1 (433B)</td><td>0x01B1 (433B)</td><td class="row-missing">无数据</td><td>⚠️ 整个描述符链 433 字节——远超 9B Config 自身</td></tr>
+        <tr><td>bNumInterfaces (4)</td><td>0x02</td><td>0x02</td><td class="row-missing">无数据</td><td>2 个 Interface (VC + VS)</td></tr>
+        <tr><td>bConfigurationValue (5)</td><td>0x01</td><td>0x01</td><td class="row-missing">无数据</td><td>SetConfiguration(1) 激活此配置</td></tr>
+        <tr><td>iConfiguration (6)</td><td>0x04 → "Config 1"</td><td>0x04 → "Config 1"</td><td class="row-missing">无数据</td><td>指向 String Descriptor 4</td></tr>
+        <tr><td>bmAttributes (7)</td><td>0xC0</td><td>0xC0</td><td class="row-missing">无数据</td><td>bit7=1(必须), bit6=1(自供电), bit5=0(不支持远程唤醒)</td></tr>
+        <tr><td>MaxPower (8)</td><td>0x01 (2mA)</td><td>0x01 (2mA)</td><td class="row-missing">无数据</td><td>⚠️ 自供电设备只需 2mA——实际功耗远超此值</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>wTotalLength = 433 字节：描述符链的"总账本"</summary>
+      <div class="fold-content">
+        <p>Host 通过 <code>GetDescriptor(Configuration)</code> 一次性读回整个描述符链，长度由 wTotalLength 告知。设备1&2 的 433 字节包括：Config(9) + IAD(8) + Interface(9)×2 + VC Header(13) + Input Terminal(18) + Processing Unit(12) + Extension Unit(29) + Output Terminal(9) + 中断端点(7) + 类专用 0x25 端点(5) + Bulk 端点(7) + VS Input Header(16) + 3 种 Format Type(27+11+28) + 7 个 Frame Type(30×7) + Color Matching(6)。</p>
+        <p>所以抓包时看到的"配置描述符"请求一次回 433 字节——它其实包含了一整棵描述符树。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>bmAttributes bit7 必须为 1：USB spec 的历史遗留</summary>
+      <div class="fold-content">
+        <p>USB spec 规定 bmAttributes 的 bit7 保留且必须置 1。虽然这个 bit 从未被使用，但所有符合 spec 的设备都必须设置它。如果你在抓包时看到 bmAttributes=0x40（bit7=0），那是设备固件的 bug。</p>
+        <p>bit6=1 表示自供电（有自己的电源适配器），bit5=0 表示不支持远程唤醒（Host 不能通过网络/按键唤醒此设备）。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="desc-iad">
+    <h2>IAD Descriptor (接口关联描述符) — 8 字节</h2>
+    <p class="section-desc">把多个 Interface 捆绑为一个"功能"（Function）——复合设备的分组声明。</p>
+  </div>
+
+  <div class="card">
+    <h3>📐 标准 byte-map</h3>
+    <div class="desc-byte-map">
+      <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">0x08</span><span class="dlabel">bLength</span></div>
+      <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">1</span><span class="dval">0x0B</span><span class="dlabel">bDescType</span></div>
+      <div class="dcell dc-bg-iface" style="flex:1"><span class="doff">2</span><span class="dval">0x00</span><span class="dlabel">bFirstInterface</span></div>
+      <div class="dcell dc-bg-iface" style="flex:1"><span class="doff">3</span><span class="dval">0x02</span><span class="dlabel">bInterfaceCount</span></div>
+      <div class="dcell dc-bg-uvc" style="flex:1"><span class="doff">4</span><span class="dval">0x0E</span><span class="dlabel">bFunctionClass</span></div>
+      <div class="dcell dc-bg-uvc" style="flex:1"><span class="doff">5</span><span class="dval">0x03</span><span class="dlabel">bFunctionSubClass</span></div>
+      <div class="dcell dc-bg-class" style="flex:1"><span class="doff">6</span><span class="dval">0x00</span><span class="dlabel">bFunctionProtocol</span></div>
+      <div class="dcell dc-bg-str" style="flex:1"><span class="doff">7</span><span class="dval">0x05</span><span class="dlabel">iFunction</span></div>
+    </div>
+
+    <h4>📊 三设备对照表</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">字段 (Offset)</th><th class="col-dev1">设备1 (HikCamera #1)</th><th class="col-dev2">设备2 (HikCamera #2)</th><th class="col-dev3">设备3 (2K Camera)</th><th class="col-note">解读</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>bLength (0)</td><td>0x08</td><td>0x08</td><td class="row-missing">无数据</td><td>固定 8 字节</td></tr>
+        <tr><td>bDescriptorType (1)</td><td>0x0B</td><td>0x0B</td><td class="row-missing">无数据</td><td>0x0B = Interface Association Descriptor</td></tr>
+        <tr><td>bFirstInterface (2)</td><td>0x00</td><td>0x00</td><td class="row-missing">无数据</td><td>从 Interface 0 开始绑定</td></tr>
+        <tr><td>bInterfaceCount (3)</td><td>0x02</td><td>0x02</td><td class="row-missing">无数据</td><td>捆绑 2 个接口 (VC + VS)</td></tr>
+        <tr><td>bFunctionClass (4)</td><td>0x0E (Video)</td><td>0x0E (Video)</td><td class="row-missing">无数据</td><td>⚠️ 真正的"我是摄像头"声明在这里</td></tr>
+        <tr><td>bFunctionSubClass (5)</td><td>0x03</td><td>0x03</td><td class="row-missing">无数据</td><td>0x03 = Video Interface Collection</td></tr>
+        <tr><td>bFunctionProtocol (6)</td><td>0x00</td><td>0x00</td><td class="row-missing">无数据</td><td>PC_PROTOCOL_UNDEFINED</td></tr>
+        <tr><td>iFunction (7)</td><td>0x05 → "UVC Camera"</td><td>0x05 → "UVC Camera"</td><td class="row-missing">无数据</td><td>功能名（String Descriptor 5）</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>bFunctionClass = 0x0E (Video)：这里才是"我是摄像头"的官方声明</summary>
+      <div class="fold-content">
+        <p>Device Descriptor 里我们说过：设备层 <code>bDeviceClass=0xEF</code> 只是"绕路"信号。真正的类型声明在 IAD 里——<code>bFunctionClass=0x0E</code> 明确告诉 Host："这个功能是 Video 类"。</p>
+        <p>设备3 既有 Camera 又有 Audio，是典型的多功能复合设备；即使设备1&2 只有视频，海康也统一用了 IAD 模式。Host 看到 Device Descriptor 的 0xEF/0x02/0x01 后，就知道要去解析 IAD，把 IAD 声明的接口组当作一个整体来加载驱动。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>IAD 是 USB 2.0 才加入的描述符：它解决什么问题？</summary>
+      <div class="fold-content">
+        <p>USB 1.x 时代没有 IAD。复合设备只能在 Device Descriptor 里声明一个笼统的类，Host 无法得知哪些 Interface 属于同一个"功能"——比如带摄像头的音箱，Host 不知道 Interface 0 和 Interface 1 是一体的。</p>
+        <p>USB 2.0 引入 IAD 作为"胶水"：把一段连续的 Interface 粘成一个 Function。Windows 从 XP SP1 开始支持，Linux 从 2.6.4 内核开始支持。如今几乎所有的 UVC 摄像头 + UAC 麦克风复合设备都用它。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="desc-interface-vc">
+    <h2>Interface Descriptor — VC (接口描述符 · 视频控制) — 9 字节</h2>
+    <p class="section-desc">视频控制接口——摄像头的"遥控器"：曝光、白平衡、变焦等控制请求全部走 EP0，只有 1 个中断事件端点。</p>
+  </div>
+
+  <div class="card">
+    <h3>📐 标准 byte-map</h3>
+    <div class="desc-byte-map">
+      <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">0x09</span><span class="dlabel">bLength</span></div>
+      <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">1</span><span class="dval">0x04</span><span class="dlabel">bDescType</span></div>
+      <div class="dcell dc-bg-iface" style="flex:1"><span class="doff">2</span><span class="dval">0x00</span><span class="dlabel">bInterfaceNum</span></div>
+      <div class="dcell dc-bg-ialt" style="flex:1"><span class="doff">3</span><span class="dval">0x00</span><span class="dlabel">bAltSetting</span></div>
+      <div class="dcell dc-bg-nep" style="flex:1"><span class="doff">4</span><span class="dval">0x01</span><span class="dlabel">bNumEndpoints</span></div>
+      <div class="dcell dc-bg-uvc" style="flex:1"><span class="doff">5</span><span class="dval">0x0E</span><span class="dlabel">bInterfaceClass</span></div>
+      <div class="dcell dc-bg-uvc" style="flex:1"><span class="doff">6</span><span class="dval">0x01</span><span class="dlabel">bInterfaceSubCls</span></div>
+      <div class="dcell dc-bg-class" style="flex:1"><span class="doff">7</span><span class="dval">0x00</span><span class="dlabel">bInterfaceProt</span></div>
+      <div class="dcell dc-bg-str" style="flex:1"><span class="doff">8</span><span class="dval">0x05</span><span class="dlabel">iInterface</span></div>
+    </div>
+
+    <h4>📊 三设备对照表</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">字段 (Offset)</th><th class="col-dev1">设备1 (HikCamera #1)</th><th class="col-dev2">设备2 (HikCamera #2)</th><th class="col-dev3">设备3 (2K Camera)</th><th class="col-note">解读</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>bLength (0)</td><td>0x09</td><td>0x09</td><td class="row-missing">无数据</td><td>标准 9 字节</td></tr>
+        <tr><td>bDescriptorType (1)</td><td>0x04</td><td>0x04</td><td class="row-missing">无数据</td><td>0x04 = Interface Descriptor</td></tr>
+        <tr><td>bInterfaceNumber (2)</td><td>0x00</td><td>0x00</td><td class="row-missing">无数据</td><td>Interface 0 —— IAD 绑定的第一个</td></tr>
+        <tr><td>bAlternateSetting (3)</td><td>0x00</td><td>0x00</td><td class="row-missing">无数据</td><td>alt 0（VC 接口一般只有一个）</td></tr>
+        <tr><td>bNumEndpoints (4)</td><td>0x01</td><td>0x01</td><td class="row-missing">无数据</td><td>1 个中断 IN 端点 (EP3)</td></tr>
+        <tr><td>bInterfaceClass (5)</td><td>0x0E (Video)</td><td>0x0E (Video)</td><td class="row-missing">无数据</td><td>UVC 视频类</td></tr>
+        <tr><td>bInterfaceSubClass (6)</td><td>0x01 (VC)</td><td>0x01 (VC)</td><td class="row-missing">无数据</td><td>0x01 = Video Control</td></tr>
+        <tr><td>bInterfaceProtocol (7)</td><td>0x00</td><td>0x00</td><td class="row-missing">无数据</td><td>未定义协议</td></tr>
+        <tr><td>iInterface (8)</td><td>0x05 → "UVC Camera"</td><td>0x05 → "UVC Camera"</td><td class="row-missing">无数据</td><td>接口名（String Descriptor 5）</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>VC 接口 = 摄像头的"遥控器"：控制走 EP0，为什么还要中断端点？</summary>
+      <div class="fold-content">
+        <p>Video Control 接口不传输视频数据，职责是<strong>控制</strong>：曝光、白平衡、增益、变焦……这些操作通过 UVC 类专用请求（GET_CUR / SET_CUR 等）在 <strong>EP0</strong> 上完成，走控制传输。</p>
+        <p>但有些事件是摄像头<strong>主动</strong>发起的——例如自动曝光调节完成、按键被按下。这些异步事件不能等 Host 轮询，于是用中断传输"敲门"：Host 收到中断通知后，再用控制请求读取详情。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>bAlternateSetting：同一接口的"档位"切换</summary>
+      <div class="fold-content">
+        <p>一个 Interface 可以有多个 alternate setting（备选设置）。枚举阶段 Host 看到的是 alt 0；需要开始传输时，Host 用 <code>SetInterface(interface, alt)</code> 切换到其它档位。</p>
+        <p>VS 接口的常见用法：alt 0 不分配带宽，alt 1..n 逐级增加端点带宽——空闲时不占总线，需要传输时才"租用"。VC 接口一般只有一个 alt 0。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="desc-interface-vs">
+    <h2>Interface Descriptor — VS (接口描述符 · 视频流) — 9 字节</h2>
+    <p class="section-desc">视频流接口——视频数据的"运输队"：帧数据从 Bulk IN 端点流出。与 VC 一起被 IAD 捆绑为同一功能。</p>
+  </div>
+
+  <div class="card">
+    <h3>📐 标准 byte-map</h3>
+    <div class="desc-byte-map">
+      <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">0x09</span><span class="dlabel">bLength</span></div>
+      <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">1</span><span class="dval">0x04</span><span class="dlabel">bDescType</span></div>
+      <div class="dcell dc-bg-iface" style="flex:1"><span class="doff">2</span><span class="dval">0x01</span><span class="dlabel">bInterfaceNum</span></div>
+      <div class="dcell dc-bg-ialt" style="flex:1"><span class="doff">3</span><span class="dval">0x00</span><span class="dlabel">bAltSetting</span></div>
+      <div class="dcell dc-bg-nep" style="flex:1"><span class="doff">4</span><span class="dval">0x01</span><span class="dlabel">bNumEndpoints</span></div>
+      <div class="dcell dc-bg-uvc" style="flex:1"><span class="doff">5</span><span class="dval">0x0E</span><span class="dlabel">bInterfaceClass</span></div>
+      <div class="dcell dc-bg-uvc" style="flex:1"><span class="doff">6</span><span class="dval">0x02</span><span class="dlabel">bInterfaceSubCls</span></div>
+      <div class="dcell dc-bg-class" style="flex:1"><span class="doff">7</span><span class="dval">0x00</span><span class="dlabel">bInterfaceProt</span></div>
+      <div class="dcell dc-bg-str" style="flex:1"><span class="doff">8</span><span class="dval">0x06</span><span class="dlabel">iInterface</span></div>
+    </div>
+
+    <h4>📊 三设备对照表</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">字段 (Offset)</th><th class="col-dev1">设备1 (HikCamera #1)</th><th class="col-dev2">设备2 (HikCamera #2)</th><th class="col-dev3">设备3 (2K Camera)</th><th class="col-note">解读</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>bLength (0)</td><td>0x09</td><td>0x09</td><td class="row-missing">无数据</td><td>标准 9 字节</td></tr>
+        <tr><td>bDescriptorType (1)</td><td>0x04</td><td>0x04</td><td class="row-missing">无数据</td><td>0x04 = Interface Descriptor</td></tr>
+        <tr><td>bInterfaceNumber (2)</td><td>0x01</td><td>0x01</td><td class="row-missing">无数据</td><td>Interface 1 —— IAD 绑定的第二个</td></tr>
+        <tr><td>bAlternateSetting (3)</td><td>0x00</td><td>0x00</td><td class="row-missing">无数据</td><td>alt 0（传输时可切到更高档位）</td></tr>
+        <tr><td>bNumEndpoints (4)</td><td>0x01</td><td>0x01</td><td class="row-missing">无数据</td><td>1 个 Bulk IN 端点 (EP1)</td></tr>
+        <tr><td>bInterfaceClass (5)</td><td>0x0E (Video)</td><td>0x0E (Video)</td><td class="row-missing">无数据</td><td>UVC 视频类</td></tr>
+        <tr><td>bInterfaceSubClass (6)</td><td>0x02 (VS)</td><td>0x02 (VS)</td><td class="row-missing">无数据</td><td>0x02 = Video Streaming</td></tr>
+        <tr><td>bInterfaceProtocol (7)</td><td>0x00</td><td>0x00</td><td class="row-missing">无数据</td><td>未定义协议</td></tr>
+        <tr><td>iInterface (8)</td><td>0x06 → "Video Streaming"</td><td>0x06 → "Video Streaming"</td><td class="row-missing">无数据</td><td>接口名（String Descriptor 6）</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>VS 接口 = 视频数据的"运输队"：Payload 全走 Bulk IN</summary>
+      <div class="fold-content">
+        <p>Video Streaming 接口负责把视频帧搬运给 Host。设备1&2 用的是 <strong>Bulk IN</strong>（EP1）——UVC 1.1 允许等时或 Bulk 两种选择，海康选了 Bulk：视频数据量大且丢包不可容忍（一帧坏块 = 花屏），Bulk 的 CRC 校验 + 自动重传保证数据完好。代价是延迟不固定——好在预览场景对延迟不敏感。</p>
+        <p>设备1&2 的 VS 接口挂在 alt 0 上就有 1 个 Bulk 端点（EP1）；而 VS 的完整 298 字节类专用链（Input Header + 3 种 Format + 7 个 Frame + Color Matching）将在 Task 6 的类专用描述符章节拆解。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>VS 接口之后：0x24 描述符的 Format → Frame 两级结构</summary>
+      <div class="fold-content">
+        <p>每个 VS 接口后面跟着一长串类专用描述符：<strong>Input Header (0x24, 0x01)</strong> → N 个 <strong>Format Type</strong>（Uncompressed 0x04 / MJPEG 0x06 / Frame Based 0x10）→ 每个 Format 下挂多个 <strong>Frame Type</strong>（0x05 / 0x07 / 0x11）→ 最后 Color Matching (0x0D)。</p>
+        <p>设备1&2 的 VS 链共 <code>wTotalLength=0x012A (298B)</code>：Input Header(16) + YUY2 Format(27) + 3 个 Frame(90) + MJPEG Format(11) + 3 个 Frame(90) + H.264 Format(28) + 1 个 Frame(30) + Color Matching(6)。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="desc-endpoint-int">
+    <h2>Endpoint Descriptor — Interrupt IN (端点描述符 · 中断 IN) — 7 字节</h2>
+    <p class="section-desc">VC 接口的"事件门铃"：摄像头状态变化（自动曝光调整、按键等）时主动通知 Host。</p>
+  </div>
+
+  <div class="card">
+    <h3>📐 标准 byte-map</h3>
+    <div class="desc-byte-map">
+      <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">0x07</span><span class="dlabel">bLength</span></div>
+      <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">1</span><span class="dval">0x05</span><span class="dlabel">bDescType</span></div>
+      <div class="dcell dc-bg-ep" style="flex:1"><span class="doff">2</span><span class="dval">0x83</span><span class="dlabel">bEpAddress</span></div>
+      <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">3</span><span class="dval">0x03</span><span class="dlabel">bmAttributes</span></div>
+      <div class="dcell dc-bg-ep" style="flex:2"><span class="doff">4-5</span><span class="dval">0x0010</span><span class="dlabel">wMaxPacketSize</span></div>
+      <div class="dcell dc-bg-ialt" style="flex:1"><span class="doff">6</span><span class="dval">0x08</span><span class="dlabel">bInterval</span></div>
+    </div>
+
+    <h4>📊 三设备对照表</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">字段 (Offset)</th><th class="col-dev1">设备1 (HikCamera #1)</th><th class="col-dev2">设备2 (HikCamera #2)</th><th class="col-dev3">设备3 (2K Camera)</th><th class="col-note">解读</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>bLength (0)</td><td>0x07</td><td>0x07</td><td class="row-missing">无数据</td><td>标准 7 字节</td></tr>
+        <tr><td>bDescriptorType (1)</td><td>0x05</td><td>0x05</td><td class="row-missing">无数据</td><td>0x05 = Endpoint Descriptor</td></tr>
+        <tr><td>bEndpointAddress (2)</td><td>0x83</td><td>0x83</td><td class="row-missing">无数据</td><td>bit7=1 → IN；低 4 位 EP#=3 → EP3 IN</td></tr>
+        <tr><td>bmAttributes (3)</td><td>0x03 (Interrupt)</td><td>0x03 (Interrupt)</td><td class="row-missing">无数据</td><td>0x03 = 中断传输</td></tr>
+        <tr><td>wMaxPacketSize (4-5)</td><td>0x0010 (16B)</td><td>0x0010 (16B)</td><td class="row-missing">无数据</td><td>HS 与 FS Other Speed 相同，都是 16B</td></tr>
+        <tr><td>bInterval (6)</td><td>8 → 16ms (HS)</td><td>8 → 16ms (HS)；Other Speed: 8ms (FS)</td><td class="row-missing">无数据</td><td>⚠️ 数值相同，速度不同含义不同</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>bInterval = 8：同一数值，HS 是 16ms，FS 是 8ms</summary>
+      <div class="fold-content">
+        <p>bInterval 的单位取决于端点速度（USB 2.0 spec 9.6.6）：</p>
+        <ul>
+          <li><strong>High-Speed</strong>：bInterval = 2^(n-1) × 125μs。n=8 → 2^7 × 125μs = 16000μs = <strong>16ms</strong>（设备1&2 当前运行在 HS）</li>
+          <li><strong>Full-Speed</strong>：bInterval = n × 1ms。n=8 → <strong>8ms</strong>（设备2 Other Speed Config 揭示的值）</li>
+        </ul>
+        <p>设备2 的 dump 里两个速度都出现了：HS 状态解析为 "128 microframes → 16 ms"，Other Speed（FS）下同一个 0x08 解析为 "8 ms"。设备1 的 Device Qualifier 请求失败（D3 低功耗状态，ERROR_GEN_FAILURE），所以只有设备2 暴露了这个细节。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>0x83 怎么读：bEndpointAddress 的位域解码</summary>
+      <div class="fold-content">
+        <p><code>0x83 = 1000 0011b</code>：bit7=1 → 方向 IN（设备 → Host）；bits 6-4 = 000 → 保留；bits 3-0 = 0011 → 端点号 3。所以 0x83 = "EP3, IN"。</p>
+        <p>对照设备2 的管道信息：<code>Pipe[0]: EndpointID=3, Direction=IN, Type=Interrupt, wMaxPacketSize=0x10, bInterval=8 → 2160 Bits/ms</code>，完全一致。</p>
+        <p>另外，这个中断端点后面还紧跟一个 5 字节的类专用描述符：<code>0x25, subtype=0x03, wMaxTransferSize=0x0010</code>——它告诉 UVC 驱动每次事件报告最多 16 字节。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="desc-endpoint-bulk">
+    <h2>Endpoint Descriptor — Bulk IN (端点描述符 · 批量 IN) — 7 字节</h2>
+    <p class="section-desc">VS 接口的"视频水管"：视频帧数据从这里流向 Host。</p>
+  </div>
+
+  <div class="card">
+    <h3>📐 标准 byte-map</h3>
+    <div class="desc-byte-map">
+      <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">0x07</span><span class="dlabel">bLength</span></div>
+      <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">1</span><span class="dval">0x05</span><span class="dlabel">bDescType</span></div>
+      <div class="dcell dc-bg-ep" style="flex:1"><span class="doff">2</span><span class="dval">0x81</span><span class="dlabel">bEpAddress</span></div>
+      <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">3</span><span class="dval">0x02</span><span class="dlabel">bmAttributes</span></div>
+      <div class="dcell dc-bg-ep" style="flex:2"><span class="doff">4-5</span><span class="dval">0x0200</span><span class="dlabel">wMaxPacketSize</span></div>
+      <div class="dcell dc-bg-ialt" style="flex:1"><span class="doff">6</span><span class="dval">0x00</span><span class="dlabel">bInterval</span></div>
+    </div>
+
+    <h4>📊 三设备对照表</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">字段 (Offset)</th><th class="col-dev1">设备1 (HikCamera #1)</th><th class="col-dev2">设备2 (HikCamera #2)</th><th class="col-dev3">设备3 (2K Camera)</th><th class="col-note">解读</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>bLength (0)</td><td>0x07</td><td>0x07</td><td class="row-missing">无数据</td><td>标准 7 字节</td></tr>
+        <tr><td>bDescriptorType (1)</td><td>0x05</td><td>0x05</td><td class="row-missing">无数据</td><td>0x05 = Endpoint Descriptor</td></tr>
+        <tr><td>bEndpointAddress (2)</td><td>0x81</td><td>0x81</td><td class="row-missing">无数据</td><td>bit7=1 → IN；低 4 位 EP#=1 → EP1 IN</td></tr>
+        <tr><td>bmAttributes (3)</td><td>0x02 (Bulk)</td><td>0x02 (Bulk)</td><td class="row-missing">无数据</td><td>0x02 = 批量传输</td></tr>
+        <tr><td>wMaxPacketSize (4-5)</td><td>0x0200 (512B)</td><td class="row-diff">0x0200 (512B HS) → Other Speed: 0x0040 (64B FS)</td><td class="row-missing">无数据</td><td>⚠️ KEY DIFFERENCE：FS 降到 64B</td></tr>
+        <tr><td>bInterval (6)</td><td>0x00</td><td>0x00</td><td class="row-missing">无数据</td><td>Bulk 端点忽略此字段</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>⚠️ KEY DIFFERENCE：同一个端点，HS 512B vs FS 64B</summary>
+      <div class="fold-content">
+        <p>设备1&2 平时挂在 HS 端口上，wMaxPacketSize=0x0200（512B）。但设备2 的 dump 里还有一份 <strong>Other Speed Configuration</strong>——如果这台设备被插到只有 Full-Speed 的 Hub 后面，同样的 Bulk IN EP1 的 wMaxPacketSize 会变成 <strong>0x0040（64B）</strong>。</p>
+        <p>原因：USB 2.0 spec 规定 Bulk 端点最大包在 HS 为 512B，在 FS 最大只有 64B。设备必须为每种速度准备一套配置（Host 通过 <code>GetDescriptor(Other_Speed_Configuration)</code> 读取），这就是上表设备2 列被标黄的原因。</p>
+        <p>对比：中断端点 16B 在 HS/FS 都合法，所以无需变化；而 Bulk 端点必须"降级"。设备1 的 Device Qualifier 请求失败（D3 状态），所以只有设备2 暴露了这个细节。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>视频数据为什么走 Bulk，而不是等时 (Isochronous)？</summary>
+      <div class="fold-content">
+        <p>等时传输保证带宽和时序，但<strong>不保证数据正确</strong>（没有重传）；Bulk 恰好相反——带宽不保证，但通过 CRC 校验 + 错误重传保证数据完好。</p>
+        <p>UVC 1.1 的 VS 接口两种都允许。海康选了 Bulk：视频帧损坏无法接受（一帧花屏影响观感），而 HS 480Mbps 带宽对 640×360@30fps MJPEG（约 13.8 MB/s ≈ 110 Mbps）绰绰有余。设备2 管道信息印证：<code>Pipe[1]: Type=Bulk, wMaxPacketSize=0x200, bInterval=0</code>。</p>
+        <p>⚠️ bInterval=0 对 Bulk 无意义——spec 规定 Bulk 端点忽略此字段，只有 Interrupt/Isochronous 才使用它。</p>
+      </div>
+    </details>
+  </div>
 </main>
 
 <!-- JS placeholder -->
