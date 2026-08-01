@@ -259,24 +259,6 @@ body {
 .breadcrumb .crumb-sep { color: var(--text-muted); }
 .breadcrumb .crumb-current { color: var(--text); font-weight: 600; }
 
-/* ===== Device Tabs ===== */
-.dev-tabs {
-  display: flex; gap: 0; margin: 16px 0;
-  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
-}
-.dev-tab {
-  flex: 1; padding: 8px 16px; text-align: center; cursor: pointer;
-  font-size: 13px; font-weight: 600; border: none;
-  background: var(--code-bg); color: var(--text-muted);
-  transition: background 0.15s, color 0.15s;
-}
-.dev-tab:not(:last-child) { border-right: 1px solid var(--border); }
-.dev-tab.active { background: var(--card-bg); color: var(--heading); }
-.dev-tab:hover { color: var(--heading); }
-.dev-tab.dev1.active { box-shadow: inset 0 -3px 0 var(--dev1-accent); }
-.dev-tab.dev2.active { box-shadow: inset 0 -3px 0 var(--dev2-accent); }
-.dev-tab.dev3.active { box-shadow: inset 0 -3px 0 var(--dev3-accent); }
-
 /* ===== Section Header ===== */
 .section-header {
   margin: 32px 0 16px; padding-bottom: 8px;
@@ -620,7 +602,7 @@ body {
       <summary>VS 接口 = 视频数据的"运输队"：Payload 全走 Bulk IN</summary>
       <div class="fold-content">
         <p>Video Streaming 接口负责把视频帧搬运给 Host。设备1&2 用的是 <strong>Bulk IN</strong>（EP1）——UVC 1.1 允许等时或 Bulk 两种选择，海康选了 Bulk：视频数据量大且丢包不可容忍（一帧坏块 = 花屏），Bulk 的 CRC 校验 + 自动重传保证数据完好。代价是延迟不固定——好在预览场景对延迟不敏感。</p>
-        <p>设备1&2 的 VS 接口挂在 alt 0 上就有 1 个 Bulk 端点（EP1）；而 VS 的完整 298 字节类专用链（Input Header + 3 种 Format + 7 个 Frame + Color Matching）将在 Task 6 的类专用描述符章节拆解。</p>
+        <p>设备1&2 的 VS 接口挂在 alt 0 上就有 1 个 Bulk 端点（EP1）；而 VS 的完整 298 字节类专用链（Input Header + 3 种 Format + 7 个 Frame + Color Matching）将在后文的『类专用描述符』章节拆解。</p>
       </div>
     </details>
 
@@ -1246,14 +1228,23 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔ = VS Input
   const toggle = document.getElementById('themeToggle');
   const html = document.documentElement;
 
+  function loadSavedTheme() {
+    try { return localStorage.getItem('usb-desc-theme'); }
+    catch (e) { return null; }
+  }
+  function saveTheme(isDark) {
+    try { localStorage.setItem('usb-desc-theme', isDark ? 'dark' : 'light'); }
+    catch (e) { /* storage unavailable (e.g. file://) — skip persistence */ }
+  }
+
   // Load saved theme
-  const saved = localStorage.getItem('usb-desc-theme');
+  const saved = loadSavedTheme();
   if (saved === 'dark') { html.classList.add('dark'); }
 
   toggle.addEventListener('click', () => {
     html.classList.toggle('dark');
     const isDark = html.classList.contains('dark');
-    localStorage.setItem('usb-desc-theme', isDark ? 'dark' : 'light');
+    saveTheme(isDark);
   });
 })();
 
@@ -1282,7 +1273,7 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔ = VS Input
 
     // Auto-open nav sections containing active link
     document.querySelectorAll('.nav-section').forEach(details => {
-      if (details.contains(current.link)) {
+      if (current && details.contains(current.link)) {
         details.open = true;
       }
     });
@@ -1292,44 +1283,6 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔ = VS Input
   updateActive();
 })();
 
-// ===== Device Tab Switching =====
-(function() {
-  document.querySelectorAll('.dev-tabs').forEach(tabGroup => {
-    const tabs = tabGroup.querySelectorAll('.dev-tab');
-    const targetSelector = tabGroup.dataset.target; // e.g. "#desc-device .col-dev3"
-    const parent = document.querySelector(targetSelector);
-    if (!parent) return;
-
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-
-        // Show/hide device columns in comparison tables
-        const table = parent.querySelector('.cmp-table');
-        if (!table) return;
-
-        const devIndex = parseInt(tab.dataset.dev); // 1, 2, or 3
-        const colClass = '.col-dev' + devIndex;
-
-        table.querySelectorAll('th' + colClass + ', td' + colClass).forEach(cell => {
-          cell.style.display = tab.classList.contains('active') ? '' : 'none';
-        });
-      });
-    });
-  });
-})();
-
-// ===== Smooth scroll for anchor links (non-sidebar) =====
-document.addEventListener('click', function(e) {
-  const link = e.target.closest('a[href^="#"]');
-  if (!link || link.closest('.sidebar')) return;
-  e.preventDefault();
-  const target = document.querySelector(link.getAttribute('href'));
-  if (target) {
-    target.scrollIntoView({ behavior: 'smooth' });
-  }
-});
 </script>
 
 </body></html>
