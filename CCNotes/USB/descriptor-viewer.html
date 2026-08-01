@@ -749,6 +749,508 @@ body {
       </div>
     </details>
   </div>
+
+  <!-- ===== Task 6: Class-specific / Comprehensive / FAQ sections ===== -->
+
+  <div class="section-header" id="class-mechanism">
+    <h2>类专用描述符 — 0x24/0x25 分发机制</h2>
+    <p class="section-desc">标准描述符只解决"骨架"问题；摄像头怎么控制、支持哪些格式，由类专用描述符回答。而它们靠同一个类型码 + 上下文分发。</p>
+  </div>
+
+  <div class="card">
+    <h3>🧭 bDescriptorType = 0x24 / 0x25 的分发原理</h3>
+    <p>UVC 的类专用描述符大量复用同一个 <code>bDescriptorType</code>，含义由<strong>所在接口的 bInterfaceSubClass</strong> 决定：</p>
+    <pre>bDescriptorType = 0x24 (Video Control Interface)
+   └─ 由"所属接口的 bInterfaceSubClass"决定含义
+        ├─ 接口 subclass = 0x01 (VideoControl)  →  VC 类描述符
+        │     0x01 VC Header          0x02 Input Terminal
+        │     0x03 Output Terminal    0x04 Selector Unit
+        │     0x05 Processing Unit    0x06 Extension Unit
+        └─ 接口 subclass = 0x02 (VideoStreaming) → VS 类描述符
+              0x01 VS Input Header     0x04 Uncompressed Format
+              0x05 Uncompressed Frame  0x06 MJPEG Format
+              0x07 MJPEG Frame         0x0D Color Matching
+              0x10 Frame-Based Format  0x11 Frame-Based Frame
+
+bDescriptorType = 0x25 (Video Control Endpoint)  → 只出现在 VC 接口下
+       0x03 Interrupt（VC 中断端点的类专用信息）
+
+bDescriptorType = 0x26 (Video Streaming Endpoint) → 只出现在 VS 接口下（本设备未用）</pre>
+
+    <h4>📊 设备1 中的具体分发示例</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">设备1 中的位置</th><th class="col-dev1">bDescriptorType</th><th class="col-dev2">bDescriptorSubtype</th><th class="col-note">解析结果</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Interface 0（VC, subclass 0x01）之后</td><td>0x24</td><td>0x01</td><td><strong>VC Header</strong>（13 B）</td></tr>
+        <tr><td>Interface 1（VS, subclass 0x02）之后</td><td>0x24</td><td>0x01</td><td><strong>VS Input Header</strong>（16 B）</td></tr>
+        <tr><td>EP3 中断端点之后</td><td>0x25</td><td>0x03</td><td>VC 中断端点类专用信息（5 B, wMaxTransferSize=16 B）</td></tr>
+      </tbody>
+    </table>
+    <p>注意第一、二行：<strong>同一个 subtype 值 0x01，在 VC 接口下是 Header，在 VS 接口下是 Input Header</strong>——决定权在接口上下文，不在类型码本身。</p>
+
+    <details class="txn-fold">
+      <summary>为什么可以复用同一个类型码？——靠上下文区分，不靠类型码本身</summary>
+      <div class="fold-content">
+        <p>因为解析上下文不同：Host 遍历描述符链时，先读到接口描述符（0x04），知道当前处于哪个接口（subclass 是多少），之后遇到的 0x24 就按该接口的语义解析。这就像 MQTT 里同一个 topic 名在不同层级（<code>camera/ctl/</code> 与 <code>camera/data/</code>）承载不同类型报文。</p>
+        <p>这也意味着：<strong>类专用描述符必须紧跟所属接口描述符</strong>（以及紧随其后的端点描述符），链的顺序不能乱。顺序乱了，0x24 就会解析到错误的含义。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="uvc-vc-header">
+    <h2>UVC VC Header 逐字节拆解 — 13 字节</h2>
+    <p class="section-desc">VC Header 是整个 VC 类专用子链的第一个描述符，相当于"这条子链的目录"。设备1 的原始 13 字节。</p>
+  </div>
+
+  <div class="card">
+    <h3>📐 设备1 VC Header Descriptor 字节地图</h3>
+    <div class="desc-byte-map">
+      <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">0x0D</span><span class="dlabel">bLength</span></div>
+      <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">1</span><span class="dval">0x24</span><span class="dlabel">bDescType</span></div>
+      <div class="dcell dc-bg-uvc" style="flex:1"><span class="doff">2</span><span class="dval">0x01</span><span class="dlabel">bDescSubtype</span></div>
+      <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">3-4</span><span class="dval">0x0110</span><span class="dlabel">bcdUVC</span></div>
+      <div class="dcell dc-bg-config" style="flex:2"><span class="doff">5-6</span><span class="dval">0x0051</span><span class="dlabel">wTotalLength</span></div>
+      <div class="dcell dc-bg-vidpid" style="flex:4"><span class="doff">7-10</span><span class="dval">0x02DC6C00</span><span class="dlabel">dwClockFreq</span></div>
+      <div class="dcell dc-bg-iface" style="flex:1"><span class="doff">11</span><span class="dval">0x01</span><span class="dlabel">bInCollection</span></div>
+      <div class="dcell dc-bg-iface" style="flex:1"><span class="doff">12</span><span class="dval">0x01</span><span class="dlabel">baInterfaceNr[1]</span></div>
+    </div>
+
+    <pre>原始字节:  0D 24 01 10 01 51 00 00 6C DC 02 01 01
+偏移:      00 01 02 03 04 05 06 07 08 09 0A 0B 0C</pre>
+
+    <h4>📊 逐字段拆解表</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">偏移</th><th>字段</th><th>值</th><th class="col-note">含义</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>bLength</td><td>0x0D (13)</td><td>固定</td></tr>
+        <tr><td>1</td><td>bDescriptorType</td><td>0x24</td><td>Video Control Interface</td></tr>
+        <tr><td>2</td><td>bDescriptorSubtype</td><td>0x01</td><td><strong>VC Header</strong></td></tr>
+        <tr><td>3-4</td><td>bcdUVC</td><td>0x0110</td><td><strong>UVC 版本 1.10</strong>（BCD：0x01.0x10）</td></tr>
+        <tr><td>5-6</td><td>wTotalLength</td><td>0x0051 (81)</td><td><strong>VC 类专用子链总长 81 字节</strong></td></tr>
+        <tr><td>7-10</td><td>dwClockFreq</td><td>0x02DC6C00 (48 MHz)</td><td>设备时钟频率（帧时间戳 PTS 的计时基准；<strong>小端字节 = 00 6C DC 02</strong>）</td></tr>
+        <tr><td>11</td><td>bInCollection</td><td>0x01</td><td>有 1 个 VS 接口与 VC 关联</td></tr>
+        <tr><td>12</td><td>baInterfaceNr[1]</td><td>0x01</td><td>关联的 VS 接口号 = 接口 1</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>dwClockFreq = 48 MHz 与 Little-Endian 字节序</summary>
+      <div class="fold-content">
+        <p><code>0x02DC6C00 = 48,000,000</code> ✓。但在字节流里以小端序存放：<strong>低字节在前</strong> → 实际看到的 4 个字节是 <code>00 6C DC 02</code>。用 hexdump 看时不能直接读成 0x00 6C DC 02，要"倒过来"组合成 0x02DC6C00。</p>
+        <p>这个时钟用于产生视频帧时间戳（PTS）——Host 端播放器靠它把 PTS 换算成真实时间轴。设备每秒产生 48,000,000 个时钟 tick，PTS 值 ÷ 48 MHz = 真实秒数。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>wTotalLength = 81 字节的验算</summary>
+      <div class="fold-content">
+        <p>VC 子链总长 = 13 (Header) + 18 (IT) + 12 (PU) + 29 (XU) + 9 (OT) = <strong>81 ✔</strong>。</p>
+        <p>注意：<strong>不含端点描述符与 0x25</strong>——0x25 属于"类专用端点描述符"，不算在接口描述符子链里。Host 靠 wTotalLength 知道 VC 子链到哪里结束，好接着找下一个描述符。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>bcdUVC = 0x0110：版本决定解析规则；bInCollection 把 VC 与 VS 绑在一起</summary>
+      <div class="fold-content">
+        <p><code>bcdUVC = 0x0110</code> 表示设备实现 UVC 1.1（UVC 1.5 会写 0x0150）。版本决定 Host 按哪版规范解析后续描述符——不同版本的同号描述符可能有字段差异。</p>
+        <p><code>bInCollection = 1 + baInterfaceNr[1] = 0x01</code> 声明"我的数据流搭档是接口 1"。这是 UVC 1.0/1.1 把 VC 与 VS 关联起来的机制（UVC 1.5 改用 bcdUVC + VS 的 bTerminalLink 反查）。Host 据此知道"控制接口 0 管着流接口 1 的摄像头"。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="uvc-topology">
+    <h2>UVC 描述符拓扑图</h2>
+    <p class="section-desc">VC 类描述符构建了一张图像处理流水线图：传感器 → 端子/单元 → 流接口。</p>
+  </div>
+
+  <div class="card">
+    <h3>🗺️ 设备1 的 Terminal / Unit 链</h3>
+    <pre>  物理相机传感器
+       │
+       ▼
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│ Input        │───▶│ Processing    │───▶│ Extension    │───▶│ Output       │
+│ Terminal     │    │ Unit          │    │ Unit         │    │ Terminal     │
+│ ITT_CAMERA   │    │ (亮度/对比度/ │    │ (厂商私有    │    │ TT_STREAMING │
+│ (ID 2)       │    │  增益等处理)  │    │  扩展控制)   │    │ (ID 3)       │
+└──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
+                                                                 │ bTerminalLink=3
+                                                                 ▼
+                                                          VS 流接口 (接口 1)
+                                                          VS Input Header (0x24, 0x01)
+                                                          ├─ Format Type ×3
+                                                          │    YUY2 (0x04) → Frame ×3
+                                                          │    MJPEG (0x06) → Frame ×3
+                                                          │    H.264 (0x10) → Frame ×1
+                                                          └─ Color Matching (0x0D)
+                                                          → EP1 IN Bulk 传视频</pre>
+
+    <h4>📊 设备1 的实际接线（对照 dump 逐条核对）</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">描述符</th><th>ID</th><th>上游引用</th><th class="col-note">核对结果</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Input Terminal</td><td>2</td><td>—</td><td>ITT_CAMERA（0x0201）</td></tr>
+        <tr><td>Processing Unit</td><td>5</td><td>bSourceID = 1</td><td>⚠️ 引用了 dump 中不存在的 IT(1)——固件小瑕疵或 dump 截取问题（见下方折叠）</td></tr>
+        <tr><td>Extension Unit</td><td>10</td><td>baSourceID[1] = 2</td><td>上游是 IT(2)；15 个 vendor 控制，GUID {A29E7641-...}</td></tr>
+        <tr><td>Output Terminal</td><td>3</td><td>bSourceID = 2</td><td>上游是 IT(2)，绕过 PU/XU 直接连 IT；被 VS Header 的 bTerminalLink=3 引用</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>真实世界的粗糙：PU 引用的 IT(1) 在 dump 里不存在</summary>
+      <div class="fold-content">
+        <p>按 dump 的字面数据，OT(3) 与 XU(10) 都直接引用 IT(2)，PU(5) 引用的 IT(1) 没有对应描述符——而 VC 子链 81 字节逐项相加正好等于 wTotalLength，不存在截断。这可能是固件把"未启用的处理单元"也写进了描述符。</p>
+        <p>Host 端驱动一般只关心 "IT → OT 主链路"，不会因此报错——但作为工程师你应该知道：<strong>描述符是人写的固件数据，允许有这种不一致，应用代码要能容忍</strong>。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>控制入口与数据出口：EP0 管控制，VS 端点管数据</summary>
+      <div class="fold-content">
+        <p>对应用工程师最重要的是这条链的<strong>控制入口</strong>：所有控制请求（调亮度、切格式）都通过 <strong>EP0</strong> 发往 <strong>VC 接口</strong>（接口 0），目标用 (Unit/Terminal ID, Control Selector) 寻址。</p>
+        <p>视频数据从 <strong>VS 接口</strong>（接口 1）的数据端点流出。OT 的 ID 被 VS Input Header 的 <code>bTerminalLink</code> 引用（= 3），把控制面与数据面接起来。单元之间用 <strong>ID 号</strong>串联：PU 的 bSourceID 指向上游单元 ID，XU 的 baSourceID、OT 的 bSourceID 同理。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="uvc-subtypes">
+    <h2>UVC 描述符子类型码速查</h2>
+    <p class="section-desc">同一 subtype 数值在 VC 接口与 VS 接口下含义不同——查表时先看所在接口。</p>
+  </div>
+
+  <div class="card">
+    <h3>🔢 bDescriptorSubtype 速查表（1–13 + 0x10/0x11）</h3>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">值 (十进制)</th><th>值 (十六进制)</th><th class="col-dev1">VC 接口 (subclass 0x01) 下含义</th><th class="col-dev2">VS 接口 (subclass 0x02) 下含义</th><th class="col-note">设备1 中出现</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>0x01</td><td>VC Header</td><td>VS Input Header</td><td>✔ 两处都有</td></tr>
+        <tr><td>2</td><td>0x02</td><td>Input Terminal</td><td>VS Output Header</td><td>✔ VC</td></tr>
+        <tr><td>3</td><td>0x03</td><td>Output Terminal</td><td>VS Still Image Frame</td><td>✔ VC</td></tr>
+        <tr><td>4</td><td>0x04</td><td>Selector Unit</td><td>Format: Uncompressed</td><td>✔ VS</td></tr>
+        <tr><td>5</td><td>0x05</td><td>Processing Unit</td><td>Frame: Uncompressed</td><td>✔ VC + VS</td></tr>
+        <tr><td>6</td><td>0x06</td><td>Extension Unit</td><td>Format: MJPEG</td><td>✔ VC + VS</td></tr>
+        <tr><td>7</td><td>0x07</td><td>Encoding Unit (UVC 1.5)</td><td>Frame: MJPEG</td><td>✔ VS</td></tr>
+        <tr><td>8</td><td>0x08</td><td>保留</td><td>保留</td><td>无</td></tr>
+        <tr><td>9</td><td>0x09</td><td>保留</td><td>保留</td><td>无</td></tr>
+        <tr><td>10</td><td>0x0A</td><td>保留</td><td>Format: MPEG-2 TS</td><td>无</td></tr>
+        <tr><td>11</td><td>0x0B</td><td>保留</td><td>保留</td><td>无</td></tr>
+        <tr><td>12</td><td>0x0C</td><td>保留</td><td>Format: DV</td><td>无</td></tr>
+        <tr><td>13</td><td>0x0D</td><td>保留</td><td><strong>Color Matching</strong>（颜色匹配）</td><td>✔ VS</td></tr>
+        <tr><td>16</td><td>0x10</td><td>保留</td><td>Format: Frame-Based</td><td>✔ VS (H.264)</td></tr>
+        <tr><td>17</td><td>0x11</td><td>保留</td><td>Frame: Frame-Based</td><td>✔ VS (H.264)</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>设备1 用到的组合 + 0x10/0x11 编号说明</summary>
+      <div class="fold-content">
+        <p>设备1 的 VC 用到：1, 2, 3, 5, 6（Header/IT/OT/PU/XU）；VS 用到：1, 4, 5, 6, 7, 0x0D, 0x10, 0x11。</p>
+        <p>0x10/0x11（Frame-Based）是 UVC 1.1 规范的正式编号（Linux 内核 <code>include/linux/usb/video.h</code> 中 <code>UVC_VS_FORMAT_FRAME_BASED=0x10</code>、<code>UVC_VS_FRAME_FRAME_BASED=0x11</code> 与之一致）；设备声明 bcdUVC=1.10 并使用 0x10/0x11，完全符合规范。</p>
+        <p>另外注意：subtype 只是"这种描述符存在"的声明，<strong>具体格式靠 bFormatIndex / guidFormat 区分</strong>（设备1 的 VS 有 3 个 Format：YUY2、MJPEG、H.264）。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="trace-dev1">
+    <h2>设备1 433B 完整描述符链追踪</h2>
+    <p class="section-desc">把设备1 的整条链从第一个字节追到最后，逐段标注偏移与长度（所有偏移从配置头 0x0000 起算）。</p>
+  </div>
+
+  <div class="card">
+    <h3>🕵️ 描述符链布局</h3>
+    <pre>偏移          描述符                               长度      累计
+0x0000  ┌─ Configuration Descriptor               9 B       0x0009
+0x0009  ├─ IAD Descriptor                         8 B       0x0011
+0x0011  ├─ Interface 0 (VC) Descriptor             9 B       0x001A
+0x001A  │   ├─ VC Header Descriptor               13 B       0x0027
+0x0027  │   ├─ VC Input Terminal Descriptor       18 B       0x0039
+0x0039  │   ├─ VC Processing Unit Descriptor      12 B       0x0045
+0x0045  │   ├─ VC Extension Unit Descriptor       29 B       0x0062
+0x0062  │   ├─ VC Output Terminal Descriptor       9 B  ──▶  81 B (0x51)
+0x006B  │   ├─ Endpoint EP3 IN Interrupt           7 B       0x0072
+0x0072  │   └─ Class-Specific VC EP (0x25)         5 B       0x0077
+0x0077  ├─ Interface 1 (VS) Descriptor             9 B       0x0080
+0x0080  │   ├─ VS Input Header Descriptor         16 B       0x0090
+0x0090  │   ├─ VS Uncompressed Format             27 B       0x00AB
+0x00AB  │   ├─ VS Uncompressed Frame ×3           90 B       0x0105
+0x0105  │   ├─ VS MJPEG Format                    11 B       0x0110
+0x0110  │   ├─ VS MJPEG Frame ×3                  90 B       0x016A
+0x016A  │   ├─ VS Frame-Based Format (H.264)      28 B       0x0186
+0x0186  │   ├─ VS Frame-Based Frame               30 B       0x01A4
+0x01A4  │   └─ VS Color Matching                   6 B  ──▶ 298 B (0x12A)
+0x01AA  └─ Endpoint EP1 IN Bulk                    7 B       0x01B1
+                                                           ────────
+                                         合计 = 433 B = 0x01B1 ✔ 与 wTotalLength 吻合</pre>
+
+    <h4>🔢 逐段验算（这是理解整条链的最好练习）</h4>
+    <pre>配置头 9 + IAD 8 + 接口 9×2 = 35
+VC 类子链:  13 + 18 + 12 + 29 + 9  = 81   (0x51)   ✔ = VC Header 的 wTotalLength
+VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔ = VS Input Header 的 wTotalLength
+端点:       7 + 5 + 7 = 19
+35 + 81 + 298 + 19 = 433 ✔</pre>
+
+    <h4>📊 每段开头的原始字节核对</h4>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">段</th><th>原始字节 (节选)</th><th class="col-note">验证点</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>配置头</td><td><code>09 02 B1 01 ...</code></td><td>9 字节；wTotalLength 小端 = B1 01 = 0x01B1</td></tr>
+        <tr><td>IAD</td><td><code>08 0B 00 02 0E 03 00 05</code></td><td>8 字节；0x0B 类型；function class 0x0E</td></tr>
+        <tr><td>VC 接口</td><td><code>09 04 00 00 01 0E 01 00 05</code></td><td>subclass 0x01</td></tr>
+        <tr><td>VC Header</td><td><code>0D 24 01 10 01 51 00 00 6C DC 02 01 01</code></td><td>13 字节；bcdUVC 0x0110；wTotalLength 0x0051；48 MHz</td></tr>
+        <tr><td>VC IT</td><td><code>12 24 02 02 01 02 00 00 00 00 00 00 00 00 03 00 00 00</code></td><td>18 字节；ITT_CAMERA 0x0201</td></tr>
+        <tr><td>VC PU</td><td><code>0C 24 05 05 01 00 40 02 00 00 00 09</code></td><td>12 字节；bSourceID=1；乘数 0x4000；标准 0x09</td></tr>
+        <tr><td>VC XU</td><td><code>1D 24 06 0A ... 0F 01 02 04 FF 03 00 00 00</code></td><td>29 字节；15 控制；bmControls FF 03 00 00</td></tr>
+        <tr><td>VC OT</td><td><code>09 24 03 03 01 01 00 02 00</code></td><td>9 字节；TT_STREAMING 0x0101；源 = IT(2)</td></tr>
+        <tr><td>EP3 中断</td><td><code>07 05 83 03 10 00 08</code></td><td>7 字节；0x83 IN EP3；0x03 中断；16 B；间隔 16 ms</td></tr>
+        <tr><td>0x25 EP</td><td><code>05 25 03 10 00</code></td><td>5 字节；wMaxTransferSize 16 B</td></tr>
+        <tr><td>VS 接口</td><td><code>09 04 01 00 01 0E 02 00 06</code></td><td>subclass 0x02</td></tr>
+        <tr><td>VS Header</td><td><code>10 24 01 03 2A 01 81 00 03 00 00 00 01 00 00 00</code></td><td>16 字节；3 格式；wTotalLength 0x012A；bTerminalLink=3</td></tr>
+        <tr><td>VS YUY2</td><td><code>1B 24 04 01 03 59 55 59 32 ...</code></td><td>27 字节；guidFormat 首 4 字节 "YUY2"</td></tr>
+        <tr><td>VS MJPEG</td><td><code>0B 24 06 02 03 00 01 00 00 00 00</code></td><td>11 字节；3 帧</td></tr>
+        <tr><td>VS H.264</td><td><code>1C 24 10 03 01 48 32 36 34 ...</code></td><td>28 字节；guidFormat 首 4 字节 "H264"</td></tr>
+        <tr><td>Color Matching</td><td><code>06 24 0D 01 01 04</code></td><td>6 字节；BT.709 / BT.709 / SMPTE 170M</td></tr>
+        <tr><td>EP1 Bulk</td><td><code>07 05 81 02 00 02 00</code></td><td>7 字节；0x81 IN EP1；0x02 Bulk；512 B</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>有趣的现象（工具解析 bug）：240 x 320 @ 1410065.408 fps？</summary>
+      <div class="fold-content">
+        <p>设备1/2 的 Summary 里有一条 <code>"240 x 320 @ 1410065.408 fps : Frame Based Payload"</code>——141 万帧/秒显然是抓取工具把 H.264 帧描述符的字段错位解析（正确的 240×320@30 写在 Frame 描述符里）。</p>
+        <p>读 dump 时遇到这种"离谱数字"<strong>要先怀疑工具，再怀疑设备</strong>。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="diff-dev1-dev2">
+    <h2>设备1 vs 设备2 差异分析</h2>
+    <p class="section-desc">两台设备同型号同固件，几乎所有字段一致——差异集中在序列号与"另一速度"的备胎描述符。</p>
+  </div>
+
+  <div class="card">
+    <h3>⚖️ 逐项对比</h3>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">对比项</th><th class="col-dev1">设备1</th><th class="col-dev2">设备2</th><th class="col-note">说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>序列号 (iSerialNumber=3)</td><td>"G11376317"</td><td class="row-diff">"E83518457"</td><td><strong>唯一描述符差异</strong>，产线个体标识</td></tr>
+        <tr><td>设备地址（总线分配）</td><td>0x07</td><td class="row-diff">0x08</td><td>不是描述符，是 Host 枚举时分配的总线地址</td></tr>
+        <tr><td>抓取时电源状态</td><td>D3（低功耗）</td><td class="row-diff">D0（正常工作）</td><td>造成下一条差异的直接原因</td></tr>
+        <tr><td>Device Qualifier Descriptor</td><td class="row-diff">请求失败（ERROR_GEN_FAILURE，D3）</td><td>完整返回（10 字节）</td><td>见 FAQ Q4</td></tr>
+        <tr><td>Other Speed Configuration</td><td class="row-diff">未抓到</td><td>完整返回（433 字节）</td><td>HS→FS 降级备胎</td></tr>
+        <tr><td>Other-Speed 中 Bulk EP wMaxPacketSize</td><td class="row-missing">—</td><td class="row-diff">0x0040 (64 B)</td><td>HS 是 0x0200 (512 B)</td></tr>
+        <tr><td>Other-Speed 中中断 EP bInterval 语义</td><td class="row-missing">—</td><td class="row-diff">0x08 → 8 ms (FS)</td><td>HS 语义下同一字节 = 16 ms</td></tr>
+        <tr><td>其余所有描述符字节</td><td>与设备2 完全相同</td><td>与设备1 完全相同</td><td>同一产线同一固件</td></tr>
+      </tbody>
+    </table>
+
+    <details class="txn-fold">
+      <summary>HS→FS 降级备胎机制：Device Qualifier + Other Speed Configuration</summary>
+      <div class="fold-content">
+        <p>USB 2.0 设备可能被插到<strong>不同速度</strong>的端口上：插在 HS 口跑 480 Mbps，插在老 FS 口（或 Hub 不支持 HS）就只跑 12 Mbps。设备的大多数描述符（类码、字符串等）与速度无关，但<strong>端点参数与速度强相关</strong>：</p>
+        <ul>
+          <li>Bulk 端点最大包长：HS = 512 B，FS = 64 B；</li>
+          <li>bInterval 的换算公式：HS = 2^(n-1) × 125 µs，FS = n ms；</li>
+          <li>等时端点的每微帧附加事务数：只有 HS 才有。</li>
+        </ul>
+        <p>如果等速切换时让 Host 重新枚举（Reset + SET_ADDRESS + 重读全部描述符），既慢又浪费。于是 USB 2.0 设计了两个"备胎"：</p>
+        <ol>
+          <li><strong>Device Qualifier (0x06, 10 字节)</strong>：告诉 Host "如果我在另一速度运行，设备描述符会怎么变"。字段与设备描述符基本一致，其中 bNumConfigurations = 另一速度下的配置数（设备2 = 1）。<strong>只有能跑双速的设备才有资格应答；单速设备必须 STALL 该请求。</strong></li>
+          <li><strong>Other Speed Configuration (0x07, 433 字节)</strong>：整条配置链的"另一速度版本"。结构、长度、接口、类描述符完全一样，只有<strong>端点参数按另一速度重写</strong>（设备2：Bulk 512→64，中断间隔换算基准 125µs→1ms）。</li>
+        </ol>
+        <p>Host 的典型用法：设备以 HS 枚举完成后，Host 发 GetDescriptor(Device_Qualifier) 拿到另一速度信息；如果后面设备被移到 FS 端口，Host 请求 Other_Speed_Configuration，直接按备胎链配置设备，<strong>无需重新枚举</strong>。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>设备1 的 Qualifier 抓取失败是时机问题，不是设备缺陷</summary>
+      <div class="fold-content">
+        <p>设备1 的 Qualifier 抓取失败：抓包时设备处于 <strong>D3 低功耗态</strong>，控制请求没有得到有效应答（ERROR_GEN_FAILURE），不是设备不支持。</p>
+        <p>这也提醒你：<strong>抓描述符要在设备唤醒状态下抓</strong>。</p>
+        <p>MQTT 类比：Device Qualifier + Other Speed Config 像 MQTT 5 的协商降级（CONNACK 里的 Maximum Packet Size / 版本回退）——设备在不同网络条件下声明不同的能力参数，主协议骨架不变。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="infer-dev3">
+    <h2>设备3 从 KS 数据反推描述符结构</h2>
+    <p class="section-desc">设备3 没有原始描述符 dump，但从 Windows 驱动层的数据（KS = Kernel Streaming，驱动解析描述符后的结果）完全可以反推出它的 USB 结构。</p>
+  </div>
+
+  <div class="card">
+    <h3>🔮 已知事实 → 反推结论</h3>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">线索</th><th class="col-dev3">值</th><th class="col-note">反推出什么</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Device ID</td><td>USB\VID_2BDF&PID_028A&REV_3000&MI_00</td><td>VID=0x2BDF、PID=0x028A、bcdDevice=0x3000（REV_3000）</td></tr>
+        <tr><td>视频节点路径</td><td>...&MI_00... + usbvideo.sys</td><td>接口 0 = 视频功能的<strong>控制接口（VC）</strong>；usbvideo.sys 是 Windows 的 UVC 类驱动</td></tr>
+        <tr><td>音频节点路径</td><td>...&MI_02... + usbaudio.sys</td><td>接口 2 = 音频功能的<strong>控制接口（AC）</strong>；usbaudio.sys 是 UAC 类驱动</td></tr>
+        <tr><td>接口号跳跃</td><td>有 MI_00 和 MI_02，没有 MI_01 / MI_03 节点</td><td>中间接口（1、3）是被 IAD 并入同一功能、不单独建节点的 VS/AS 接口</td></tr>
+        <tr><td>Friendly Name</td><td>"2K USB Camera" / "2K USB Camera-Audio"</td><td>复合设备，两个功能各有一个名字</td></tr>
+        <tr><td>视频格式表</td><td>MJPG 最高 2560×1440@30；NV12/YUY2 只有低分辨率低帧率</td><td>见下方带宽分析</td></tr>
+        <tr><td>音频格式</td><td>PCM 16 kHz / 16 bit / 1 ch</td><td>单声道麦克风，UAC 1.0 典型配置</td></tr>
+      </tbody>
+    </table>
+
+    <h4>🧬 推断出的描述符结构</h4>
+    <pre>Device Descriptor (推断)          bDeviceClass = 0xEF（复合设备，必须）
+└── Configuration Descriptor      bNumInterfaces ≥ 4
+    ├── IAD #1                    bFirstInterface=0, bInterfaceCount=2
+    │                             bFunctionClass=0x0E (Video)
+    │   ├── Interface 0: VC       (MI_00, usbvideo.sys 绑定)
+    │   │   └── VC 类描述符 + 中断端点
+    │   └── Interface 1: VS       (推断；无独立节点，被 IAD 并入功能)
+    │       └── VS 类描述符 + 数据端点（推断为等时，见下）
+    ├── IAD #2                    bFirstInterface=2, bInterfaceCount=2
+    │                             bFunctionClass=0x01 (Audio)
+    │   ├── Interface 2: AC       (MI_02, usbaudio.sys 绑定)
+    │   │   └── 音频控制描述符 (0x24: IT 麦克风 → Feature Unit → OT)
+    │   └── Interface 3: AS       (推断；音频流接口)
+    │       └── 音频流描述符 + 等时端点 (16 kHz×2 B = 32 kB/s，带宽极小)
+    └── (字符串：厂商/产品/序列号，无数据)</pre>
+
+    <h4>⚡ 为什么 2560×1440@30 MJPEG 需要等时端点保证带宽</h4>
+    <p>先算 HS 的带宽硬预算：</p>
+    <pre>HS 等时端点理论上限：每微帧最多 3 个事务 × 1024 B = 3072 B
+                    3072 B × 8000 微帧/秒 ≈ 24.6 MB/s ≈ 197 Mbps（含协议开销实际更低）</pre>
+    <table class="cmp-table">
+      <thead>
+        <tr><th class="col-field">格式</th><th>分辨率 @ 帧率</th><th>需要的带宽</th><th class="col-note">结论</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>YUY2</td><td>1920×1080 @ 5</td><td>20.7 MB/s</td><td>勉强塞进等时预算（~85%）→ 只能给 5 fps</td></tr>
+        <tr><td>NV12</td><td>1280×960 @ 10</td><td>18.4 MB/s</td><td>同样逼近预算 → 只能给 10 fps</td></tr>
+        <tr><td>MJPG</td><td>2560×1440 @ 30</td><td>压缩后远小于原始 331.8 MB/s</td><td><strong>只有压缩格式能跑满 30 fps</strong></td></tr>
+      </tbody>
+    </table>
+    <p>原始 YUY2 的 2560×1440@30 = 221 MB/s，<strong>远超 HS 总线能力</strong>，所以无压缩模式只能低分辨率/低帧率；MJPEG 是逐帧压缩，2560×1440 单帧压缩后通常 0.5~2 MB（KS 的 331.8 MB/s 只是按原始位深折算的名义值，不是真实总线流量），30 fps 大约 15~60 MB/s，仍在等时预算内。<strong>等时端点保证带宽</strong>：每个微帧有固定的事务槽（wMaxPacketSize 位 12..11 的附加事务数声明占几个槽），Host 据此调度，视频帧不会因为总线上的别的事务而延迟。设备1/2 用 Bulk 是因为分辨率低（640×360 以下），Bulk 的重传机制反而更省心；设备3 要做到 2K@30，<strong>最可能的设计是等时端点 + 多组 Alternate Setting</strong>（每档一个包长）。</p>
+
+    <details class="txn-fold">
+      <summary>为什么接口号是 0 和 2（没有 MI_01 / MI_03）？</summary>
+      <div class="fold-content">
+        <p>UVC 规范要求 VC 与 VS <strong>相邻成对</strong>（IAD 的 bFirstInterface..+count 连续），所以视频占用接口 0~1；音频功能接着从接口 2 开始（AC=2, AS=3）。</p>
+        <p>Windows 只为"功能入口接口"（VC/AC）建节点，VS/AS 被 usbccgp 复合驱动并入，因此设备树里只见 MI_00 与 MI_02——<strong>这个"跳号"本身就是 IAD 存在的证据</strong>。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>音频部分与 UVC 同构：类描述符体系是统一的</summary>
+      <div class="fold-content">
+        <p>设备3 的音频（MI_02）由 usbaudio.sys（UAC 驱动）接管，KS 层只暴露 PCM 16 kHz / 16 bit / 单声道（麦克风采集）。UAC 1.0 与 UVC 的骨架完全同构：</p>
+        <ul>
+          <li>bInterfaceClass = 0x01 (Audio) ↔ UVC 的 0x0E (Video)</li>
+          <li>AC 接口 (subclass 0x01 AudioControl) ↔ UVC 的 VC (0x01)</li>
+          <li>AS 接口 (subclass 0x02 AudioStreaming) ↔ UVC 的 VS (0x02)</li>
+          <li>bDescriptorType 0x24 同名同值，靠接口 subclass 分义</li>
+          <li>描述符链：Input Terminal（麦克风 0x0201）→ Feature Unit → Output Terminal</li>
+        </ul>
+        <p>所以虽然设备3 的原始描述符抓不到，但按 UVC 学的"接口 subclass 分义 + Terminal/Unit 链 + 类型码速查"这套方法，换成 UAC 规范表就能解析。<strong>类专用描述符 = 标准骨架 + 每类规范一套"方言"</strong>。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-header" id="faq">
+    <h2>常见问题 FAQ</h2>
+    <p class="section-desc">7 个高频疑问——覆盖标准描述符与类专用描述符的常见坑。</p>
+  </div>
+
+  <div class="card">
+    <h3>❓ 7 个常见问题</h3>
+
+    <details class="txn-fold">
+      <summary>Q1: 为什么 bDeviceClass 不直接写 0x0E (Video)？</summary>
+      <div class="fold-content">
+        <p>因为摄像头是<strong>复合设备</strong>：一个 Video 功能 = VC + VS 两个接口。设备级 class 只能描述"整台设备"，描述不了接口分组。USB 规范规定：凡是用 IAD 做功能绑定的复合设备，设备级必须声明 <code>0xEF (Miscellaneous) / 0x02 / 0x01</code>，把真正的功能分类交给 IAD 的 <code>bFunctionClass=0x0E</code>。</p>
+        <p>写了 0x0E 反而违反规范——Host 会以为整台设备只有一个接口，直接拒绝加载。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>Q2: Alternate Setting 在描述符里怎么体现？</summary>
+      <div class="fold-content">
+        <p>同一接口号出现<strong>多个接口描述符</strong>：bInterfaceNumber 相同、bAlternateSetting 依次递增（0,1,2…），端点配置不同。Host 用 <code>SET_INTERFACE(接口号, 设置号)</code> 切换。典型 UVC VS 设计：</p>
+        <pre>接口 1, alt 0 : 0 个数据端点（不占带宽）          ← 默认，枚举后先停在 0
+接口 1, alt 1 : 等时端点 wMaxPacketSize=512 B     ← 低带宽档
+接口 1, alt 2 : 等时端点 wMaxPacketSize=1024 B    ← 高带宽档</pre>
+        <p>应用开视频时，驱动按所选格式挑一档 alt 设置并切换，用完再切回 alt 0 释放带宽。<strong>设备1/2 只有 alt 0</strong>（Bulk 不需要带宽预留）；设备3（推断）有多档 alt（见 #infer-dev3）。MQTT 类比：同一"主题"（接口）提供 QoS 0/1/2 三档服务，连接时声明用哪档。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>Q3: bMaxPacketSize0 对 HS 设备为什么固定 64 字节？</summary>
+      <div class="fold-content">
+        <p>USB 2.0 规范 9.6.1 硬性规定：<strong>HS 设备的 EP0 最大包长必须是 64 字节</strong>。原因：EP0 是控制通道，控制传输（SETUP + DATA + STATUS）每个事务只能传一个包；64 字节是 HS 下控制事务的标准包长，所有 HS 设备统一，Host 栈的缓冲区与调度器就不用为不同设备准备不同尺寸。</p>
+        <p>LS=8、FS 可选 8/16/32/64，<strong>HS 无选择——统一 64 是规范强制的简化</strong>。枚举早期 Host 就是靠这个字段决定后续控制传输怎么切包。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>Q4: Device Qualifier 什么情况下 Host 会请求？</summary>
+      <div class="fold-content">
+        <p>USB 2.0 规范 9.6.2：<strong>只有能跑双速（HS 与 FS）的设备才有 Device Qualifier</strong>；单速设备必须对该请求回 STALL。Host 在设备<strong>以 HS 运行</strong>时会请求它（拿到"若在 FS 运行会是什么样"的信息）；若设备以 FS 运行而 Host 想知道它的 HS 能力，同样可以请求。</p>
+        <p>配套的是 <strong>Other Speed Configuration（0x07）</strong>——另一速度下的整条配置链。典型场景：设备先在 HS 口枚举，之后被插到只支持 FS 的口（或经 FS Hub），Host 不必重新枚举，直接用备胎链配置。设备1 的 Qualifier 抓取失败纯粹是<strong>设备处于 D3 低功耗态</strong>的抓取时机问题（见 #diff-dev1-dev2）。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>Q5: IAD 和 Interface Descriptor 里的 Class 有什么不同？</summary>
+      <div class="fold-content">
+        <p>两者是<strong>两个层级</strong>的声明：</p>
+        <table class="cmp-table">
+          <thead>
+            <tr><th class="col-field"></th><th>IAD 的 bFunctionClass</th><th>接口的 bInterfaceClass</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>描述对象</td><td>一<strong>组</strong>接口（功能）</td><td>单个接口</td></tr>
+            <tr><td>设备1 的值</td><td>0x0E (Video)</td><td>0x0E (Video)，但 subclass 分 VC(0x01)/VS(0x02)</td></tr>
+            <tr><td>驱动加载作用</td><td>决定"这组接口归哪个类驱动管"</td><td>驱动内部再按 subclass 分派角色</td></tr>
+            <tr><td>音频功能对照</td><td>0x01 (Audio)</td><td>AC 接口 0x01/0x01，AS 接口 0x01/0x02</td></tr>
+          </tbody>
+        </table>
+        <p>IAD 是"功能级"的：usbvideo.sys 看到 Video Interface Collection（0x0E/0x03）就绑定整个功能；接口 class 是"接口级"的：VC/VS 的分工靠它。两者分工明确，缺一不可。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>Q6: UVC Extension Unit 的 15 个 vendor-specific controls 是干什么的？</summary>
+      <div class="fold-content">
+        <p>设备1/2 的 XU（Unit ID 10）声明 <code>bNumControls=15</code>、GUID <code>{A29E7641-DE04-47E3-8B2B-F4341AFF003B}</code>（海康私有扩展标识）。这 15 个控制是<strong>标准 UVC 没定义的厂商私有控制</strong>——通常是曝光模式、增益、白平衡、降噪、图像翻转等厂商标定参数。</p>
+        <p>注意 <code>bmControls = FF 03 00 00</code> 只置位了低 10 位，即<strong>实际启用 control 1~10</strong>，其余 5 个未启用。</p>
+        <p>应用怎么用它们：向 VC 接口（接口 0）发 UVC 类请求 <code>SET_CUR/GET_CUR</code>：wValue 高位 = 控制号（1~10），低位 = Unit ID（10），wIndex = 接口号。含义只有厂商知道（对应海康 SDK 的私有控制项），第三方只能枚举 <code>GET_INFO</code> 试探可用性。这解释了 Q7——标准控制全关，私有控制是主通道。</p>
+      </div>
+    </details>
+
+    <details class="txn-fold">
+      <summary>Q7: 设备1&2 的 bmControls 全是 0，怎么控制摄像头？</summary>
+      <div class="fold-content">
+        <p>对照 dump：</p>
+        <ul>
+          <li>Camera IT 的 bmControls = <code>00 00 00</code> → 标准摄像头控制（曝光、增益、对焦等）<strong>全部未实现</strong>；</li>
+          <li>PU 的 bmControls = <code>00 00</code> → 标准处理控制（亮度、对比度等）<strong>全部未实现</strong>。</li>
+        </ul>
+        <p>意味着对这些标准控制发 GET_CUR/SET_CUR，设备会回 STALL 或错误——<strong>它们真的不存在</strong>。实际控制通道是：</p>
+        <ol>
+          <li><strong>XU 的 vendor-specific 控制</strong>（见 Q6）：10 个已启用的私有控制承担了真实的图像调节，需用厂商 SDK 访问；</li>
+          <li><strong>VS 接口的流控制</strong>：切格式、启停流走 VS 的 PROBE/COMMIT 类请求（VideoStreaming Interface Control），与 bmControls 无关；</li>
+          <li>其余参数（如自动曝光）由固件自动管理，不开放。</li>
+        </ol>
+        <p>结论：<strong>bmControls=0 只代表"标准控制没实现"，不代表设备不可控</strong>——看 XU 和 VS 控制才是这类摄像头应用的正确姿势。做应用时先枚举 XU（GET_INFO），别假设标准控制可用。</p>
+      </div>
+    </details>
+  </div>
 </main>
 
 <!-- JS placeholder -->
