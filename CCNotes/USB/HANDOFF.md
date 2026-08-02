@@ -1,8 +1,8 @@
 # HANDOFF — USB 协议学习会话交接文档
 
-> 更新时间：2026-08-01（第四会话）
+> 更新时间：2026-08-02（第六会话）
 > 主线学习进度：32/67 知识点（48%）— 暂停在 Phase 4 入口
-> 副线任务：✅ 已完成 — 新增「实战描述符剖析」笔记 + 独立可视化页面
+> 本会话重点：Ubuntu 实战——从 lsusb 到第一条 XU 命令 + 接口/端点归属关系 + 标准 UVC 取流流程
 
 ---
 
@@ -12,78 +12,58 @@
 
 带一位 C/C++ 应用软件工程师从零开始学 USB 协议，最终目标是构建一个 USB SDK（UVC 摄像头 + CDC 串口 + HID 设备）。
 
-### 副线任务：笔记 Web 可视化（本次会话新增）
+用户选的是**方案 A（自底向上）**：先讲协议理论，最后才写代码。
 
-把学习笔记做成**单文件离线 HTML 页面**，含交互式包结构图、描述符 byte-map、架构图。零外部依赖，双击打开。
+### 副线任务：笔记 Web 可视化
 
-现有两个独立 HTML 页面：
-- `usb-notes.html` — Phase 1-3 理论知识可视化（描述符 byte-map、包结构、帧时间线）
-- `descriptor-viewer.html` — **本次新增**，三台真实设备的描述符实战对比（标准 byte-map + 三栏设备对照表 + UVC 类专用剖析）
+把学习笔记做成**单文件离线 HTML 页面**，零外部依赖，双击打开。现有：
+- `usb-notes.html` — Phase 1-3 理论知识可视化，含交互式包结构图、描述符 byte-map、帧时间线
+- `descriptor-viewer.html` — 三台真实海康设备的描述符实战对比
 
 ---
 
-## 二、过去会话完成了什么
+## 二、各会话完成了什么
 
-### 第一~三会话：Phase 1-3 理论学习（32/67 知识点）
+### 第一~三会话：Phase 1-3 理论学习（32/67 知识点，48%）
 
 | 阶段 | 内容 | 产物 |
 |------|------|------|
 | Phase 1 | USB 概述：拓扑、速度、总线架构 | `notes/phase1-usb-overview.md` |
-| Phase 2 | 通信模型：包结构、四种传输、Token/Data/Handshake | `notes/phase2-communication-model.md` |
-| Phase 3 | 描述符体系：Device/Config/IAD/Interface/Endpoint 逐字节 | `notes/phase3-descriptors.md` |
+| Phase 2 | 通信模型：四种传输、包结构 | `notes/phase2-communication-model.md` |
+| Phase 3 | 描述符体系：逐字节解剖 | `notes/phase3-descriptors.md` |
 
-### 第四会话（本次）：真实设备描述符实战剖析
+### 第四会话：真实设备描述符实战剖析
 
-用户提供了三台海康 USB 设备的描述符 dump（用 USB Device Tree Viewer 抓取），要求做一份独立笔记 + 独立 HTML 可视化页面。
+用户提供三台海康设备 USB dump → 生成独立实战笔记 `real-device-descriptor-analysis.md`（~1300 行） + 独立 HTML `descriptor-viewer.html`。
 
-**产出：**
+### 第五会话：控制传输深层剖析 + SETUP 逐位 + UVC 扩展协议设计
 
-| 文件 | 行数 | 说明 |
+控制传输 SETUP/DATA/STATUS 三阶段模型深层追问 → UVC XU CS_ID+SubFunc 二级命名空间协议设计。
+
+### 第六会话（本次）：Ubuntu 实战——从零打通 XU 通信
+
+用户在 Ubuntu 虚拟机上用热成像摄像头（HIK 2bdf:0101），从 `lsusb` 查描述符到写代码跑通第一条 XU 命令，中间踩坑 → 建立了一套完整的新设备上手方法论。
+
+**本次会话产出：**
+
+| 类型 | 文件 | 变更 |
 |------|------|------|
-| `notes/real-device-descriptor-analysis.md` | ~1240 | 5 章 + 3 附录实战手册 |
-| `descriptor-viewer.html` | ~1290 | 单文件交互式对比查看器 |
+| 代码 | `code/xu_minimal_get.c` | **新增**：最小示例，直接读 CS_ID=0x04 协议版本（无 SubFunc） |
+| 代码 | `code/xu_interactive.c` | **新增**：交互式 XU 调试工具，预置设备列表、手动选 CS_ID/SubFunc、每步展示 SETUP 8 字节包结构 |
+| 笔记 | `notes/xu-new-device-setup-guide.md` | **新增**：新设备上手实操指南（8 章）——lsusb → 参数 → SETUP 包构造 → 取流流程 |
+| 笔记 | `notes/phase2-communication-model.md` | 末尾新增「补充问答七：接口与端点的归属关系」——四条规则 + 真实设备数据验证 |
+| HTML | `usb-notes.html` | 新增 **2.3a 接口与端点的归属关系**（四条规则 + 设备树 + libusb 对比表 + Alternate Setting 折叠区）<br>新增 **✏ 开发实战踩坑记录**（8 条折叠坑） |
 
-**三台设备：**
+**用户已彻底掌握的新概念：**
 
-| 设备 | VID:PID | 类型 | 数据完整度 |
-|------|---------|------|-----------|
-| 设备1 | 0x2BDF:0x0101 | HikCamera (UVC 1.10) | 完整 USB dump + UVC 类专用 |
-| 设备2 | 0x2BDF:0x0101 | HikCamera 同型号第二台 | 完整 + Device Qualifier + Other Speed Config |
-| 设备3 | 0x2BDF:0x028A | 2K USB Camera + Audio | 仅 KS 层数据，无原始 USB 描述符 |
-
-**笔记内容（`real-device-descriptor-analysis.md`）：**
-- 第 1 章：描述符是什么 — TLV 铁律、获取流程、层级树
-- 第 2 章：标准描述符逐字节 — Device(18B)/Config(9B)/IAD(8B)/Interface(9B×2)/Endpoint(7B×2)，每种含标准定义表 + ASCII byte-map + 三设备对照表 + 关键字段深入
-- 第 3 章：类专用描述符机制 — 0x24/0x25 分发原理、UVC VC Header 逐字节拆解、UVC 拓扑图
-- 第 4 章：综合实战 — 设备1 433B 全链追踪、设备1 vs 设备2 差异分析（Device Qualifier / Other Speed Config）、设备3 KS 反推
-- 第 5 章：FAQ — 7 个经典问题
-- 附录 A/B/C — 三台设备原始数据
-
-**HTML 页面组件（`descriptor-viewer.html`）：**
-- 侧边栏导航树 + 暗色/亮色主题切换（localStorage 持久化）
-- 每种标准描述符：byte-map 色块图 + 三栏设备对照表（差异行黄色高亮、缺失数据灰色斜体）
-- UVC 类专用：分发机制表、VC Header byte-map、拓扑图、子类型码速查
-- 综合实战：433B 链追踪 pre 块、设备差异表、设备3 推断
-- 7 个折叠 FAQ
-- JS：scroll spy 自动高亮当前章节、主题切换
-
-### 提交记录（12 commits，第四会话）
-
-```
-8e23999 fix: address final review issues — remove dead code, fix reference leak, add null guards
-426cabf chore: final verification — cross-check notes vs HTML consistency
-c16cdd1 feat: add JS interactivity — theme toggle, scroll spy, device tabs
-3c60498 feat: add class-specific descriptors, comprehensive analysis, FAQ, and device 3 inference sections
-5ba5336 fix: correct VC Header and H264 GUID hex values, UVC subtype references
-d2d6408 feat: add Config, IAD, Interface, and Endpoint descriptor sections
-7174d40 feat: add Device Descriptor section with byte-map, comparison table, and foldable explanations
-8a46436 feat: add sidebar navigation tree with device color legend
-3a460cd feat: add descriptor-viewer HTML skeleton with CSS design system
-ee2f204 docs: add real-device descriptor analysis notes (5 chapters + appendices)
-dd55c0c docs: add real-device descriptor analysis notes (5 chapters + appendices)
-5ab582c docs: add real-device descriptor analysis design spec
-2f9e637 docs: add implementation plan for real-device descriptor analysis
-```
+1. **lsusb 三件套**：`lsusb`（找 VID/PID）→ `sudo lsusb -v -d VID:PID`（找 bUnitID/bInterfaceNumber/bmControls）→ 参数填入代码
+2. **SETUP 包 8 字节换设备只改一处**：wIndex 高字节 = XU Unit ID，其他 7 字节照抄 UVC 规范
+3. **libusb_control_transfer = 完整控制传输**（不是单个事务）= SETUP + DATA + STATUS 三阶段，Bus Hound 显示为 CTL + IN/OUT 两行
+4. **Interface ≠ Endpoint**：Interface 是功能分类（bmRequestType 选 Inerface），Endpoint 是数据管道（批量传输直接走端点地址）。EP0 所有 Interface 共用
+5. **端点归属规则**：非 EP0 端点只属于一个 Interface，两个 Interface 不能声明同一 EndpointID，Alternate Setting 可复用端点号
+6. **标准 UVC 取流**：Probe(SET_CUR→GET_CUR) → Commit → SET_INTERFACE(Standard, 不是 Class!) → libusb_bulk_transfer
+7. **三种 wIndex**：VC XU = `(XU_ID<<8)|VC_IF`，VS = `VS_IF`，SET_INTERFACE = Standard bmRequestType + alt_setting
+8. **bmControls 位图**：`0xFF, 0x03` = bit 0~9 置位 → CS_ID 0x01~0x0A 存在
 
 ---
 
@@ -93,26 +73,30 @@ dd55c0c docs: add real-device descriptor analysis notes (5 chapters + appendices
 D:\CC\personal-lr-notes\CCNotes\USB\
 ├── HANDOFF.md                                    ← 你正在看的这份交接文档
 ├── usb-protocol-learning-plan.md                 ← 完整学习计划（67知识点清单）
-├── usb-notes.html                                ← Phase 1-3 理论可视化（2522行）
-├── descriptor-viewer.html                        ← ★ 新增：三设备描述符实战对比（~1290行）
+├── usb-notes.html                                ← Phase 1-3 理论可视化（纯 HTML 结构）
+├── usb-notes.css                                 ← 10 层分层样式（暗色默认 IDE 风格）
+├── usb-notes.js                                  ← 4 模块脚本（数据/渲染/交互/初始化）
+├── usb-notes-old.html                            ← 旧版备份（翻新前单文件版本）
+├── descriptor-viewer.html                        ← 三设备描述符实战对比
 ├── usb设备1的描述符.txt                            ← 设备1 原始 dump
 ├── usb设备2的描述符.txt                            ← 设备2 原始 dump
-├── usb设备3的描述符.txt                            ← 设备3 原始 dump（KS数据）
-├── docs/
-│   └── superpowers/
-│       ├── specs/
-│       │   ├── 2026-07-26-usb-notes-web-design.md
-│       │   └── 2026-08-01-real-device-descriptor-analysis-design.md  ← ★ 新增
-│       └── plans/
-│           ├── 2026-07-26-usb-notes-web-plan.md
-│           └── 2026-08-01-real-device-descriptor-analysis-plan.md    ← ★ 新增
+├── usb设备3的描述符.txt                            ← 设备3 原始 dump（无 Extension Unit）
+├── docs/superpowers/
+│   ├── specs/
+│   └── plans/
+├── code/
+│   ├── HIKVISION_TM76_libusb_3.c                 ← 海康 TM76 完整参考（伪彩/码流/视频流）
+│   ├── uvc_xu_subfunc_framework.c                ← UVC XU 扩展协议封装库
+│   ├── xu_minimal_get.c                          ← ★ 新增：最简示例（读 CS_ID=0x04）
+│   └── xu_interactive.c                          ← ★ 新增：交互式 XU 调试工具
 ├── notes/
-│   ├── phase1-usb-overview.md                    ← Phase 1（219行）
-│   ├── phase2-communication-model.md             ← Phase 2（1048行）
-│   ├── phase3-descriptors.md                     ← Phase 3（1242行）
-│   └── real-device-descriptor-analysis.md        ← ★ 新增：实战手册（~1240行）
-└── .superpowers/
-    └── sdd/                                      ← SDD 进度账本
+│   ├── phase1-usb-overview.md                    ← Phase 1
+│   ├── phase2-communication-model.md             ← Phase 2（新增接口-端点关系问答）
+│   ├── phase3-descriptors.md                     ← Phase 3
+│   ├── real-device-descriptor-analysis.md        ← 实战手册（FAQ 10 个）
+│   ├── uvc-xu-extension-protocol-design.md       ← UVC XU 扩展协议设计
+│   └── xu-new-device-setup-guide.md              ← ★ 新增：新设备上手实操指南（8章）
+└── .superpowers/sdd/                             ← SDD 进度账本
 ```
 
 ---
@@ -121,65 +105,98 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ### 主线学习：停在 Phase 4 入口
 
-**没有卡住。** Phase 3 理论已完成（32/67，48%）。
+**没有卡住。** Phase 1-3 已完成（32/67，48%）。
 
-**下一步：Phase 4 — USB 枚举过程逐包逐事务追踪（12 个知识点）**
+**下一步：Phase 4 — USB 枚举过程（12 个知识点）**
 
-从 4.1（枚举完整时间线：插入→检测→复位→Default→Address→Configured）开始讲。
+从 4.1（枚举完整时间线：插入→检测→复位→Default→Address→Configured）开始讲，一次一个知识点。
 
 当用户说"继续"时，从这里开始。
 
-### 副线：描述符实战已独立完成
+### 副线：UVC XU 实战开发已完成基础验证
 
-`descriptor-viewer.html` 和 `real-device-descriptor-analysis.md` 是独立产物，不依赖主线进度。如果用户想看描述符实战，直接双击 `descriptor-viewer.html`。
+- `xu_minimal_get.c` 成功读到协议版本 `"2.0"`
+- `xu_interactive.c` 可以交互式探索任意 CS_ID/SubFunc
+- 新设备上手方法论已沉淀为 `xu-new-device-setup-guide.md`
+
+用户未来可能要求：
+- 在 `xu_interactive.c` 中集成 SET_CUR 写操作
+- 对未知 CS_ID 做暴力扫描（遍历 bmControls 位图置位的所有 CS_ID）
+- 把海康 TM76 的时间戳解析逻辑写进代码
+- 实现完整的 Probe/Commit/SET_INTERFACE 取流流程
+- 读取实际视频帧
 
 ---
 
-## 五、不要踩的坑
+## 五、本次会话用户建立的深层理解（关键！）
 
-### 关于用户和教学（继承自之前会话）
+以下概念用户已彻底搞懂，不要重复讲解，但可以用做类比基础：
 
-1. **用户选的是方案 A（自底向上）。** 不要催他写代码。先把协议理论讲完，最后才是 libusb（Phase 8）。
-2. **用户需要 MQTT 级别的精度。** 每个 byte 的每个 bit 含义都要展开。含糊带过他会追问。
-3. **一次只讲一个知识点。** 每节等用户说"继续"才推进。不要一次塞多个。
+1. **ACK vs STATUS**：ACK = 包级确认（快递扫码），STATUS = 传输级确认（合同盖章）—— 来自第五会话
+2. **SETUP 包 8 字节解析**：bmRequestType 的 D7(方向) + D6-5(字典) + D4-0(接收者) 三把钥匙决定其余 7 字节含义
+3. **Bus Hound 局限性**：软件层抓包（URB 层），看不到 Token/PID/CRC/STATUS 阶段
+4. **CS_ID + SubFunc 二级命名空间**：FUNC_SWITCH → GET_LEN → GET_CUR 三阶段
+5. **STALL vs 错误码两层拒绝**：STALL=硬件拒绝，错误码=语义拒绝
+6. **libusb_control_transfer = 完整控制传输**：一次调用 = 2~3 个总线事务，不是单个事务 — ★ 本次
+7. **换新设备只改 wIndex 高字节**：XU Unit ID 从 lsusb -v 的 bUnitID 获取，其他 7 字节照抄 — ★ 本次
+8. **Interface ≠ Endpoint**：Interface=功能分类（控制传输用），Endpoint=数据管道（批量传输用），EP0 共用 — ★ 本次
+9. **端点归属**：非 EP0 端点只属于一个 Interface，Alternate Setting 可复用端点号 — ★ 本次
+10. **三种 wIndex 填法**：VC XU(带 Unit ID)、VS(只有接口号)、SET_INTERFACE(Standard bmRT+alt) — ★ 本次
+11. **bmControls 位图**：小端字节序，bit N=1 → CS_ID(N+1) 存在 — ★ 本次
+
+---
+
+## 六、不要踩的坑
+
+### 关于用户和教学（继承）
+
+1. **方案 A（自底向上）。** 不要催写代码。先讲协议理论，Phase 8 才是 libusb。
+2. **MQTT 级别的精度。** 每个 byte 的每个 bit 含义都要展开。
+3. **一次只讲一个知识点。** 等用户说"继续"才推进。
 4. **方向永远从 Host 视角。** IN = Device→Host, OUT = Host→Device。
-5. **"会用+懂原理"（B档），不是内核驱动级别（C档）。** 不要跳 rabbit hole。
-6. **用户喜欢类比。** MQTT 类比对他有效。用得好他会说"懂了"。
-7. **计划文件是唯一真相源。** 用户要求调整计划 → 先更新计划文件再执行。
-8. **用户会在学习过程中插入追问。** 回答完后主动问"要不要保存到笔记？要不要补充到 HTML？"
-9. **讲完一个阶段后，用户可能要求把所有内容保存到笔记 + 更新 HTML。** 笔记用 .md，HTML 用 Edit/Write。
-10. **HTML 的 Edit 匹配对空格/制表符敏感。** Edit 报 "not found" 时，用 Grep 找到确切行内容再匹配。
+5. **"会用+懂原理"（B 档），不是内核驱动级。**
+6. **用户喜欢类比。** MQTT、TCP/HTTP、快递/合同——用得好的比单纯列表有效 10 倍。
+7. **计划文件是唯一真相源。**
+8. **回答完追问后主动问"要不要保存到笔记？要不要补充到 HTML？"** —— 用户几乎总是说"要"。
+9. **用户现在喜欢在 HTML 2.10 附近积累控制传输的知识。** 新增内容优先放那里。如果要加的内容自成体系，就开新章节。
 
-### 关于 HTML 页面（继承 + 新增）
+### 关于 HTML 编辑（已翻新 — 2026-08-02）
 
-11. **这两个 HTML 是独立文件。** `usb-notes.html` 和 `descriptor-viewer.html` 互不依赖，不要改动错文件。
-12. **两个 HTML 共享同一套 CSS 变量体系**（`:root` + `.dark` 双主题，35 个变量）。新增变量必须两个块都加。
-13. **描述符 byte-map 用 `.desc-byte-map` + `.dcell` + `.dc-bg-*` 类。** 15 个 bg 颜色类在两个 HTML 中完全一致。flex 比例 = 字段字节数。
-14. **折叠内容用 `<details class="txn-fold">`。** 不要嵌套折叠区。
-15. **单文件原则：零外部依赖。** CSS 在 `<style>`，JS 在 `<script>`，字体用系统栈。
-16. **LF 换行符，2空格缩进**（`descriptor-viewer.html`）或**制表符缩进**（`usb-notes.html`），不要混用。
-17. **文件用 `Edit` 工具编辑，不要用 Bash cat/sed。** 大段替换可先用 `Write` 写临时文件再 `Bash` 拼接。
+10. **usb-notes 已翻新为 3 文件架构**：`usb-notes.html`（纯结构）+ `usb-notes.css`（全部样式）+ `usb-notes.js`（全部脚本）。编辑 HTML 时无需再处理 `<style>`/`<script>` 块。
+10a. **全部文件统一 4 空格缩进**，不再有 Tab/空格混用问题。Edit 前无需用 `cat -A` 检查缩进。
+10b. **零外部依赖原则不变**：CSS 和 JS 在同目录，`<link>` + `<script defer>` 引用，双击 HTML 即用。
+15. **折叠用 `<details class="txn-fold">`。** 不要嵌套折叠区。
+16. **描述符 byte-map 用 `.desc-byte-map` + `.dcell` + `.dc-bg-*` 类。**
+17. **新增的 `.txn-annot-*` CSS 类**：用于在 Bus Hound 抓包下方标注 USB 总线事务。
 
-### 关于 SDD 工作流（本次新增）
+### Ubuntu 实战踩坑（★ 本次新增）
 
-18. **用 `superpowers:brainstorming` 先澄清需求再动手。** 用户给出了材料但没说清楚方向 → 问清楚再设计。
-19. **用 `superpowers:writing-plans` 写实现计划。** 8 个 Task 每个都有独立 brief + report + review。
-20. **用 `superpowers:subagent-driven-development` 执行计划。** 一个 Task 一个子代理，每次 commit 独立。
-21. **子代理调度用文件传递上下文，不要全粘贴到 prompt。** 用 `task-brief` / `review-package` 脚本生成文件，传递文件路径。
-22. **子代理的 report 会覆盖同路径的旧 report。** 不同 plan 的 report 共享 `.superpowers/sdd/` 目录，可能读到上次的残留。
-23. **第一版往往有 hex 错误。** 描述符的 LE 字节序容易写错（如 `6C DC` 写成 `6C 2C`），实现后必须让子代理交叉验证源文件。
-24. **最终 review 几乎总能发现 dead code。** spec 里列了但实际没用到的组件（如 device tabs），review 会指出——删掉就好。
+18. **`lsusb -v` 必须加 `sudo`。** 不加只能看到基本设备信息，"Couldn't open device"意味着深层描述符树（Extension Unit 等）读不到。
+19. **VID/PID 不要假设。** 即使是同厂商不同型号，PID 也可能不同。永远从 `lsusb` 确认。
+20. **VC_IF_NUM 从 `bInterfaceNumber` 获取，不固定。** 同一个厂商的海康摄像头，TM76 的 VC 接口是 1，但 2bdf:0101 是 0。从 `lsusb -v` 找 `bInterfaceClass=14(Video) + bInterfaceSubClass=1(Video Control)` 的 `bInterfaceNumber`。
+21. **`gcc -o output source.c` 不要写反。** `gcc -o xu_minimal_get.c -lusb-1.0` 会把源文件覆盖为空文件！`-o` 后面是输出文件名，源文件在后面。编译后检查 `wc -c source.c`。
+22. **Linux 必须先 detach 内核驱动再 claim 接口。** `libusb_kernel_driver_active()` → `libusb_detach_kernel_driver()` → `libusb_claim_interface()`，释放时反向：release → attach。Windows 不需要这步（WinUSB 自动替换驱动）。
+23. **运行程序也要 `sudo`（除非配了 udev 规则）。** 长期使用建议写 `/etc/udev/rules.d/99-thermal.rules`。
+24. **GET_LEN 返回 0 是合法的，不一定是错误。** 可能是该 SubFunc 号不存在、无参数、或是触发型命令。先换已知 CS_ID（如 0x04）确认通道正常。
+25. **libusb_control_transfer 是一次完整控制传输，不是单个事务。** 对应 Bus Hound 里的一行 CTL + 一行 IN/OUT = USB 总线上的 2~3 个事务。
+26. **wIndex 填法取决于你在操作 VC 还是 VS。** VC XU 命令：`wIndex = (XU_ID<<8) | VC_IF`；VS 命令（Probe/Commit）：`wIndex = VS_IF`（没有 Unit ID！）；SET_INTERFACE：`bmRequestType=0x01(Standard)`，`wValue=altsetting`，`wIndex=VS_IF`。
+
+### 关于协议知识（继承）
+
+27. **Bus Hound 显示控制传输为两行：`CTL` = SETUP 包 8 字节，`OUT`/`IN` = DATA 阶段数据。** STATUS 阶段 Bus Hound 不显示（驱动层已合并）。
+28. **数据走 OUT/IN 端点时 wLength 就是 Bus Hound 显示的那一行长度。**
+29. **SETUP 包里 wValue/wIndex 含义由 bmRequestType 的 D6-5 和 D4-0 决定。** 不是"CS_ID 永远在 wValue 高字节"——那是 UVC Class 请求的惯例。
 
 ### 关于平台
 
-25. **用户环境是 Windows + Git Bash。** Shell 用 Bash 语法，路径用正斜杠。
-26. **git 仓库根目录在 `D:/CC/personal-lr-notes/`。** USB 项目在 `CCNotes/USB/` 子目录。
-27. **Git 配置了 autocrlf 警告。** 提交时 blob 是 LF，checkout 时可能转 CRLF——不要慌，文件实际是 LF。
-28. **网络需要代理（127.0.0.1:7890）。** `git push` 需要代理可用。
+30. **用户环境是 Windows + Git Bash。** Shell 用 Bash 语法，路径用正斜杠。
+31. **git 仓库根目录在 `D:/CC/personal-lr-notes/`。** USB 项目在 `CCNotes/USB/` 子目录。
+32. **网络需要代理（127.0.0.1:7890）。**
+33. **用户也有 Ubuntu 虚拟机**（`fdl@fdl-virtual-machine`），工作目录 `~/桌面/hikusb/`。在 Ubuntu 上做实际 XU 通信开发和测试。
 
 ---
 
-## 六、新会话启动步骤
+## 七、新会话启动步骤
 
 1. **读这份交接文档** — `Read HANDOFF.md`
 2. **读学习计划** — `Read usb-protocol-learning-plan.md`
@@ -187,72 +204,94 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 4. **确定用户意图：**
    - 如果用户说"继续" → 从 Phase 4 的 4.1（枚举完整时间线）开始讲，一次一个知识点
    - 如果用户要看描述符实战 → 告诉用户双击 `descriptor-viewer.html`
-   - 如果用户要看理论学习 → 告诉用户双击 `usb-notes.html`
+   - 如果用户要看理论学习/控制传输详解 → 告诉用户双击 `usb-notes.html`，侧边栏可导航
+   - 如果用户要看 **新设备上手方法** → `notes/xu-new-device-setup-guide.md`（8 章实操指南）
+   - 如果用户要看 UVC XU 协议设计 → `notes/uvc-xu-extension-protocol-design.md` + `code/uvc_xu_subfunc_framework.c`
+   - 如果用户要调试 XU 通信 → `code/xu_interactive.c`（交互式工具，预置设备列表，每步展示 SETUP 包）
+   - 如果用户要看最小示例 → `code/xu_minimal_get.c`（直接读 CS_ID=0x04）
+   - 如果用户要看海康 TM76 完整代码 → `code/HIKVISION_TM76_libusb_3.c`
+   - 如果用户问 Bus Hound 抓包 → 指向 `usb-notes.html` 2.10 的 SETUP 8 字节折叠区和 2.20 的带注释抓包
+   - 如果用户问 Interface vs Endpoint → 指向 `usb-notes.html` 2.3a
+   - 如果用户问标准 UVC 取流 → `notes/xu-new-device-setup-guide.md` 第八章
 5. **如果用户不确定到哪了：**
-   > "Phase 1-3 已完成（32/67），暂停在 Phase 4 入口。本会话新增了三台真实设备（2×HikCamera + 1×2K Camera+Audio）的描述符实战剖析笔记和独立 HTML 页面。准备好了说继续。"
+   > "Phase 1-3 已完成（32/67，48%），暂停在 Phase 4 入口。上次会话在 Ubuntu 上跑通了第一条 XU 命令（CS_ID=0x04 读协议版本），写了一个交互式调试工具，还整理了 Interface-Endpoint 归属关系和标准 UVC 取流流程。`notes/xu-new-device-setup-guide.md` 是完整的新设备上手手册。准备好了说继续。"
 
 ---
 
-## 七、快速参考
+## 八、快速参考
 
-### USB 核心概念速查（Phase 1-2）
+### SETUP 包 8 字节速查（最常用）
 
-- **PID 编码**：高 4 位 = ~低 4 位（按位取反），低 2 位分类：00=SPECIAL, 01=TOKEN, 10=HANDSHAKE, 11=DATA
-- **Token 包**：SYNC(8) + PID(8) + ADDR(7) + ENDP(4) + CRC5(5) + EOP = 35 bit
-- **Data 包**：SYNC + PID + DATA(0~1024B) + CRC16 + EOP
-- **Handshake 包**：SYNC + PID + EOP = 19 bit（USB 最短的包）
-- **SOF 包**：SYNC + PID(0xA5) + Frame#(11) + CRC5 + EOP（广播，无地址）
-- **SETUP vs SOF**：SETUP 点对点(含 ADDR+ENDP)，SOF 广播(ADDR+ENDP 挪用为帧号)
-- **控制传输** = SETUP(固定DATA0) + DATA(可选,DATA1起) + STATUS(方向相反)
-- **四种传输**：控制/中断(bInterval)/批量(吃剩饭)/等时(无握手)
-- **ADDR**：7 bit → 127 设备上限（不含 0x00）
-- **帧**：FS 1ms，HS 125μs×8 微帧，Frame# 0~2047 回卷
-- **SETUP 必须 ACK**：EP0 独立硬件缓冲 + SETUP=状态机清零信号 + 不可重试语义
+```
+Byte 0: bmRequestType    0x21=OUT Class IF   0xA1=IN Class IF   0x01=Standard
+Byte 1: bRequest         0x01=SET_CUR        0x81=GET_CUR       0x85=GET_LEN
+Byte 2-3: wValue (LE)   高字节=CS_ID, 低字节=0
+Byte 4-5: wIndex  (LE)  高字节=XU Unit ID, 低字节=接口号  — 换设备只改这里！
+Byte 6-7: wLength (LE)  DATA 阶段字节数
+```
 
-### Phase 3 核心概念速查
+### 三种 wIndex 填法
 
-- **描述符前 2 字节铁律**：bLength + bDescriptorType（TLV 的 L+V）
-- **Device Descriptor**：18B，byte 7=bMaxPacketSize0, byte 8-11=VID+PID(LE)
-- **bcdUSB**：BCD nibble 编码，0x0200=USB 2.0，不能直接当整数比较
-- **Configuration Descriptor**：9B，wTotalLength=整个链总长，bMaxPower 单位 2mA
-- **Interface Descriptor**：9B，三级分类码(Class/SubClass/Protocol)决定驱动匹配
-- **Endpoint Descriptor**：7B，byte 2=地址+方向，byte 3=传输类型+等时同步模式
-- **bInterval**：FS 中断=ms 线性，HS 中断=微帧指数，HS 等时=微帧线性
-- **String Descriptor**：UTF-16LE，String#0=语言列表
-- **Device Qualifier**：10B，HS→FS 降级备胎
-- **BOS**：TLV 扩展容器，LPM/SuperSpeed/ContainerID 等 Capability
-- **Alternate Setting**：同一接口的多形态(如 UVC Alt0=零带宽, Alt1=480p, Alt2=720p)
-- **IAD (0x0B)**：绑定多个接口为一个功能(VC+VS=摄像头)
-- **类专用描述符 0x24**：CDC/UVC/Audio 共用，靠 bInterfaceClass 上下文区分
+| 场景 | wIndex | bmRequestType |
+|------|--------|--------------|
+| VC XU 命令 | `(XU_ID<<8) \| VC_IF` | 0x21/0xA1 (Class) |
+| VS Probe/Commit | `VS_IF` | 0x21/0xA1 (Class) |
+| SET_INTERFACE 开流 | `VS_IF` | 0x01 (Standard), bReq=0x0B |
 
-### 实战描述符新增概念（第四会话）
+### 控制传输核心
 
-- **bDeviceClass=0xEF + IAD**：复合设备的现代最佳实践。Device 层面声明 0xEF(Misc)，实际功能分类放在 IAD
-- **bmAttributes bit7=1**：USB spec 历史遗留，所有设备必须设置
-- **wTotalLength**：告诉 Host 一次性读多少字节——Config 自身 9B 但链总长可达数百字节
-- **UVC 拓扑**：Input Terminal → Processing Unit → Extension Unit → Output Terminal → VS Formats/Frames
-- **HS vs FS Other Speed**：Device Qualifier + Other Speed Config 描述 HS 设备降级到 FS 时的参数（wMaxPacketSize 512→64）
-- **UVC Extension Unit**：vendor-specific controls 的容器——标准 UVC controls 全 0 时，实际控制走 XU
+- **三阶段模型**：SETUP(必须ACK) + DATA(可选) + STATUS(方向与DATA相反，零长度包)
+- **SETUP 包 8 字节**：bmRequestType(1) + bRequest(1) + wValue(2 LE) + wIndex(2 LE) + wLength(2 LE)
+- **bmRequestType 三把钥匙**：D7=方向(IN/OUT), D6-5=字典(Standard/Class/Vendor), D4-0=接收者(Device/Interface/Endpoint)
+- **ACK vs STATUS**：ACK=包级"CRC对了"，STATUS=传输级"交易关闭/拒绝"
+- **STATUS 是拒绝唯一入口**：SETUP 必须 ACK → 不支持的请求只能在 STATUS 回 STALL
+- **批量传输无 STATUS**：ACK 就是事务终点
+
+### 新设备上线检查清单
+
+```
+□ lsusb                              → VID:PID
+□ sudo lsusb -v -d VID:PID           → bUnitID (XU Unit ID)
+□                                       bInterfaceNumber (VC IF)
+□ 确认 XU_ID 和 IF 填对              → SETUP wIndex 高/低字节
+□ 用 CS_ID=0x04 GET_LEN 试通         → 验证通道 + 拿到协议版本
+□ 看 bmControls 位图                 → 了解支持哪些 CS_ID
+□ 选一个已知 CS_ID 走三阶段          → FUNC_SWITCH → GET_LEN → GET_CUR
+```
+
+### Ubuntu 编译运行速查
+
+```bash
+# 编译
+gcc -o xu_interactive xu_interactive.c -lusb-1.0
+
+# 查描述符
+sudo lsusb -v -d 2bdf:0101 > /tmp/cam.txt
+grep -n "EXTENSION_UNIT\|bUnitID\|bInterfaceNumber" /tmp/cam.txt
+
+# 运行
+sudo ./xu_interactive
+
+# 检查缩进（编辑 HTML 前）
+sed -n 'Np' usb-notes.html | cat -A    # ^I=Tab, 空格=空格
+```
 
 ### descriptor-viewer.html 关键架构
 
-- **CSS**：与 usb-notes.html 共享 35 变量体系，额外新增 `--dev1/2/3-accent`（紫/青/橙）和 `--diff-highlight`
-- **布局**：Grid sidebar 280px + main 1fr，响应式 @media 768px 折叠
-- **cmp-table**：三栏对比表，`.col-dev1/2/3` 带彩色左边框，`.row-diff` 黄色差异高亮，`.row-missing` 灰色斜体
-- **导航**：6 个 `<details class="nav-section">` + 15 个 `<a class="nav-link">`
-- **JS**：主题切换(localStorage)、scroll spy 自动高亮当前 nav-link、smooth scroll
-- **删掉的组件**：device tabs（CSS+JS 已移除——没有 .dev-tabs 标记，是 dead code）
+- 与 usb-notes.html 共享 35 变量 CSS 体系
+- 三栏对比表 `.cmp-table`：`.row-diff` 黄色差异高亮, `.row-missing` 灰色斜体
+- 侧边栏 280px Grid 布局
 
 ### MQTT 类比速查
 
 | MQTT | USB |
 |------|-----|
-| Client 可随时 PUBLISH | Device 只能被动应答（Host 中心化）|
-| CONNECT 报文 | Device Descriptor（设备身份）|
+| CONNECT 报文 | Device Descriptor |
 | Topic 权限声明 | Configuration Descriptor |
 | Topic QoS 定义 | Interface Descriptor |
-| TCP 连接参数 | Endpoint Descriptor（门牌号+方向+带宽）|
-| `$SYS/` 系统主题 | EP0（管理通道）|
-| PUBLISH body | 流管道（中断/批量/等时）|
+| TCP 连接参数 | Endpoint Descriptor |
+| `$SYS/` 系统主题 | EP0（控制端点） |
+| PUBLISH body | 流管道（中断/批量/等时） |
 | QoS | ACK/NAK/STALL 握手机制 |
-| Fixed Header byte 0 | bLength+bDescriptorType（决定整体解析方式）|
+| Topic 下挂子 Topic | Interface 下挂 Endpoint |
+| 多个 Topic 共用一个 TCP 连接 | 多个 Interface 共用 EP0 |
