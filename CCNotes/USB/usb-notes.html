@@ -1791,7 +1791,7 @@ else document.documentElement.classList.add('dark');})();
     	  <div class="txn-fold"><details>
     	    <summary><strong>坑 6：HTML 缩进不统一 → Edit 匹配失败</strong></summary>
     	    <pre><code>$ sed -n '866p' usb-notes.html | cat -A
-      ^I^I</article>$           ← Tab 缩进
+      ^I^I&lt;/article&gt;$           ← Tab 缩进
 
     $ sed -n '868p' usb-notes.html | cat -A
         <h3>2.4 ...</h3>$        ← 4 空格缩进
