@@ -17,6 +17,12 @@
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     --table-stripe: rgba(255, 255, 255, 0.03);
 
+    /* === SVG 图例兼容变量（旧正文内联 SVG 引用） === */
+    --svg-line: #adb5bd;
+    --svg-text: #e9ecef;
+    --svg-fill: #25262b;
+    --border: var(--card-border);
+
     /* === 语义色（暗色，用于协议可视化） === */
     --color-sync-pid: #8ab4f8;
     --color-addr: #63e6be;
@@ -75,6 +81,11 @@
     --accent-dim: rgba(9, 105, 218, 0.08);
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     --table-stripe: rgba(0, 0, 0, 0.02);
+
+    --svg-line: #495057;
+    --svg-text: #212529;
+    --svg-fill: #f8f9fa;
+    --border: var(--card-border);
 
     --color-sync-pid: #1e90ff;
     --color-addr: #20c997;
@@ -532,6 +543,23 @@ body {
     background: var(--accent-dim);
     color: var(--accent);
 }
+
+/* 5.11 Legacy 兼容类（旧正文引用） */
+
+.placeholder {
+    border: 2px dashed var(--card-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-7);
+    margin-bottom: var(--space-4);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.placeholder h3 { font-size: 16px; margin-bottom: var(--space-2); }
+.placeholder ul { list-style: none; font-size: 13px; line-height: 2; }
+
+.diagram-container { margin: var(--space-5) 0; text-align: center; }
+.diagram-container svg { max-width: 100%; height: auto; }
 
 /* ===================================
    6. Visualizations — 数据可视化
@@ -1050,6 +1078,16 @@ body {
         overflow-y: auto;
         padding: var(--space-5);
         box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 克隆进 overlay 的 .sidebar：覆盖移动端 .sidebar { display: none }，改回普通流式布局 */
+    .sidebar-overlay-content .sidebar {
+        position: static;
+        display: block;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        padding: 0;
     }
 }
 

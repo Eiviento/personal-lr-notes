@@ -820,6 +820,16 @@ var NavOverlay = {
             backdrop.addEventListener('click', function() { self.close(); });
         }
 
+        // 点击 overlay 内导航链接后关闭
+        var content = document.getElementById('sidebarOverlayContent');
+        if (content) {
+            content.addEventListener('click', function(e) {
+                if (e.target.closest('.sub-item')) {
+                    self.close();
+                }
+            });
+        }
+
         // Escape 关闭
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && overlay.classList.contains('open')) {
@@ -830,7 +840,16 @@ var NavOverlay = {
 
     open: function() {
         var overlay = document.getElementById('sidebarOverlay');
-        if (overlay) overlay.classList.add('open');
+        var content = document.getElementById('sidebarOverlayContent');
+        if (overlay && content) {
+            // Clone sidebar into overlay each time (to pick up active states)
+            var sidebar = document.querySelector('.sidebar');
+            if (sidebar && !content.children.length) {
+                var clone = sidebar.cloneNode(true);
+                content.appendChild(clone);
+            }
+            overlay.classList.add('open');
+        }
     },
 
     close: function() {
