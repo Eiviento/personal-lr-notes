@@ -1,8 +1,9 @@
 # HANDOFF — USB 协议学习会话交接文档
 
-> 更新时间：2026-08-02（第七会话）
+> 更新时间：2026-08-02（第九会话）
 > 主线学习进度：32/67 知识点（48%）— 暂停在 Phase 4 入口
-> 本会话重点：usb-notes.html 全面翻新——单文件拆 3 文件，暗色 IDE 风格，可访问性补全
+> 本会话重点：**USB 协议知识库整理**——将分散在 7 个 .md 文件和 1 个 HTML 文件中的所有知识点整合为一份结构清晰的单文件 Markdown 文档
+> 上一会话（第八会话）：UVC 取流实战——libuvc + OpenCV 实时显示，XU 码流类型切换，MJPEG 描述符欺诈
 > **⚠️ 工作分支: `redesign/usb-notes-3file`（未合并到 main）**
 
 ---
@@ -47,7 +48,7 @@
 
 用户在 Ubuntu 虚拟机上用热成像摄像头（HIK 2bdf:0101），从 `lsusb` 查描述符到写代码跑通第一条 XU 命令，中间踩坑 → 建立了一套完整的新设备上手方法论。
 
-### 第七会话（本次）：usb-notes.html 全面翻新
+### 第七会话：usb-notes.html 全面翻新
 
 将 `usb-notes.html` 从单文件 3,266 行全面翻新为 3 文件架构，使用 Subagent-Driven Development 流程执行。
 
@@ -100,6 +101,74 @@
 7. **三种 wIndex**：VC XU = `(XU_ID<<8)|VC_IF`，VS = `VS_IF`，SET_INTERFACE = Standard bmRequestType + alt_setting
 8. **bmControls 位图**：`0xFF, 0x03` = bit 0~9 置位 → CS_ID 0x01~0x0A 存在
 
+### 第九会话（本次）：USB 协议知识库整理
+
+**本次会话任务**：用户注意到 usb-notes 中有很多分散的文件（7 个 .md + 1 个 HTML），希望把所有知识点整理成一份结构清晰、内容完整的文档。
+
+经过 brainstorming → 设计确认 → 实施，完成了：
+
+**本次会话产出：**
+
+| 类型 | 文件 | 变更 |
+|------|------|------|
+| 知识库 | `USB-Protocol-Knowledge-Base.md` | **★ 新建**：2,337 行单文件 Markdown，覆盖全部 7 个源文件的知识点 |
+| 设计 | `docs/superpowers/specs/2026-08-02-usb-knowledge-base-design.md` | **新建**：知识库整理设计规格 |
+| 交接 | `HANDOFF.md` | **更新**：补充第九会话记录和最新文件结构 |
+
+**文档结构（五篇 + 附录）：**
+
+| 篇章 | 内容 | 来源 |
+|------|------|------|
+| 前言 | 67 知识点全景 + 学习路线图 | `usb-protocol-learning-plan.md` |
+| 第一篇 | Phase 1 — USB 概览与总线拓扑（5 节） | `phase1-usb-overview.md` |
+| 第二篇 | Phase 2 — 通信模型（16 节 + 4 篇补充问答） | `phase2-communication-model.md` |
+| 第三篇 | Phase 3 — 描述符体系（11 节 + 4 篇补充问答 + CDC 综合示例） | `phase3-descriptors.md` |
+| 第四篇 | 真实设备描述符实战（5 章 + 10 FAQ） | `real-device-descriptor-analysis.md` |
+| 第五篇 | UVC XU 控制与取流实战（7 节 + 7 条踩坑记录） | `uvc-xu-extension-protocol-design.md` + `xu-new-device-setup-guide.md` |
+| 附录 | 快速参考手册（9 张速查表：SETUP、wIndex、PID、描述符、MQTT 类比等） | 全部笔记提炼 |
+
+**整理策略：**
+- **只整合不删减**：所有笔记内容全部保留，不丢失任何知识点
+- **去重归并**：SETUP 包结构在第二篇详述，后续篇章用交叉引用；wIndex 三种填法归并到第二篇，附录保留速查
+- **实战紧跟理论**：描述符理论后面直接跟真实设备分析（第四篇），传输理论后面直接跟 XU 踩坑（第五篇）
+- **保持原始深度**：逐字节解析、HEX dump、Bus Hound 抓包、MQTT 类比全部保留
+
+### 第八会话（上一会话）：UVC 取流实战——libuvc + OpenCV + XU 码流切换
+
+**本会话主线**：在 `xu_interactive.c`（EP0 控制传输）和裸 libusb 批量取流之间补上最后一环——**用 libuvc 做标准 UVC 取流 + OpenCV 实时显示**，并解决了热成像摄像头特有的码流类型切换问题。
+
+**本会话产出：**
+
+| 类型 | 文件 | 变更 |
+|------|------|------|
+| 代码 | `code/xu_interactive.c` | **修改**：GET_LEN 后新增 SET_CUR 自由选择（原来是硬编码只做 GET_CUR） |
+| 代码 | `code/uvc_stream_viewer.cpp` | **★ 新建**：libuvc 取流 + OpenCV 显示，约 400 行，完整 7 步流程 |
+| 笔记 | `notes/xu-new-device-setup-guide.md` | **新增第九章**：码流类型切换——为什么、什么时候、怎么切（约 200 行） |
+| HTML | `usb-notes.html` | **新增 kp-2-21**「⚡ 码流类型切换实战」卡片——热成像数据分层、XU/UVC 顺序、MJPEG 欺诈 |
+
+**本会话踩坑全记录（7 条，最重要的用 ★★★ 标注）：**
+
+| # | 症状 | 根因 | 修复 | 重要度 |
+|---|------|------|------|--------|
+| 1 | SDL2 播放数秒后 segfault | 回调线程和主线程同时写/读帧缓冲区，无锁 | 换 OpenCV + `pthread_mutex_t` 保护所有帧访问 | ★★ |
+| 2 | 花屏（雪花状噪点） | 默认码流类型含测温数据混在 YUV 里 | XU 命令切到类型 10 (YUV_ONLY)：FUNC_SWITCH → GET_LEN → SET_CUR [01 0A] | ★★ |
+| 3 | 花屏仍在，帧只有 ~10000 字节（应该是 38400） | **描述符声称 YUYV，实际送 MJPEG**（帧数据以 `FF D8` JPEG SOI 开头） | 帧回调检测 `FF D8` 头 → 强制 `cv::imdecode` | ★★★ |
+| 4 | XU 命令不执行（编译报错参数数量不对） | `libusb_control_transfer` 8 个参数漏了 `bRequest` | 补全：bmRT + bReq + wVal + wIdx + data + wLen + timeout | ★★★ |
+| 5 | XU 返回 `LIBUSB_ERROR_IO` | XU 在 `uvc_open` 之后发，设备已被 uvc 占用状态不一致 | **XU 必须在 `uvc_open` 之前发**，复用 detach 时的 libusb 句柄 | ★★★ |
+| 6 | OpenCV `cvtColor(YUV2BGR)` 花屏 | OpenCV YUYV 字节序与该设备不匹配 | 统一用 libuvc 的 `uvc_any2rgb` + `cvtColor(RGB2BGR)` | ★ |
+| 7 | `frame->data[0]` 编译报错 | `uvc_frame_t::data` 是 `void*`，C++ 不允许 void* 下标 | 先转 `(const uint8_t *)frame->data` | ★ |
+
+**本会话建立的深层理解：**
+
+1. **UVC 管传输、XU 管内容** — 两层独立，标准 UVC（Probe/Commit/SET_INTERFACE）只管分辨率/帧率/编码，XU 命令管帧里装什么数据。类比：UVC=快递公司，XU=包裹内容单。
+2. **先 XU 后 UVC** — 顺序不可逆。必须先发 XU 配置码流类型，等设备就绪后再开 UVC 管道。如果先开流再发 XU 切换，管道中数据格式突变 → 解码器崩溃。
+3. **取流中能发 XU，但要看命令类型** — 切换码流类型：❌不能（数据格式突变）。切换伪彩/读版本/读错误码：✅能（不改数据格式）。判断标准不是物理冲突（都走 EP0），而是语义影响。
+4. **不能信任 UVC 描述符** — 此设备（2bdf:0101）描述符报 YUYV，实际帧数据以 `FF D8`（JPEG mark）开头。必须在回调里检测实际数据头。
+5. **MJPEG 省 74% 带宽** — 120x160 YUYV=38400 字节，MJPEG 压缩后 ~10000 字节。摄像头说谎是为了兼容性（YUYV 描述符更容易被 OS 匹配）但实际送 MJPEG 省带宽。
+6. **热成像数据分层** — 探测器→测温矩阵/伪彩映射→码流多路复用器（XU CS_ID=0x03）→UVC 传输层→USB。6 种码流类型（2/3/6/8/9/10），看画面用类型 10（YUV_ONLY），测温用类型 2（TEMP_FULL）。
+7. **`libusb_control_transfer` 签名** — 8 个参数：`(devh, bmRequestType, bRequest, wValue, wIndex, data, wLength, timeout)`。极易漏 bRequest。
+8. **XU 控制传输走 EP0，不需要 claim 接口** — 可以独立开 libusb 句柄发 XU，和 uvc 的 VS 管道互不影响。
+
 ---
 
 ## 三、当前文件结构
@@ -107,6 +176,7 @@
 ```
 D:\CC\personal-lr-notes\CCNotes\USB\
 ├── HANDOFF.md                                    ← 你正在看的这份交接文档
+├── USB-Protocol-Knowledge-Base.md                 ← ★ 新建：知识库整合文档（2,337 行，覆盖全部笔记）
 ├── usb-protocol-learning-plan.md                 ← 完整学习计划（67知识点清单）
 ├── usb-notes.html                                ← Phase 1-3 理论可视化（纯 HTML 结构）
 ├── usb-notes.css                                 ← 10 层分层样式（暗色默认 IDE 风格）
@@ -118,19 +188,23 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 ├── usb设备3的描述符.txt                            ← 设备3 原始 dump（无 Extension Unit）
 ├── docs/superpowers/
 │   ├── specs/
+│   │   ├── 2026-08-02-usb-notes-redesign.md      ← 前端翻新设计规格
+│   │   └── 2026-08-02-usb-knowledge-base-design.md ← ★ 知识库整理设计规格
 │   └── plans/
+│       └── 2026-08-02-usb-notes-redesign.md      ← 前端翻新实现计划
 ├── code/
 │   ├── HIKVISION_TM76_libusb_3.c                 ← 海康 TM76 完整参考（伪彩/码流/视频流）
 │   ├── uvc_xu_subfunc_framework.c                ← UVC XU 扩展协议封装库
-│   ├── xu_minimal_get.c                          ← ★ 新增：最简示例（读 CS_ID=0x04）
-│   └── xu_interactive.c                          ← ★ 新增：交互式 XU 调试工具
+│   ├── xu_minimal_get.c                          ← 最简示例（读 CS_ID=0x04）
+│   ├── xu_interactive.c                          ← 交互式 XU 调试工具（★ 支持 SET_CUR 选择）
+│   └── uvc_stream_viewer.cpp                     ← ★★★ libuvc 取流 + OpenCV 显示（第八会话核心产出）
 ├── notes/
 │   ├── phase1-usb-overview.md                    ← Phase 1
 │   ├── phase2-communication-model.md             ← Phase 2（新增接口-端点关系问答）
 │   ├── phase3-descriptors.md                     ← Phase 3
 │   ├── real-device-descriptor-analysis.md        ← 实战手册（FAQ 10 个）
 │   ├── uvc-xu-extension-protocol-design.md       ← UVC XU 扩展协议设计
-│   └── xu-new-device-setup-guide.md              ← ★ 新增：新设备上手实操指南（8章）
+│   └── xu-new-device-setup-guide.md              ← 新设备上手实操指南（含第九章码流切换）
 └── .superpowers/sdd/                             ← SDD 进度账本
 ```
 
@@ -148,14 +222,25 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 当用户说"继续"时，从这里开始。
 
-### 副线：usb-notes.html 翻新已完成基础，待合并
+### 副线一：UVC 取流工具已完成基础
+
+`uvc_stream_viewer.cpp` 可以正常工作——打开摄像头、切码流、取流、OpenCV 实时显示。输出为 120x160 MJPEG（经 cv::imdecode 解码后正常显示）。
+
+**可以改进的方向：**
+- 支持命令行选择分辨率（目前自动选第一个可用的，120x160）
+- 支持录制（`cv::VideoWriter` 写 .avi）
+- 支持截图（空格键保存当前帧）
+- 支持伪彩热切换（取流中发 XU CS_ID=0x02 换调色板，~200ms 生效）
+- F 键全屏切换（代码骨架已留，未实现）
+- 多设备支持（当前只取第一台或指定 VID:PID）
+
+### 副线二：usb-notes.html 翻新已完成基础，待合并
 
 **⚠️ 翻新工作在分支 `redesign/usb-notes-3file` 上，未合并到 main。**
 
-合并前需用户在浏览器中验证：
-- 双击 `usb-notes.html` → 确认侧边栏搜索、主题切换、滚动监听、包图渲染、时间线点击展开均正常
+**合并前需用户在浏览器中验证：**
+- 双击 `usb-notes.html` → 确认侧边栏搜索、主题切换、滚动监听、包图渲染、时间线点击展开、新增的 kp-2-21 卡片均正常
 - 缩窄浏览器窗口到 <1024px → 确认移动端汉堡菜单 overlay 正常
-- 确认 `descriptor-viewer.html`（单文件旧版）不受影响
 
 验证通过后合并：
 ```bash
@@ -163,26 +248,25 @@ git checkout main
 git merge redesign/usb-notes-3file
 git branch -d redesign/usb-notes-3file
 ```
-
 合并后可删除备份文件 `usb-notes-old.html`。
 
 ### 未来可能的前端优化
 
 - `descriptor-viewer.html` 同样做 3 文件翻新
 - 时间线详情面板加键盘 Escape 关闭的 focus 自动移回
-- 移动端 overlay 克隆的搜索框目前是装饰（未绑定 JS），需要让克隆的搜索也能工作
-- `color-mix()` 在极旧浏览器（<Chrome 111, <Safari 16.2）不支持，可视需要加 fallback
+- 移动端 overlay 克隆的搜索框目前是装饰（未绑定 JS）
+- `color-mix()` 在极旧浏览器不支持，可视需要加 fallback
 
-- `xu_minimal_get.c` 成功读到协议版本 `"2.0"`
-- `xu_interactive.c` 可以交互式探索任意 CS_ID/SubFunc
-- 新设备上手方法论已沉淀为 `xu-new-device-setup-guide.md`
+### 用户可能要求的下一步
 
-用户未来可能要求：
-- 在 `xu_interactive.c` 中集成 SET_CUR 写操作
-- 对未知 CS_ID 做暴力扫描（遍历 bmControls 位图置位的所有 CS_ID）
-- 把海康 TM76 的时间戳解析逻辑写进代码
-- 实现完整的 Probe/Commit/SET_INTERFACE 取流流程
-- 读取实际视频帧
+- **主线**：说"继续" → Phase 4.1（枚举完整时间线：插入→检测→复位→Default→Address→Configured）
+- **知识库**：在 `USB-Protocol-Knowledge-Base.md` 中补充后续学习内容（Phase 4+）
+- **取流工具**：加录制/截图/伪彩切换/全屏
+- **XU 探索**：`xu_interactive.c` 加 SET_CUR 暴力扫描未知 CS_ID
+- **裸 libusb 取流**：把 TM76 的 `uvc_read_one_frame()` 逻辑改写为面向 2bdf:0101
+- **前端翻新**：合并 `redesign/usb-notes-3file` 分支，或翻新 `descriptor-viewer.html`
+- **编辑 HTML**：改内容→`usb-notes.html`，改样式→`usb-notes.css`，改行为→`usb-notes.js`（3 文件架构，4 空格缩进）
+- **查阅知识库**：需要系统复习某个主题时，直接读 `USB-Protocol-Knowledge-Base.md`（单文件，结构清晰，含 9 张速查表）
 
 ---
 
@@ -254,12 +338,25 @@ git branch -d redesign/usb-notes-3file
 28. **数据走 OUT/IN 端点时 wLength 就是 Bus Hound 显示的那一行长度。**
 29. **SETUP 包里 wValue/wIndex 含义由 bmRequestType 的 D6-5 和 D4-0 决定。** 不是"CS_ID 永远在 wValue 高字节"——那是 UVC Class 请求的惯例。
 
+### UVC 取流 + XU 码流切换（★ 第八会话新增）★★★
+
+30. **★★★ `libusb_control_transfer` 有 8 个参数，极易漏掉 `bRequest`。** 签名：`(devh, bmRequestType, bRequest, wValue, wIndex, data, wLength, timeout)`。如果写成 7 个参数——把 wValue 放在 bRequest 的位置——所有后续参数全部错位，编译报"too few arguments"或运行报 LIBUSB_ERROR_IO。
+31. **★★★ XU 命令必须在 `uvc_open` 之前发，不能在之后。** `uvc_open` 之后设备被 libuvc 占用状态。在 `uvc_open` 之前用独立 libusb 句柄发 XU（EP0 不需要 claim 接口），发完再 `uvc_open`。正确流程：detach 内核驱动 → XU 切换码流类型 → uvc_open → Probe/Commit → uvc_start_streaming。
+32. **★★★ 不能信任 UVC 描述符的格式声明。** 此设备（2bdf:0101）描述符报 YUYV (UncompressedFormat, GUID=YUY2)，但实际帧数据以 `FF D8`（JPEG SOI mark）开头。帧大小 ~10000 字节而非期望的 38400。必须在帧回调里检测实际数据头：`if (raw[0]==0xFF && raw[1]==0xD8) → cv::imdecode`。
+33. **XU 控制传输走 EP0，不需要 claim 接口。** 可以独立于 uvc 句柄另开一个 libusb 句柄发 XU 命令。控制传输不需要 claim，只有批量/中断/等时传输才需要。两个 libusb 句柄可以同时打开同一个设备。
+34. **热成像摄像头默认输出不是纯 YUV。** 码流类型多路复用器（XU CS_ID=0x03 SubFunc=0x05）默认输出类型 8（测温+YUV 混合）或类型 6（YUV+测温头）。必须先发 XU 命令切到类型 10（YUV_ONLY，数据 `[0x01, 0x0A]`）才能拿到标准解码器能用的纯 YUV 数据。
+35. **取流中可以发 XU，但要分类讨论。** 切换码流类型：❌不能（数据格式突变）。切换伪彩/读版本/读错误码：✅能（不改数据格式或纯读操作）。物理上不冲突（控制传输走 EP0，视频流走 ISOC/BULK 端点），冲突在语义层。
+36. **帧回调跑在 libuvc 内部线程，不能在里面做 SDL/OpenCV 渲染。** 回调只做数据转换（YUYV/MJPEG→BGR），设标志位；主线程检测标志位→加锁→读帧→渲染→解锁。用 `pthread_mutex_t` 或 `SDL_mutex` 保护帧缓冲区。
+37. **`uvc_frame_t::data` 是 `void*`，C++ 编译不能直接下标。** 必须先转 `(const uint8_t *)frame->data` 再访问 `[0]` 和 `[1]`。
+38. **`uvc_get_stream_ctrl_format_size` 的自动协商可能选不到正确格式。** 如果常规协商（传 YUYV/MJPEG 枚举值）全部失败，回退到遍历原始格式描述符链（`uvc_get_format_descs`），逐个 `wWidth`/`wHeight`/`dwDefaultFrameInterval` 去试。fps 传 0 表示"无所谓"。
+
 ### 关于平台
 
-30. **用户环境是 Windows + Git Bash。** Shell 用 Bash 语法，路径用正斜杠。
-31. **git 仓库根目录在 `D:/CC/personal-lr-notes/`。** USB 项目在 `CCNotes/USB/` 子目录。
-32. **网络需要代理（127.0.0.1:7890）。**
-33. **用户也有 Ubuntu 虚拟机**（`fdl@fdl-virtual-machine`），工作目录 `~/桌面/hikusb/`。在 Ubuntu 上做实际 XU 通信开发和测试。
+39. **用户环境是 Windows + Git Bash。** Shell 用 Bash 语法，路径用正斜杠。
+40. **git 仓库根目录在 `D:/CC/personal-lr-notes/`。** USB 项目在 `CCNotes/USB/` 子目录。
+41. **Windows 端编辑代码，Ubuntu VM 端编译运行。** 代码在 Windows（`D:\CC\personal-lr-notes\CCNotes\USB\code\`），需每次拷贝到 Ubuntu VM（`~/桌面/hikusb/`）再 `gcc`/`g++` 编译。文件不同步是常见问题——VM 里编译报旧错误先检查文件是否最新。
+42. **网络需要代理（127.0.0.1:7890）。**
+43. **Ubuntu 虚拟机**（`fdl@fdl-virtual-machine`），工作目录 `~/桌面/hikusb/`。
 
 ---
 
@@ -267,25 +364,37 @@ git branch -d redesign/usb-notes-3file
 
 1. **读这份交接文档** — `Read HANDOFF.md`
 2. **检查 git 分支** — `git branch`。如果仍在 `redesign/usb-notes-3file` 分支上，说明翻新还未合并。确认是否继续翻新工作还是切回 `main`。
-3. **读学习计划** — `Read usb-protocol-learning-plan.md`
-4. **读笔记目录** — `Glob notes/*.md`
+3. **读知识库** — `Read USB-Protocol-Knowledge-Base.md`（★ 第九会话新建：2,337 行，覆盖全部笔记内容的完整知识库，读它就能获得所有上下文）
+4. **读学习计划** — `Read usb-protocol-learning-plan.md`（如需了解后续 35 个未完成的知识点）
 5. **确定用户意图：**
    - 如果用户说"继续" → 从 Phase 4 的 4.1（枚举完整时间线）开始讲，一次一个知识点
-   - 如果用户要看理论学习/控制传输详解 → 告诉用户双击 `usb-notes.html`（3 文件架构，CSS 和 JS 在外部文件）
-   - 如果用户要看描述符实战 → 告诉用户双击 `descriptor-viewer.html`
-   - 如果用户要看 **新设备上手方法** → `notes/xu-new-device-setup-guide.md`（8 章实操指南）
-   - 如果用户要看 UVC XU 协议设计 → `notes/uvc-xu-extension-protocol-design.md` + `code/uvc_xu_subfunc_framework.c`
-   - 如果用户要调试 XU 通信 → `code/xu_interactive.c`
-   - 如果用户要看最小示例 → `code/xu_minimal_get.c`
-   - 如果用户要看海康 TM76 完整代码 → `code/HIKVISION_TM76_libusb_3.c`
-   - 如果用户问 Bus Hound 抓包 → 指向 `usb-notes.html` 2.10 的 SETUP 8 字节折叠区和 2.20 的带注释抓包
-   - 如果用户问 Interface vs Endpoint → 指向 `usb-notes.html` 2.3a
-   - 如果用户问标准 UVC 取流 → `notes/xu-new-device-setup-guide.md` 第八章
-   - 如果用户想继续前端翻新 → `descriptor-viewer.html` 还没翻新，或者合并 `redesign/usb-notes-3file` 分支
-   - 如果用户说提交/pr/合并 → 先确认在哪个分支，验证通过后合并到 main
-   - 如果用户要编辑 HTML → `usb-notes.html` 现在只是纯结构（4 空格缩进），CSS 改 `usb-notes.css`，JS 改 `usb-notes.js`
+   - 如果用户要复习/查阅某主题 → `USB-Protocol-Knowledge-Base.md`（单文件，含 9 张速查表）
+   - 如果用户要看理论学习可视化 → 双击 `usb-notes.html`（3 文件架构）
+   - 如果用户要看描述符实战 → 双击 `descriptor-viewer.html`
+   - 如果用户要看 **摄像头取流+显示** → `code/uvc_stream_viewer.cpp`（libuvc+OpenCV，完整 7 步流程）
+   - 如果用户要调 XU → `code/xu_interactive.c`（支持 GET_LEN 后选 GET_CUR 或 SET_CUR）
+   - 如果用户要看 **码流类型切换原理** → `USB-Protocol-Knowledge-Base.md` 第五篇 §5.4
+   - 如果用户要看新设备上手方法 → `USB-Protocol-Knowledge-Base.md` 第五篇 §5.2
+   - 如果用户要看 UVC XU 协议设计 → `notes/uvc-xu-extension-protocol-design.md`
+   - 如果用户要看最小读 XU 示例 → `code/xu_minimal_get.c`
+   - 如果用户要看海康 TM76 完整代码（裸 libusb 取流） → `code/HIKVISION_TM76_libusb_3.c`
+   - 如果用户问 Bus Hound 抓包 → `USB-Protocol-Knowledge-Base.md` 第四篇 FAQ Q8
+   - 如果用户问 Interface vs Endpoint → `USB-Protocol-Knowledge-Base.md` §2.3a
+   - 如果用户问 **标准 UVC 取流流程** → `USB-Protocol-Knowledge-Base.md` §5.3
+   - 如果用户问 **XU 和 UVC 的先后顺序** → `USB-Protocol-Knowledge-Base.md` §5.4（★★★ 必读）
+   - 如果用户想继续前端翻新 → `descriptor-viewer.html` 还没翻新，或合并 `redesign/usb-notes-3file` 分支
+   - 如果用户说提交/pr/合并 → 先确认在哪个分支，验证后合并到 main
+   - 如果用户要编辑知识库 → 直接编辑 `USB-Protocol-Knowledge-Base.md`（4 空格缩进）
+   - 如果用户要编辑 HTML → 改内容 `usb-notes.html`，改样式 `usb-notes.css`，改行为 `usb-notes.js`
 6. **如果用户不确定到哪了：**
-   > "Phase 1-3 已完成（32/67，48%），暂停在 Phase 4 入口。上上次会话在 Ubuntu 跑通了第一条 XU 命令。上次会话做了 usb-notes.html 全面翻新——单文件拆成 HTML/CSS/JS 三文件，暗色 IDE 风格，补了搜索框/进度条/移动端适配/可访问性。翻新在 `redesign/usb-notes-3file` 分支上，还没合并到 main。准备好了说继续。"
+   > "Phase 1-3 已完成（32/67，48%），暂停在 Phase 4 入口。上次会话（第九会话）做了 USB 协议知识库整理——把 7 个 .md 文件 + 1 个 HTML 的全部知识点整合为一份 `USB-Protocol-Knowledge-Base.md`（2,337 行）。上一会话（第八会话）做了 UVC 取流实战——libuvc + OpenCV 实时显示，XU 码流类型切换，解决了 MJPEG 描述符欺诈。翻新在 `redesign/usb-notes-3file` 分支上，还没合并到 main。准备好了说继续。"
+7. **★ 最重要的几条规则（新会话开始务必重申）：**
+   - **XU 必须在 `uvc_open` 之前发**，否则报 LIBUSB_ERROR_IO
+   - **`libusb_control_transfer` 有 8 个参数**：bmRT + bReq + wVal + wIdx + data + wLen + timeout（极易漏 bRequest！）
+   - **不能信任 UVC 描述符的格式**：帧回调里检测 FF D8 头判断是否 MJPEG
+   - **帧回调不能做渲染**：回调只转换数据，主线程渲染，用 pthread_mutex_t 保护
+   - **代码在 Windows 编辑，Ubuntu VM 编译运行**，注意文件同步
+   - **新会话先读 `USB-Protocol-Knowledge-Base.md`** 获取完整上下文，再读 HANDOFF.md 了解最新进度
 
 ---
 
@@ -348,7 +457,7 @@ sudo ./xu_interactive
 
 | 文件 | 行数 | 做什么 |
 |------|------|--------|
-| `usb-notes.html` | 2,239 | 纯 HTML 结构，4 空格缩进，不含 `<style>`/`<script>` |
+| `usb-notes.html` | ~2,500 | 纯 HTML 结构，4 空格缩进，不含 `<style>`/`<script>`。新增 kp-2-21（码流切换） |
 | `usb-notes.css` | 1,153 | 全部样式，10 层分层（Layer 1 变量, Layer 5 组件, Layer 6 可视化…） |
 | `usb-notes.js` | 885 | 全部脚本，4 模块（DATA → RENDERERS → INTERACTION → INIT） |
 | `usb-notes-old.html` | 3,266 | 翻新前单文件备份 |
@@ -356,9 +465,42 @@ sudo ./xu_interactive
 **编辑前端时**：
 - 改样式 → `usb-notes.css`，找到对应 Layer
 - 改行为 → `usb-notes.js`，找到对应 manager
-- 改内容 → `usb-notes.html`，现在是纯结构，不再有缩进混用问题
+- 改内容 → `usb-notes.html`，现在是纯结构，4 空格缩进
 - CSS 变量全在 Layer 1（`:root` 暗色 / `.light` 亮色）
 - 不要直接在 HTML 里加 `<style>` 或 `<script>`
+
+### 取流代码速查（★ 第八会话新增）
+
+| 文件 | 语言 | 做什么 | 编译 |
+|------|------|--------|------|
+| `uvc_stream_viewer.cpp` | C++ | libuvc 取流 + OpenCV 显示 | `g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cflags --libs opencv4)` |
+| `xu_interactive.c` | C | 交互式 XU 调试，新增 GET_LEN 后可选 SET_CUR | `gcc -o xu_interactive xu_interactive.c -lusb-1.0` |
+| `xu_minimal_get.c` | C | 最简 XU 读示例 | `gcc -o xu_minimal_get xu_minimal_get.c -lusb-1.0` |
+
+**uvc_stream_viewer 完整流程**：
+```
+① libusb 打开 → detach 内核驱动
+② XU FUNC_SWITCH → XU SET_CUR [01 0A] (YUV_ONLY)  ← 必须在 uvc_open 之前
+③ usleep(200ms)
+④ uvc_open → uvc_get_stream_ctrl_format_size → uvc_start_streaming
+⑤ 帧回调：检测 FF D8 → cv::imdecode(MJPEG) 或 uvc_any2rgb(YUYV) → cv::cvtColor(RGB2BGR)
+⑥ cv::imshow → cv::waitKey(10) → ESC 退出
+```
+
+### 新设备码流切换检查清单（★ 新增）
+
+```
+□ lsusb                              → VID:PID
+□ sudo lsusb -v -d VID:PID           → bUnitID (XU), bInterfaceNumber (VC IF)
+□ 确认 XU_ID 和 VC_IF                → wIndex = (XU_ID<<8) | VC_IF
+□ ★ 先发 XU 切码流类型                → FUNC_SWITCH → GET_LEN → SET_CUR [01 0A]
+  □ 用独立 libusb 句柄，EP0 不需要 claim
+  □ 在 uvc_open 之前！不要之后！
+  □ usleep(200ms) 等设备就绪
+□ uvc_open → uvc_get_stream_ctrl_format_size（可能需要 raw descriptor walk）
+□ 帧回调检测 FF D8 头 → 如果是 JPEG 走 cv::imdecode，否则走 uvc_any2rgb
+□ 帧回调只做转换，不渲染。渲染在主线程，加 pthread_mutex_t 保护
+```
 
 ### descriptor-viewer.html 关键架构
 

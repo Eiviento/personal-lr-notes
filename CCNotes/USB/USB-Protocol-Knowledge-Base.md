@@ -1,0 +1,2441 @@
+# USB 协议知识库
+
+> 整理日期：2026-08-02
+> 覆盖范围：Phase 1-3 理论学习 + 真实设备描述符实战 + UVC XU 控制与取流实战
+> 学习进度：32/67 知识点（48%），暂停在 Phase 4（枚举过程）入口
+> 学习策略：自底向上 — 先把协议基础打牢，再谈开发
+> 深度要求：每个 byte 的每个 bit 含义都要讲清楚（MQTT 报文头级别精度）
+
+---
+
+## 前言：学习路线图
+
+### 67 个知识点全景
+
+本知识库基于以下学习计划构建，总计 8 个阶段、67 个知识点任务。\(\color{green}{\text{⛁}}\) = 逐字节/逐比特精讲。
+
+| 阶段 | 内容 | 知识点数 | 状态 |
+|------|------|:---:|:---:|
+| Phase 1 | USB 概览与总线拓扑 | 5 | ✅ 完成 |
+| Phase 2 | USB 通信模型 — 层层拆解到比特 | 16 | ✅ 完成 |
+| Phase 3 | USB 描述符体系 — 逐字节解剖 | 11 | ✅ 完成 |
+| Phase 4 | USB 枚举过程 — 逐包逐事务追踪 | 12 | ⬜ 待开始 |
+| Phase 5 | 标准请求与 Setup 包深度解析 | 6 | ⬜ 待开始 |
+| Phase 6 | 设备类协议逐字节解析（HID / CDC / UVC） | 26 | ⬜ 待开始 |
+| Phase 7 | 协议分析工具与实操 | 7 | ⬜ 待开始 |
+| Phase 8 | libusb 编程衔接 | 5 | ⬜ 待开始 |
+
+### 阅读指南
+
+- **从零开始**：按第一篇→第二篇→第三篇→第四篇→第五篇顺序阅读
+- **快速查阅**：跳转到附录的速查表
+- **实战优先**：如果你已经有理论基础，直接跳到第四篇（真实设备）和第五篇（XU 取流）
+- **MQTT 类比**：文中大量使用 MQTT/TCP/HTTP 做类比，帮助理解 USB 协议设计
+- **方向视角**：IN = Device→Host（Host "收进来"），OUT = Host→Device（Host "发出去"）
+
+---
+
+# 第一篇：USB 概览与总线拓扑
+
+---
+
+## 1.1 USB 设计目标与历史
+
+### USB 之前的七种接口和七种痛
+
+| 接口 | 痛点 |
+|------|------|
+| RS-232 串口 | 速度慢(115.2kbps)、不能热插拔、一端口一设备、需手动设参数 |
+| 并口(LPT) | 电缆粗贵、速度~150KB/s、只能接打印机 |
+| PS/2 | 不能热插拔、键盘鼠标不通用 |
+| SCSI | 贵、需专用卡、终端电阻/ID需跳线 |
+| Game Port | 只能一个游戏杆、CPU占用极高 |
+| VGA | 只传视频不传数据/供电 |
+| 各类专用 | 每加设备可能要加卡，IRQ/DMA/IO冲突 |
+
+### USB 七大设计目标
+
+| # | 目标 | 对应设计决策 |
+|---|------|-------------|
+| 1 | 一根线接所有外设 | 统一物理层+协议层 |
+| 2 | 热插拔 | Host主动检测总线电平变化+枚举协议 |
+| 3 | 自动配置 | 描述符→自动识别→不需要手动设地址 |
+| 4 | 支持多种速度 | 1.5M/12M/480M/5G+ 分级 |
+| 5 | 总线供电 | VBUS 5V，低功耗设备不额外供电 |
+| 6 | 可扩展 | Hub级联，最多127设备 |
+| 7 | 低成本 | 低速简单设备+分层协议 |
+
+### USB 核心设计哲学
+
+**Host 中心化**：所有通信由 Host 发起，Device 只能被动应答。
+
+跟 MQTT 的根本差异：MQTT Client 可以随时 PUBLISH，USB Device 连打招呼的权利都没有。
+
+---
+
+## 1.2 USB 版本演进全景
+
+| 版本 | 发布年 | 速度 | 编码 | 供电 | 连接器 |
+|------|--------|------|------|------|--------|
+| USB 1.0 | 1996 | 1.5 Mbps | NRZI | 5V/100mA | Type-A/B |
+| USB 1.1 | 1998 | 1.5/12 Mbps | NRZI | 5V/500mA | 同上 |
+| USB 2.0 | 2000 | +480 Mbps | NRZI | 5V/500mA | +Mini/Micro |
+| USB 3.0 | 2008 | +5 Gbps | 8b/10b | 5V/900mA | 新增5根差分线 |
+| USB 3.1 | 2013 | +10 Gbps | 128b/132b | 可协商到20V/5A | Type-C引入 |
+| USB 3.2 | 2017 | +20 Gbps | 128b/132b | 同上 | Type-C双通道 |
+| USB4 | 2019 | 20/40 Gbps | 64b/66b | 同上 | 仅Type-C |
+
+### 关键速度概念
+
+- **Low Speed (LS)**: 1.5Mbps — 键盘、鼠标
+- **Full Speed (FS)**: 12Mbps — 打印机、老摄像头
+- **High Speed (HS)**: 480Mbps — U盘、移动硬盘、高清摄像头
+- **SuperSpeed (SS)**: 5Gbps+ — 固态硬盘、4K摄像头
+
+### 向后兼容矩阵
+
+```
+Host \ Device: 新Host永远可以挂老Device，老Host不能挂新Device
+USB 3.x Host → LS/FS/HS/SS 全支持
+USB 2.0 Host → LS/FS/HS
+USB 1.1 Host → LS/FS
+```
+
+### 为什么基于 USB 2.0 学协议
+
+1. 包结构可直接读(NRZI简单)
+2. 广播总线(Wireshark一个口看所有通信)
+3. 四种传输类型都有
+4. HID/CDC/UVC在2.0上完整工作
+5. 3.0只是加了速度和路由，概念基础一样
+
+---
+
+## 1.3 总线拓扑结构
+
+### 树形拓扑规则
+
+| 规则 | 数值 |
+|------|------|
+| 最多层数 | 7层(Tier)，Root Hub = Tier 1 |
+| 最多设备 | 127个（ADDR字段7bit，0x00保留） |
+| 最多非Root Hub | 5个 |
+| 每段电缆最长 | 5米(FS/LS)，总长30米 |
+
+### 7层限制原因
+
+1. **信号延迟**：往返延迟 ≤ 700ns(FS)，每米电缆 ~5.2ns，5m×5 + Hub延迟 → 7层到物理上限
+2. **电缆长度**：5个Hub×5m = 最大30米
+
+### 地址范围
+
+```
+ADDR字段 7 bit → 0x00~0x7F (128个)
+0x00 = 默认地址（Default Address），设备刚复位后使用
+剩余 1~127 = 127个可分配地址 → 127设备上限
+```
+
+### 三种角色
+
+- **Host**: 发起所有通信、提供VBUS(5V)、枚举、带宽调度、内置Root Hub
+- **Hub**: 扩展端口、检测插拔、端口供电、HS↔FS/LS速度翻译(Split Transaction)、本身也是USB Device
+- **Device (Function)**: 响应请求、提供描述符、实现功能逻辑、管理电源
+
+### Compound vs Composite
+
+- **Compound Device**: 一个壳子多个地址（内含Hub+多个独立Device）
+- **Composite Device**: 一个地址多个Interface（一个芯片多功能，如摄像头+麦克风）
+
+---
+
+## 1.4 主机控制器类型
+
+| 缩写 | 全称 | 管什么速度 | 存亡状态 |
+|------|------|-----------|---------|
+| UHCI | Universal HCI | LS+FS | 已死亡(Intel) |
+| OHCI | Open HCI | LS+FS | 已死亡(Compaq等) |
+| EHCI | Enhanced HCI | HS + 兼容LS/FS | 存量设备 |
+| xHCI | eXtensible HCI | LS/FS/HS/SS全管 | 现代标准 |
+
+### EHCI 双控器架构
+
+EHCI只支持HS。LS/FS设备需要 Companion Controller (UHCI/OHCI) 来处理：
+
+```
+插LS/FS设备 → 路由给Companion Controller
+插HS设备(Chirp协商成功) → 交给EHCI
+```
+
+### xHCI 统一架构
+
+一个控制器管所有速度，不再需要Companion Controller。通过Transfer Ring (TRB环形链表) 统一管理所有传输。
+
+### 软件栈层次
+
+```
+你的SDK (libusb API)
+  → libusb 用户空间库
+    → OS USB 驱动后端 (WinUSB/usbfs/IOKit)
+      → OS USB 驱动栈
+        → 主机控制器驱动 (HCD)
+          → 主机控制器硬件 (HC)
+            → USB 物理总线 (D+/D-)
+```
+
+---
+
+## 1.5 物理层与电气特性
+
+### USB 2.0 线缆 (4根线)
+
+| 线色 | 信号 | 用途 |
+|------|------|------|
+| 红 | VBUS | 5V供电 |
+| 白 | D- | 差分数据- |
+| 绿 | D+ | 差分数据+ |
+| 黑 | GND | 地线 |
+
+USB 3.0 加5根（共9根）：SSTX+/SSTX-/SSRX+/SSRX-/GND_DRAIN
+
+### VBUS 供电规范
+
+| 状态 | 最大电流 |
+|------|---------|
+| 未配置(枚举前) | 100 mA |
+| 配置后 USB 2.0 | 500 mA |
+| 配置后 USB 3.0 | 900 mA |
+| 挂起态 | 2.5 mA |
+
+电压: 4.40V ~ 5.25V (标称5.0V)
+
+### 差分信号原理
+
+D+和D-传差分信号：接收方计算 D+减D- 的差值。外部共模噪声同时影响两根线 → 相减后噪声抵消。
+
+### J/K 状态
+
+| 状态 | D+ | D- | 含义(取决于速度) |
+|------|----|----|-----|
+| J (Diff 1) | 高 | 低 | LS=Idle, FS=Data 1 |
+| K (Diff 0) | 低 | 高 | LS=Data 1, FS=Idle |
+
+注意：LS和FS的J/K含义是反的！
+
+### 速度识别（电阻决定）
+
+```
+Host/Hub侧: D+和D-各有15KΩ下拉到GND
+设备侧:
+  FS/HS设备: D+ → 1.5KΩ上拉到3.3V → 插入后D+变高
+  LS设备:    D- → 1.5KΩ上拉到3.3V → 插入后D-变高
+```
+
+Host检测：D+高→FS/HS, D-高→LS
+
+### HS Chirp 协商
+
+HS设备先冒充FS(D+上拉) → Host复位 → 设备发Chirp K → Host回Chirp K/J交替 → 设备切换HS终端电阻 → 协商成功，后续以480Mbps通信。
+
+如果Chirp协商失败(老Host)→设备留在FS模式(12Mbps)。
+
+### NRZI 编码 + Bit Stuffing
+
+- NRZI: 0=跳变, 1=保持
+- Bit Stuffing: 连续6个1后强制插1个0(产生跳变维持时钟同步)
+- 接收方: 看到连续6个1→删除后面的0→恢复原数据
+
+### SE0 (Single Ended Zero)
+
+D+和D-同时为低。用于：
+- EOP (包结束信号): SE0持续2个bit时间 + J状态1个bit时间
+- 总线复位: SE0持续 ≥10ms
+
+---
+
+# 第二篇：USB 通信模型 — 层层拆解到比特
+
+---
+
+## 2.1 三层通信模型
+
+### 三层定义
+
+```
+功能层 (Function Layer) — "做什么"
+  → 你的SDK和业务逻辑
+  → 例: HID按键→按键码, CDC→串口字节流, UVC→视频帧
+
+USB设备层 (USB Device Layer) — "怎么组织"
+  → 端点/管道/传输类型/描述符
+  → 把包的碎片组织成有意义的传输
+
+总线接口层 (Bus Interface Layer) — "怎么传"
+  → 包(Packet)、NRZI编码、D+/D-信号
+  → 硬件层面
+```
+
+### MQTT 类比
+
+| MQTT层 | USB层 |
+|--------|------|
+| 应用层 (Topic/Payload) | 功能层 (业务数据) |
+| MQTT协议 (QoS/PacketID) | USB设备层 (端点/管道/传输) |
+| 传输层 (TCP/IP) | 总线接口层 (包/D+/D-) |
+
+### 核心差异：Host中心化
+
+- MQTT: Client可随时PUBLISH，Broker转发
+- USB: Host不发Token，Device不能说任何话。所有通信Host发起。
+
+---
+
+## 2.2 端点 (Endpoint)
+
+### 定义
+
+**端点 = 设备内部的一段 FIFO 缓冲区。** 硬件概念，芯片设计时就要决定数量/大小/类型。
+
+### 端点地址编码
+
+```
+Token包中 ENDP 字段 = 4 bits → 端点号 0~15
+
+完整端点地址:
+  Bit7 = 方向 (1=IN, 0=OUT) — 在端点描述符中
+  Bit3-0 = 端点号
+
+  IN = Device → Host (Host "收进来")
+  OUT = Host → Device (Host "发出去")
+
+方向永远从Host视角看！
+0x81 = IN, EP1    0x02 = OUT, EP2
+```
+
+### 端点0 (EP0)
+
+每个USB设备必须有。天生存在，不需要描述符声明。
+
+| 属性 | 值 |
+|------|-----|
+| 端点号 | 固定0 |
+| 方向 | 双向 |
+| 传输类型 | 只能是控制传输 |
+| 职责 | 枚举、配置、类特定控制请求 |
+| LS MaxPacketSize | 固定8B |
+| FS MaxPacketSize | 8/16/32/64 |
+| HS MaxPacketSize | 固定64B |
+
+类比 MQTT `$SYS/` 系统主题——管理通道。
+
+### 最大包大小 (MaxPacketSize)
+
+| 速度 | 控制 | 中断 | 批量 | 等时 |
+|------|------|------|------|------|
+| LS | 8 | 1~8 | ❌ | ❌ |
+| FS | 8/16/32/64 | 1~64 | 8/16/32/64 | 1~1023 |
+| HS | 64 | 1~1024 | 512 | 1~1024 |
+
+> MaxPacketSize ≠ FIFO实际大小。FIFO通常更大(双缓冲/多缓冲)。
+
+### 典型设备端点布局
+
+```
+HID键盘(LS): EP0(控制8B), EP1 IN(中断8B)
+CDC串口(FS): EP0(控制64B), EP1 IN(中断16B), EP2 IN(批量64B), EP3 OUT(批量64B)
+UVC摄像头(HS): EP0(控制64B), EP1 IN(中断16B可选), EP2 IN(等时512B)
+```
+
+---
+
+## 2.3 管道 (Pipe)
+
+### 定义
+
+**管道 = Host软件到端点之间的逻辑通信通道。** 端点 = 目的地(硬件FIFO)，管道 = 通往目的地的路(软件抽象)。
+
+### 两种管道
+
+**消息管道 (Message Pipe)**：
+- 双向、结构化、请求→响应格式
+- 只能连EP0
+- 只能控制传输
+- 类比MQTT CONNECT/CONNACK
+
+**流管道 (Stream Pipe)**：
+- 单向、无结构、原始字节流
+- 连EP1~15
+- 中断/批量/等时传输
+- 类比MQTT PUBLISH body
+
+### 映射关系
+
+```
+消息管道 = 控制传输 = EP0 = 双向
+流管道 = 中断/批量/等时传输 = 非0端点 = 单向
+```
+
+### libusb中的体现
+
+管道不需要显式创建。调用传输API时系统内部维护：
+
+```c
+libusb_control_transfer(dev, ...);    // 消息管道, 永远双向
+libusb_bulk_transfer(dev, 0x03, ...);  // 流管道, EP3 OUT
+libusb_interrupt_transfer(dev, 0x81, ...); // 流管道, EP1 IN
+```
+
+---
+
+## 2.3a 接口 (Interface) 与端点 (Endpoint) 的归属关系
+
+### 核心规则四条
+
+**规则 1：端点有主——每个非 EP0 端点只属于一个 Interface**
+
+```
+Configuration 1
+├── Interface 0 (Video Control)
+│   └── EP 0x83 (IN, Interrupt)      ← 只属于 IF=0
+│
+├── Interface 1 (Video Streaming)
+│   └── EP 0x81 (IN, Bulk)           ← 只属于 IF=1
+│
+└── IF=1 的代码不能往 EP 0x83 发数据，IF=0 的代码也不能往 EP 0x81 发数据。
+```
+
+**规则 2：EP0 是共用的——设备级资源，不属于任何一个 Interface**
+
+所有 Interface 的控制传输都走 EP0。发 XU 命令时 bmRequestType 选 Interface，wIndex 指定 Interface 号——但数据物理上从同一个 EP0 流过。类比：EP0 是小区的唯一大门，Interface 是门牌号。
+
+**规则 3：同一个 Interface 的不同 Alternate Setting 可以复用端点号**
+
+```
+Interface 1 (VS):
+  Alternate 0:  EP 0x81 (Bulk)        ← 取流时激活
+  Alternate 2:  EP 0x81 (Isochronous)  ← 也可以声明相同 EndpointID
+  Alternate 3:  EP 0x81 (Isochronous)  ← 因为同时只有一个 Alt 生效
+```
+
+**规则 4：两个不同的 Interface 不能声明同一个 EndpointID**
+
+USB 规范禁止此行为——每个端点地址在一个 Configuration 内必须唯一。
+
+### 真实设备数据验证（HIK 2bdf:0101）
+
+```
+USB View 报告:
+  Used Endpoints: 3              ← EP0 + EP 0x83 + EP 0x81
+  Number of open Pipes: 2        ← 用户态看到 2 个数据管道
+  Pipe[0]: EP3  IN  Interrupt    ← 属于 IF=0 (VC)
+  Pipe[1]: EP1  IN  Bulk         ← 属于 IF=1 (VS)
+```
+
+### 描述符树中的接口-端点层级
+
+```
+Device Descriptor
+ └── Configuration Descriptor
+      ├── Interface Descriptor (IF=0, VC)
+      │    ├── VC Header Descriptor
+      │    ├── Input Terminal Descriptor
+      │    ├── Processing Unit Descriptor
+      │    ├── Extension Unit Descriptor          ← XU 在这里
+      │    ├── Output Terminal Descriptor
+      │    └── Endpoint Descriptor (EP 0x83, IN, Interrupt)
+      │
+      └── Interface Descriptor (IF=1, VS, Alternate 0)
+           ├── VS Input Header Descriptor
+           │    bEndpointAddress: 0x81            ← 指向数据端点
+           ├── Format Descriptor ×3
+           ├── Frame Descriptor ×N
+           └── Endpoint Descriptor (EP 0x81, IN, Bulk)
+```
+
+> VS Input Header 里的 `bEndpointAddress=0x81` 只是一个"指针"，告诉 Host "数据会从 EP 0x81 过来"。真正的端点属性在 Endpoint Descriptor。
+
+### libusb 中的体现
+
+```c
+// 通过 Interface 发控制命令 — 走 EP0
+libusb_claim_interface(devh, 0);          // claim Video Control 接口
+libusb_control_transfer(devh, ...);       // 走 EP0，wIndex=(XU_ID<<8)|0
+
+// 通过 Endpoint 读数据 — 走具体端点
+libusb_claim_interface(devh, 1);          // claim Video Streaming 接口
+libusb_bulk_transfer(devh, 0x81, ...);    // 走 EP 0x81，不需要接口号
+```
+
+**claim 接口 → 获得接口下所有端点的使用权。** 传输时直接用端点地址——不需要重复指定接口号，因为端点地址已经是全局唯一的。
+
+---
+
+## 2.2a 补充：EP0 的 64 字节 vs Bus Hound 的 512 字节
+
+> 核心问题：HS 下 EP0 最大包只有 64 字节，为什么 Bus Hound 抓包显示一包 512 字节？
+
+### 两种可能
+
+**可能一（最常见）：看到的是 VS 端点，不是 EP0**
+
+```
+VC Interface (bInterfaceNumber=0)
+  └─ EP0 (控制端点)              ← XU 命令、枚举走这里，HS=固定 64B
+
+VS Interface (bInterfaceNumber=1)
+  └─ Bulk IN Endpoint (0x81)     ← 视频数据走这里，HS=max 512B
+```
+
+| 端点类型 | HS 最大包 | 你在哪看到 |
+|----------|:--------:|-----------|
+| EP0（控制） | **64（固定）** | XU 命令、枚举 |
+| Bulk Endpoint | **512** | 取流视频数据 |
+| ISOC Endpoint | **1024** | 等时视频流 |
+
+**可能二：Bus Hound 把多个 64B 事务合并显示为一行**
+
+控制传输 DATA 阶段 512 字节 = USB 总线上 8 个 64B 事务（512÷64=8），每个都有独立的 Token + DATA + ACK。但 Bus Hound 工作在 URB 层，把驱动的一次完整请求合并显示：
+
+```
+Bus Hound 看到的：              USB 总线真实发生的：
+┌──────────────────────┐      ┌────────────────────────────┐
+│ CTL   8 bytes        │ ←──→ │ SETUP Token + DATA0(8B)    │
+│ IN    512 bytes      │ ←──→ │ IN Token + DATA0(64B)+ACK  │ ×1
+│                      │      │ IN Token + DATA1(64B)+ACK  │ ×2
+│                      │      │ ... (DATA0/DATA1 交替) ... │ ×3~7
+│                      │      │ IN Token + DATA1(64B)+ACK  │ ×8
+│                      │      │ OUT Token + DATA1(0B)      │ STATUS
+└──────────────────────┘      └────────────────────────────┘
+```
+
+**Bus Hound 一行 `IN 512` = 总线上 9 个事务！**
+
+### 核心认知
+
+- **Bus Hound 是 URB 层抓包**，不是总线层——它显示驱动的一次完整请求，不暴露底层包拆分
+- **EP0 固定 64B（HS）不变**
+- **区分方法**：看 Bus Hound 行里标注的端点地址——端点 0x00 → EP0 合并显示；0x81/0x82… → 非 EP0，512 是真实单包大小
+- 这是 HANDOFF §六 第 27 条的延伸——STATUS 阶段不显示，DATA 阶段的包拆分也给合并了
+
+---
+
+## 2.4 四种传输类型全景
+
+| 维度 | 控制 | 中断 | 批量 | 等时 |
+|------|:---:|:---:|:---:|:---:|
+| 可靠性 | ✅ ACK+重试 | ✅ ACK+重试 | ✅ ACK+重试 | ❌ 无握手 |
+| 延迟保证 | 不保证 | ✅ bInterval | ❌ | ✅ 带宽保留 |
+| 带宽保证 | 10%保留 | 有限保留 | ❌ 吃剩饭 | ✅ 预约 |
+| 方向 | 双向 | 单向 | 单向 | 单向 |
+| 管道 | 消息管道 | 流管道 | 流管道 | 流管道 |
+| LS支持 | ✅ | ✅ | ❌ | ❌ |
+| HS最大包 | 64 | 1024 | 512 | 1024 |
+| 典型设备 | 所有设备 | 键盘/鼠标 | U盘/串口 | 摄像头/音频 |
+
+### 帧内带宽分配优先级
+
+```
+等时(最高) → 中断 → 控制(至少10%) → 批量(吃剩饭)
+```
+
+### 选型: 中断 vs 批量
+
+| 维度 | 中断 | 批量 |
+|------|------|------|
+| 延迟 | 有保证 | 无保证 |
+| 数据量 | 小 | 大 |
+| CPU | 必须定期轮询 | 按需 |
+| 用途 | 状态/按键/传感器 | 文件/串口流 |
+
+---
+
+## 2.5 传输/事务/包 三层映射
+
+### 核心公式
+
+```
+1 Transfer (传输) = N 个 Transaction (事务)
+1 Transaction (事务) = 最多 3 个 Packet (包)
+```
+
+### 每种传输的事务模式
+
+| 传输类型 | 事务组成 | Token | Data | Handshake |
+|----------|---------|-------|------|-----------|
+| 控制 | SETUP + [DATA×N] + STATUS | SETUP/IN/OUT | ✅ | ✅ |
+| 中断IN | 1个IN事务 | IN | ✅ | ✅ |
+| 中断OUT | 1个OUT事务 | OUT | ✅ | ✅ |
+| 批量IN | 1个IN事务 | IN | ✅ | ✅ |
+| 批量OUT | 1个OUT事务 | OUT | ✅ | ✅ |
+| 等时IN | 1个IN事务 | IN | ✅ | ❌ |
+| 等时OUT | 1个OUT事务 | OUT | ✅ | ❌ |
+
+### DATA0/DATA1翻转
+
+- 端点初始化→Toggle=DATA0
+- 每成功传输(收到ACK)→Toggle翻转
+- 收到NAK→Toggle不翻转
+- 接收方检测Toggle不匹配→知道是重传→回ACK但丢数据
+- 目的：区分"Host重发"和"Host发了相同内容"
+
+---
+
+## 2.6 ⛁ PID 编码表
+
+### PID 8位结构
+
+```
+Bit7~Bit4 = ~Bit3~Bit0 (按位取反)
+
+例: ACK
+  低4位(类型码) = 0010 (0x2)
+  高4位(校验)   = 1101 (~0010)
+  完整PID       = 1101 0010 = 0xD2
+```
+
+错误检测：高4位≠~低4位→PID损坏→忽略整个包
+
+### PID 低2位分类
+
+```
+Bit1-0 = 00 → SPECIAL类
+Bit1-0 = 01 → TOKEN类
+Bit1-0 = 10 → HANDSHAKE类
+Bit1-0 = 11 → DATA类
+```
+
+### 16种PID全集
+
+**TOKEN类：**
+
+| PID | 低4位 | 完整(hex) | 含义 |
+|-----|-------|-----------|------|
+| OUT | 0001 | 0xE1 | Host→Device数据 |
+| IN | 1001 | 0x69 | Host←Device数据 |
+| SOF | 0101 | 0xA5 | 帧起始 |
+| SETUP | 1101 | 0x2D | 控制传输SETUP阶段 |
+
+**DATA类：**
+
+| PID | 低4位 | 完整(hex) | 含义 |
+|-----|-------|-----------|------|
+| DATA0 | 0011 | 0xC3 | 翻转位=0 |
+| DATA1 | 1011 | 0x4B | 翻转位=1 |
+| DATA2 | 0111 | 0x87 | HS等时微帧多包 |
+| MDATA | 1111 | 0x0F | HS等时Split |
+
+**HANDSHAKE类：**
+
+| PID | 低4位 | 完整(hex) | 含义 |
+|-----|-------|-----------|------|
+| ACK | 0010 | 0xD2 | 正确接收 |
+| NAK | 1010 | 0x5A | 暂时忙/无数据 |
+| STALL | 1110 | 0x1E | 端点Halted/请求不支持 |
+| NYET | 0110 | 0x96 | HS批量OUT: FIFO满了(PING协议) |
+
+**SPECIAL类：**
+
+| PID | 低4位 | 完整(hex) | 含义 |
+|-----|-------|-----------|------|
+| PRE | 1100 | 0x3C | LS Preamble |
+| ERR | 1100 | 0x3C | Split Transaction出错 |
+| SPLIT | 1000 | 0x78 | HS Split开始 |
+| PING | 0100 | 0xB4 | HS批量OUT流控探测 |
+| EXT | 0000 | 0xF0 | 扩展PID(保留) |
+
+---
+
+## 2.7 ⛁ Token 包逐位解析
+
+### IN/OUT/SETUP Token (24 bits)
+
+```
+SYNC(8b) | PID(8b) | ADDR(7b) | ENDP(4b) | CRC5(5b) | EOP(3b)
+```
+
+### SYNC字段 (8 bits)
+
+`00000001` (0x80, LSB first)
+
+7个0→NRZI连续7次跳变→接收方PLL锁定时钟
+最后1→停止跳变→标志SYNC结束
+
+### ADDR字段 (7 bits)
+
+范围 0x00~0x7F (0~127)。0x00 = 默认地址(Default Address)，0x01~0x7F = 可分配地址。
+
+### ENDP字段 (4 bits)
+
+范围 0~15。方向由PID决定(IN PID=读, OUT PID=写)。EP3 IN和EP3 OUT是硬件上两个不同的FIFO。
+
+### CRC5字段 (5 bits)
+
+多项式: G(x) = x⁵ + x² + 1 (100101 = 0x25)。校验范围: ADDR(7b) + ENDP(4b) = 11 bits。
+
+### SOF Token (结构不同)
+
+```
+SYNC(8b) | PID=SOF(0xA5) | Frame Number(11b) | CRC5(5b) | EOP
+```
+
+Frame Number: 0~2047。FS: 1帧=1ms→~2秒回卷。HS: 1微帧=125μs→256ms回卷。
+
+---
+
+## 2.8 ⛁ Data 包逐位解析
+
+### 结构
+
+```
+SYNC(8b) | PID(8b) | DATA(0~1024B) | CRC16(16b) | EOP(3b)
+```
+
+### CRC16
+
+多项式: G(x) = x¹⁶ + x¹⁵ + x² + 1，截断多项式: 0x8005。校验范围: DATA字段全部字节。
+
+### 短包终止
+
+数据长度 < MaxPacketSize → 短包 = 传输结束信号。如果恰好等于MaxPacketSize → 追加零长度DATA包标记结束。
+
+---
+
+## 2.9 ⛁ Handshake 包逐位解析
+
+### 结构（USB最短的包）
+
+```
+SYNC(8b) | PID(8b) | EOP(3b)
+```
+
+没有DATA、没有CRC。PID自身的高4位=~低4位校验已足够。
+
+### ACK (0xD2)
+
+数据被正确接收(CRC正确、PID校验正确、Toggle匹配)。发送方翻转Toggle，事务完成。
+
+### NAK (0x5A)
+
+暂时忙/无数据: FIFO空(IN)或FIFO满(OUT)。Toggle不翻转，发送方稍后重试。**不是错误**，是正常流控。NAK总是Device给Host的。
+
+### STALL (0x1E)
+
+端点Halted或请求不支持。需要软件干预(CLEAR_FEATURE)。NAK="等等再来" vs STALL="别试了，需要人来修"。
+
+### NYET (0x96, HS only)
+
+HS批量OUT: 数据收了但FIFO满了。PING协议的一部分：Host先PING确认空间→再发OUT数据。
+
+### ERR (0x3C, HS only)
+
+Hub在Split Transaction中向Host报告错误。SDK一般不直接处理。
+
+---
+
+## 2.10 控制传输逐事务拆解
+
+### 三阶段模型
+
+```
+必含: SETUP + STATUS
+可选: DATA (wLength=0则跳过)
+```
+
+### SETUP阶段
+
+```
+固定结构，一个SETUP事务:
+Host → SETUP Token (0x2D, ADDR, EP0)
+Host → DATA0 (8B SETUP包)
+Host ← ACK (设备必须ACK! 不能NAK)
+```
+
+### SETUP包8字节
+
+| 偏移 | 字段 | 大小 | 示例(GET_DESCRIPTOR) |
+|------|------|------|---------------------|
+| +0 | bmRequestType | 1B | 0x80 (D2H, Standard, Device) |
+| +1 | bRequest | 1B | 0x06 (GET_DESCRIPTOR) |
+| +2 | wValue | 2B | 0x0100 (Device Desc, Index=0) |
+| +4 | wIndex | 2B | 0x0000 |
+| +6 | wLength | 2B | 0x0012 (18 bytes) |
+
+### DATA阶段
+
+方向由bmRequestType Bit7决定:
+- Bit7=1(Device→Host): DATA=IN事务系列
+- Bit7=0(Host→Device): DATA=OUT事务系列
+- wLength=0: 跳过DATA阶段
+
+### STATUS阶段
+
+- 方向总是跟DATA阶段相反
+- 无DATA阶段时默认IN
+- STATUS数据包永远是DATA1 (跟在最后DATA事务Toggle后面)
+- 接收STATUS的那方必须回ACK→控制传输才正式闭环
+
+### 三种类型
+
+1. 控制读(Read): SETUP→DATA(IN)×N→STATUS(OUT)
+2. 控制写(Write): SETUP→DATA(OUT)×N→STATUS(IN)
+3. 无数据(No Data): SETUP→STATUS(IN)
+
+### 长度不匹配处理
+
+- 设备回的数据 < wLength: 短包自动终止
+- 设备回的数据 = wLength但可更多: Host按wLength截断
+- 所以GET_DESCRIPTOR(Config)要先读9B头→知wTotalLength→再读完整
+
+---
+
+## 2.11 中断传输逐事务拆解
+
+### 基本结构
+
+```
+Host发IN Token→Device回应:
+  有数据: DATA(1~64B FS/1~1024B HS)→Host ACK
+  无数据: NAK (Host下个周期再问)
+  出错:   STALL
+```
+
+### bInterval 延迟保证
+
+Host保证在bInterval内至少服务一次中断端点。
+
+```
+LS/FS: bInterval = N ms
+HS: 实际间隔 = 2^(bInterval-1) × 125μs
+
+最快延迟: HS bInterval=1 → 125μs
+典型鼠标: FS bInterval=10 → 10ms
+```
+
+### 中断OUT
+
+存在但少用: HID键盘LED控制、游戏手柄力反馈。
+
+---
+
+## 2.12 批量传输逐事务拆解
+
+### 帧内优先级
+
+等时 > 中断 > 控制(≥10%) > 批量(吃剩饭)
+
+### HS PING流控
+
+```
+FS/LS: 直接OUT→可能被NAK(浪费带宽)
+HS: 先PING探测空间→ACK→再OUT→避免浪费
+
+PING流程:
+Host→PING Token→Device回ACK(有空间)/NAK(满)
+ACK→OUT Token+DATA→Device回ACK/NYET
+NYET: 数据收了但满了，下次先PING再发
+```
+
+### 理论吞吐
+
+HS: 13×512B/125μs ≈ 53.2 MB/s (理论)
+实际: 20-35 MB/s (协议开销+其他传输占用)
+USB 3.0 SS: 理论400+MB/s
+
+### 结束条件
+
+1. 客户端指定了传输长度
+2. 短包终止 (< MaxPacketSize)
+3. 零长度包 (设备不想NAK)
+
+---
+
+## 2.13 等时传输逐事务拆解
+
+### 基本结构（无握手包！）
+
+```
+IN:  Host→IN Token ←DATA (结束!)
+OUT: Host→OUT Token→DATA (结束!)
+```
+
+没有ACK, 没有NAK, 没有STALL。
+
+### 为什么不要握手
+
+实时>可靠性: 30fps视频(33ms/帧), 重传延迟比丢几帧更致命。人脑对5-10%帧丢失不敏感，但对>50ms延迟非常敏感。
+
+### 带宽预约
+
+枚举时Host检查是否有足够带宽。带宽不够→Set_Configuration失败→设备不可用。
+
+### HS微帧多包
+
+```
+一个微帧最多3包:
+IN+DATA2(1024B)→IN+DATA1(1024B)→IN+DATA0(1024B)
+= 3072B/125μs ≈ 24.6 MB/s
+```
+
+### 同步类型
+
+bmAttributes Bit2-3:
+- 00=Asynchronous (异步, 各走各时钟, 如USB音箱)
+- 01=Adaptive (自适应, 如USB话筒)
+- 10=Synchronous (同步, 锁定SOF, 如UVC摄像头)
+
+---
+
+## 2.14 SOF 包与帧结构
+
+### SOF包结构
+
+```
+SYNC(8b) | PID=SOF(0xA5) | Frame Number(11b) | CRC5(5b) | EOP(3b)
+```
+
+SOF是广播包(没有ADDR/ENDP)，总线上所有设备都收到。
+
+### Frame Number = 0~2047
+
+```
+FS: 1帧=1ms→Frame Number每ms+1→~2.048秒回卷
+HS: 1微帧=125μs→每125μs发SOF→但Frame Number每1ms才+1
+    8个微帧=1ms=1个HS帧
+    设备自己计微帧号(0~7)
+```
+
+### SOF时间精度
+
+FS: 1ms ± 500ns；HS: 125μs ± 62.5ns。USB总线上最精确的时间参考。
+
+### 帧内调度
+
+```
+SOF→等时→中断→控制→批量→SOF(下一帧)
+```
+
+### Suspend检测
+
+连续3ms(FS)或3个微帧(HS)没看到SOF→设备进入Suspend→电流≤2.5mA
+
+---
+
+## 2.15 HS 高速模式补充
+
+### 微帧结构
+
+8个微帧=1ms HS帧。μF0~μF7，Frame Number相同，下一组μF0的Frame Number+1。
+
+### Split Transaction
+
+**问题**: HS Hub后挂FS/LS设备，Hub必须做速度翻译。
+
+**解法**: Split Transaction (两阶段)
+
+#### Phase 1: Start-Split (SSPLIT)
+
+Host→SSPLIT Token→Hub翻译成FS/LS信号→跟FS/LS设备交互→数据暂存Hub缓冲区
+
+#### Phase 2: Complete-Split (CSPLIT)
+
+Host→CSPLIT Token→Hub返回之前暂存的数据
+
+### 时间线示例（FS鼠标在HS Hub后）
+
+```
+μF0: SSPLIT → Hub翻译→FS鼠标NAK
+μF1: CSPLIT → Hub报告NAK(没数据)
+μF2: SSPLIT → Hub翻译→FS鼠标DATA(按键!)
+μF3: CSPLIT → Hub→DATA→Host拿到按键数据
+```
+
+从按下到Host拿到 ≈ 4微帧 = 500μs
+
+---
+
+## 2.16 USB 3.x SuperSpeed 概览
+
+### 双总线架构
+
+USB 3.0端口 = USB 2.0总线 + SuperSpeed总线 (并行运行，互不抢占)
+
+### 广播式 vs 路由式
+
+```
+USB 2.0: Host喊一嗓子，所有设备都听→功耗随设备数增加
+USB 3.0: 路由式转发→只有目标设备接收→功耗常数
+```
+
+### LTSSM (Link Training and Status State Machine)
+
+USB 3.0引入链路层状态机:
+Rx.Detect→Polling→Training→U0(正常工作)
+省电: U1(浅眠,~μs) / U2(深眠,~ms) / U3(Suspend)
+
+### USB 2.0 vs 3.0 核心对比
+
+| 维度 | USB 2.0 | USB 3.x |
+|------|---------|---------|
+| 拓扑 | 广播式 | 路由式 |
+| 编码 | NRZI | 8b/10b→128b/132b |
+| 流控 | NAK/NYET/PING | 链路层信用(Credit-based) |
+| 链路管理 | SE0复位 | LTSSM状态机 |
+| 中断 | 定期轮询 | 设备可主动发ERDY |
+| EP0 | 64B | 512B |
+
+---
+
+## 补充问答一：传输方向深度辨析
+
+### Q1: 控制传输的"双向"是全双工吗？另外三种是半双工吗？
+
+**USB 总线物理层本身就是半双工的。** D+/D- 只有一对差分线，同一时刻只能有一个方向的数据在线上传输。
+
+**控制传输的"双向"不是同时收发**，而是指 EP0 这个端点既能收也能发，收发分阶段串行执行：
+
+```
+控制读 (Host 读 Device 描述符):
+  阶段1 SETUP: Host → Device  (OUT方向)
+  阶段2 DATA:   Host ← Device  (IN方向，Device回数据)
+  阶段3 STATUS: Host → Device  (OUT方向，Host确认)
+```
+
+STATUS 阶段的方向永远跟 DATA 阶段相反——这是协议规定，不是硬件能力。
+
+**中断/批量/等时端点的"单向"是端点层面的：** 它们是两个物理上不同的 FIFO 缓冲区。即使端点号相同，EP3 IN 和 EP3 OUT 是两段独立的硬件 FIFO。
+
+| 层面 | 全双工/半双工 | 说明 |
+|------|:---:|------|
+| USB 总线（物理层） | 半双工 | D+/D- 只有一对 |
+| 控制传输 EP0 | 半双工，但双向 | 分阶段切换方向 |
+| 中断/批量/等时端点 | 单向 | 硬件上方向固定，双向需两个端点 |
+
+### Q2: 每个端点是做什么功能的，由谁决定？
+
+决定权在**设备（Device）**这边，分两个层面：
+
+**层面一：硬件设计时（芯片设计师决定）** — 端点的数量、类型、方向、FIFO 大小是芯片设计时硬件决定的。芯片流片之后这些就不能改了。
+
+**层面二：枚举时（设备固件通过描述符告诉 Host）** — Host 读描述符 → 知道 EP1 是中断 IN → 以后按这个规矩发 Token。Host 不能"自作主张"给 EP1 发批量传输。
+
+**最终话事权 = 设备（硬件+固件）。Host 只是被动接受者。**
+
+### Q3: Token 在每种传输的事务中起什么作用？
+
+Token 是 USB 总线上**每一笔事务的起始信号**，由 Host 发出。作用：
+
+> "第 X 号设备，你的第 Y 号端点，接下来我们要收/发数据了。"
+
+| 字段 | 作用 | 例 |
+|------|------|-----|
+| PID | 告诉设备**要干什么**：IN(发数据)、OUT(收数据)、SETUP(命令来了) | `0x69` = IN |
+| ADDR | 总线上 127 个设备，**喊哪一个** | `0x03` = 设备 3 |
+| ENDP | 那个设备的 16 个端点，**用哪个** | `0x1` = EP1 |
+
+类比：Token = 课堂上老师点名。**"张三（ADDR），把你的作业交上来（IN，ENDP）。"** 没被点名的人不说话。
+
+| Token 类型 | 含义 | 谁发 | 后面发生什么 |
+|------------|------|------|-------------|
+| **SETUP** | "我要发控制命令" | Host | DATA0(8B命令) → 设备 ACK |
+| **IN** | "你发数据给我" | Host | 设备回 DATA / NAK / STALL |
+| **OUT** | "我发数据给你" | Host | Host 发 DATA → 设备 ACK/NAK/STALL |
+| **SOF** | "新一帧开始了" | Host | 广播，全总线都听，不回应 |
+
+---
+
+## 补充问答二：SOF Token 和 SETUP Token 的区别
+
+| 维度 | SOF Token | SETUP Token |
+|------|-----------|-------------|
+| **目标** | **广播**（全体设备） | **点对点**（特定设备 + EP0） |
+| **包含 ADDR/ENDP** | ❌ 不包含 | ✅ ADDR(7) + ENDP(4) |
+| **特有字段** | Frame Number(11 bit) | 无（地址和端点替代） |
+| **触发动作** | 设备据此同步帧计时 | 设备必须接受后续 DATA0（8 字节 Setup Packet） |
+| **发送频率** | FS: 每 1ms 一次；HS: 每 125μs 一次 | 只在控制传输开始时发一次 |
+| **PID 值** | `0xA5` | `0x2D` |
+
+**SOF = 心跳 / 时钟信号。** 广播形式，不带地址，总线上的所有设备都收到。两个作用：(1)让设备知道帧边界，做时间同步；(2)防止设备进入 Suspend 状态。
+
+**SETUP = 点名 + 命令开启。** 控制传输的"起手式"，必须指向特定设备的 EP0。
+
+---
+
+## 补充问答三：为什么 SETUP 事务必须 ACK，不能 NAK？
+
+### 三个根因
+
+**根因一：SETUP 是状态机清零信号。** SETUP Token 一到达设备，USB 硬件自动：(1)清空之前未完成的控制传输状态；(2)强制复位 Data Toggle（永远用 DATA0 包）。
+
+**根因二：EP0 的硬件保证——SETUP 缓冲永远可用。** EP0 必须预留专用的 SETUP 缓冲区（通常 8 字节 FIFO），跟普通数据 FIFO 是分离的。
+
+**根因三：USB 协议不允许 SETUP 重试的语义。** SETUP 上的很多请求不是幂等的（比如 SetConfiguration()），重试会制造歧义。
+
+### SETUP 异常处理
+
+| 情况 | 设备行为 | Host 处理 |
+|------|---------|----------|
+| SETUP 包 CRC 校验错 | **静默丢弃**（不响应任何东西） | 超时，判定总线错误，重发 SETUP 事务 |
+| SETUP 包正确、但设备不支持该命令 | DATA 阶段正常走完，**STATUS 阶段返回 STALL** | Host 收到 STALL，知道"设备不支持这个命令" |
+| SETUP 包正确、固件来不及处理 | 硬件自动 ACK（不依赖固件） | Host 继续发送下一个事务 |
+
+> 即使设备不支持 SETUP 里的命令，SETUP 阶段本身也照样 ACK。拒绝发生在 STATUS 阶段用 STALL 表达。
+
+---
+
+## 补充问答四：127 个设备一帧照顾得过来吗？
+
+### 理论极限
+
+FS（12Mbps）下，一帧 = 1ms = 12,000 bit times。一个最小事务（IN Token → NAK）约 60 bit times。127 × 60 + SOF(35) ≈ 7,655 bit times。**理论上有余量。**
+
+### 但纯 NAK 毫无意义
+
+| 事务类型 | 典型大小 | 单次耗时 | 127 个设备总耗时 |
+|---------|---------|---------|----------------|
+| IN + NAK | 0 字节 | ~60 bit times | ~7,655 ✅ 勉强 OK |
+| IN + DATA + ACK（鼠标 8B） | 8 字节 | ~200 bit times | ~25,400 ❌ 2 帧多 |
+| 批量 OUT + 512B + ACK | 512 字节 | ~4,300 bit times | ~546,000 ❌ 45 帧 |
+
+### 制约机制
+
+1. **带宽分配机制**：等时/中断预留 ≤ 90%，Host 在枚举阶段就会算账——带宽不够直接拒绝 Set_Configuration
+2. **供电**：一个 Root Hub 只出 500mA（5 个 unit load），127 个设备全 Bus-powered 需要 12.7A
+3. **Hub 层级**：USB 最多 5 层 Hub
+4. **实用场景**：大部分设备大部分时间在静默
+
+**结论：127 是地址空间的上限，不是并发能力的承诺。**
+
+---
+
+# 第三篇：USB 描述符体系 — 逐字节解剖
+
+---
+
+## 3.1 描述符层级关系
+
+### 全貌
+
+USB 设备靠一套"元数据"向 Host 自报家门——这套元数据就是**描述符（Descriptor）**。所有描述符组成一棵严格的树：
+
+```
+Device Descriptor（设备级，1 个）
+  │  制造商是谁、产品是什么、USB 版本多少
+  │
+  └─ Configuration Descriptor（配置级，≥1 个）
+        │  耗电多少、有几个接口、自供电还是总线供电
+        │
+        └─ Interface Descriptor（接口级，≥1 个）
+              │  这是什么设备类(HID/CDC/UVC)、几个端点
+              │
+              └─ Endpoint Descriptor（端点级，0~N 个）
+                    │  端点号、方向、传输类型、最大包大小、轮询间隔
+                    │
+                    └─ (可选) 类专用描述符
+                          HID Descriptor / CDC Functional Descriptors / UVC VC&VS Descriptors
+```
+
+### 每个描述符的前 2 字节铁律
+
+```
+Byte 0: bLength        — 本描述符的长度（字节数）
+Byte 1: bDescriptorType — 描述符类型码（1 字节枚举值）
+```
+
+Host 拿到描述符链后，先读 `bLength` 知道多大，再读 `bDescriptorType` 知道是什么类型，然后决定怎么解析剩余的字节。
+
+### 常见类型码速查
+
+| bDescriptorType | 名称 |
+|:---:|------|
+| 0x01 | Device Descriptor |
+| 0x02 | Configuration Descriptor |
+| 0x03 | String Descriptor |
+| 0x04 | Interface Descriptor |
+| 0x05 | Endpoint Descriptor |
+| 0x06 | Device Qualifier Descriptor |
+| 0x07 | Other Speed Configuration |
+| 0x0B | Interface Association Descriptor (IAD) |
+| 0x0F | BOS Descriptor |
+
+### 描述符链的内存布局
+
+Host 用 `Get_Descriptor(Configuration)` 请求读回的不是单个描述符，而是一条**描述符链**——把 Configuration + Interface + Endpoint + 类专用描述符全部串联成一个连续数据块。Host 从头开始，遇到一个描述符读 `bLength`，跳过 `bLength` 字节就是下一个描述符。
+
+### MQTT 类比
+
+| USB 描述符 | MQTT 类比 |
+|------------|-----------|
+| Device Descriptor | CONNECT 报文 |
+| Configuration Descriptor | 设备 Topic 权限声明 |
+| Interface Descriptor | 每个 Topic 的 QoS 定义 |
+| Endpoint Descriptor | TCP 连接参数 |
+| `bLength + bDescriptorType` 前 2 字节铁律 | MQTT Fixed Header 第一个字节 |
+
+---
+
+## 补充问答一：端点和接口的区别
+
+| 维度 | Endpoint（端点）| Interface（接口）|
+|------|-----------------|-------------------|
+| **本质** | 硬件 FIFO 缓冲区 | 逻辑功能分组 |
+| **数量** | 每设备 0~16 个（不含 EP0）| 每配置 1~N 个 |
+| **包含关系** | 属于某个 Interface | 包含多个 Endpoint |
+| **标识** | `bEndpointAddress`（bit7=方向 + bit3~0=端点号）| `bInterfaceNumber`（0, 1, 2...）|
+
+**一句话：Interface 回答"我能干什么"，Endpoint 回答"数据从哪走"。**
+
+### 类码三级分类体系
+
+```
+bInterfaceClass      (1 byte) — "大类是什么"
+bInterfaceSubClass   (1 byte) — "大类下的哪个子类"
+bInterfaceProtocol   (1 byte) — "用什么协议变体"
+```
+
+| 设备 | bInterfaceClass | bInterfaceSubClass | bInterfaceProtocol |
+|------|:---:|:---:|:---:|
+| USB 鼠标 | 0x03 (HID) | 0x01 (Boot Interface) | 0x02 (Mouse) |
+| USB 键盘 | 0x03 (HID) | 0x01 (Boot Interface) | 0x01 (Keyboard) |
+| CDC 虚拟串口 | 0x02 (CDC) | 0x02 (ACM) | 0x01 (AT Commands) |
+| U 盘 | 0x08 (Mass Storage) | 0x06 (SCSI) | 0x50 (Bulk-Only) |
+| UVC 摄像头 | 0x0E (Video) | 0x01 (Video Control) | 0x00 |
+| 音频耳机 | 0x01 (Audio) | 0x01 (Audio Control) | 0x00 |
+
+---
+
+## 3.2 ⛁ Device Descriptor — 18 字节逐位解剖
+
+这是 Host 读到的**第一个描述符**。
+
+### 逐字段表格
+
+| 偏移 | 字段 | 大小 | 含义 | 示例值（SanDisk U盘） |
+|------|------|------|------|------|
+| 0 | bLength | 1 | 固定 0x12 (18) | 0x12 |
+| 1 | bDescriptorType | 1 | 固定 0x01 | 0x01 |
+| 2-3 | bcdUSB | 2 | USB 协议版本(BCD) | 0x0200 |
+| 4 | bDeviceClass | 1 | 设备级类码(0x00=看Interface) | 0x00 |
+| 5 | bDeviceSubClass | 1 | 设备级子类 | 0x00 |
+| 6 | bDeviceProtocol | 1 | 设备级协议 | 0x00 |
+| 7 | bMaxPacketSize0 | 1 | EP0最大包大小 | 0x40 (64) |
+| 8-9 | idVendor | 2 | 厂商ID(USB-IF分配) | 0x0781 |
+| 10-11 | idProduct | 2 | 产品ID(厂商自定) | 0x5591 |
+| 12-13 | bcdDevice | 2 | 固件版本(BCD) | 0x0100 |
+| 14 | iManufacturer | 1 | 制造商字符串索引 | 0x01 |
+| 15 | iProduct | 1 | 产品字符串索引 | 0x02 |
+| 16 | iSerialNumber | 1 | 序列号字符串索引(0=无) | 0x03 |
+| 17 | bNumConfigurations | 1 | 配置数 | 0x01 |
+
+### 关键字段深入
+
+**bDeviceClass = 0x00**：分类权下放到 Interface 层——最常见。复合设备必须用 0x00。如果设备用 IAD，设备级必须写 0xEF（Miscellaneous）。
+
+**bMaxPacketSize0**：LS=8, FS可选8/16/32/64, HS=固定64。Host 枚举时靠这个值知道后续怎么拆包。
+
+**iManufacturer/iProduct/iSerialNumber**：不是字符串本身，是索引号。0x00 表示空。实际字符串是 UNICODE 编码，存在独立的 String Descriptor 里。
+
+### 完整 HEX dump 示例（SanDisk U盘）
+
+```
+Offset: 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11
+  Hex: 12 01 00 02 00 00 00 40 81 07 91 55 00 01 01 02 03 01
+
+逐字节对照：
+  12       = bLength (18)
+  01       = bDescriptorType (Device)
+  00 02    = bcdUSB (2.0, LE)
+  00       = bDeviceClass (0→看Interface)
+  40       = bMaxPacketSize0 (64)
+  81 07    = idVendor (0x0781 = SanDisk, LE)
+  91 55    = idProduct (0x5591)
+  01       = iManufacturer
+  02       = iProduct
+  03       = iSerialNumber
+  01       = bNumConfigurations (1)
+```
+
+### ⚠️ Little-Endian 陷阱
+
+2 字节字段在 USB 总线上是 Little-Endian：`81 07` 实际值是 `0x0781`，不是 `0x8107`。
+
+---
+
+## 3.3 bcdUSB 的 BCD 编码细节
+
+BCD = Binary-Coded Decimal，每个 nibble（4 bit）表示一个十进制数字（0~9）。
+
+```
+bcdUSB = 0xJJMN（16 bit = 4 nibble）
+          JJ = 主版本号, M = 次版本号, N = 子次版本号
+```
+
+| bcdUSB 值 | 含义 | nibble 拆开 |
+|:---------:|------|:-----------:|
+| `0x0100` | USB 1.0 | JJ=01, M=0, N=0 |
+| `0x0110` | USB 1.1 | JJ=01, M=1, N=0 |
+| `0x0200` | USB 2.0 | JJ=02, M=0, N=0 |
+| `0x0300` | USB 3.0 | JJ=03, M=0, N=0 |
+| `0x0310` | USB 3.1 | JJ=03, M=1, N=0 |
+
+---
+
+## 3.4 ⛁ Configuration Descriptor — 9 字节逐位解析
+
+### 逐字段表格
+
+| 偏移 | 字段 | 大小 | 含义 | 示例 |
+|------|------|------|------|------|
+| 0 | bLength | 1 | 固定 0x09 | 0x09 |
+| 1 | bDescriptorType | 1 | 固定 0x02 | 0x02 |
+| 2-3 | wTotalLength | 2 | **整条描述符链总长** | 0x002E (46) |
+| 4 | bNumInterfaces | 1 | 接口总数 | 0x02 |
+| 5 | bConfigurationValue | 1 | 配置编号(Set_Configuration用) | 0x01 |
+| 6 | iConfiguration | 1 | 配置字符串索引(0=无) | 0x00 |
+| 7 | bmAttributes | 1 | 属性位图 | 0x80 |
+| 8 | bMaxPower | 1 | 总线最大电流，单位 2mA | 0xFA (500mA) |
+
+### bmAttributes 位图
+
+```
+Bit 7: 保留，必须写 1
+Bit 6: 0=总线供电 / 1=自供电
+Bit 5: 0=不支持远程唤醒 / 1=支持Remote Wakeup
+Bit 4-0: 保留，写 0
+
+常见组合:
+  0x80 = 总线供电、无远程唤醒
+  0xC0 = 总线供电、有远程唤醒（键盘/鼠标）
+  0xA0 = 自供电、无远程唤醒
+```
+
+### bMaxPower
+
+单位是 2mA：`bMaxPower × 2mA = 实际最大总线电流`。Host 会算账——如果 Hub 的剩余供电不够，拒绝 `Set_Configuration`。
+
+---
+
+## 3.5 ⛁ Interface Descriptor — 9 字节逐位解析
+
+| 偏移 | 字段 | 大小 | 含义 | 示例(HID鼠标) |
+|------|------|------|------|------|
+| 0 | bLength | 1 | 固定 0x09 | 0x09 |
+| 1 | bDescriptorType | 1 | 固定 0x04 | 0x04 |
+| 2 | bInterfaceNumber | 1 | 接口编号 | 0x00 |
+| 3 | bAlternateSetting | 1 | 备选设置号 | 0x00 |
+| 4 | bNumEndpoints | 1 | 端点个数（不含EP0） | 0x01 |
+| 5 | bInterfaceClass | 1 | 接口类码 | 0x03 (HID) |
+| 6 | bInterfaceSubClass | 1 | 接口子类码 | 0x01 (Boot) |
+| 7 | bInterfaceProtocol | 1 | 协议码 | 0x02 (Mouse) |
+| 8 | iInterface | 1 | 字符串索引 | 0x00 |
+
+### Alternate Setting 全面解析
+
+> Alternate Setting 允许同一个 Interface 在不同时刻以不同的"配置档"运行——切换端点数量、传输类型、带宽分配，但不改变功能类别。
+
+**最熟悉的例子：你的热成像摄像头**
+
+```
+Interface 1 (Video Streaming, bInterfaceClass=0x0E Video)
+│
+├── Alternate Setting 0  ← 默认状态，"零带宽"
+│   bNumEndpoints: 0       （没有数据端点）
+│   用途：关流/待机
+│
+├── Alternate Setting 1  ← 等时传输，160x120
+│   Endpoint: EP 0x81, Isochronous, 256B
+│
+├── ...Alternate 2~7...  ← 其他分辨率/帧率组合
+│
+└── Alternate Setting 8  ← 批量传输
+    Endpoint: EP 0x81, Bulk, 512B
+```
+
+所有 Alternate 0~8 都属于 Interface 1（bInterfaceNumber 相同），功能都是"传视频"。但 Alt 0 关流省带宽，Alt 8 开 Bulk 传数据——同一个接口，完全不同端点配置。
+
+**类比：同一扇门的不同开法**
+
+```
+Alt 0：门关着 — 不传数据，不占带宽
+Alt 1：门开着，一次过 256B — ISOC 低分辨率
+Alt 8：门开着，一次过 512B — Bulk 高吞吐
+```
+
+门还是那扇门（IF=1），开法不同。SET_INTERFACE 切换时总线不断开、描述符不用重读。
+
+**和 Configuration 切换的区别**
+
+| | Alternate Setting | Configuration |
+|---|---|---|
+| 切换范围 | 一个 Interface 内部 | 整个设备 |
+| 切换方式 | **SET_INTERFACE** | Set_Configuration |
+| 其他 Interface 受影响？ | **不影响** | 全部重置 |
+| 典型用途 | 开关流、换分辨率 | 切换工作模式 |
+| 切换速度 | 快（局部调整） | 慢（全局重构） |
+
+**为什么需要 Alternate Setting？——带宽管理**
+
+等时传输预约的带宽即使不用也占着。如果摄像头关流后还占着等时带宽，纯浪费。**UVC 规范强制 Alt 0 为零带宽**（bNumEndpoints=0）——关流时切 Alt 0 释放带宽给其他设备。
+
+**在代码里的体现：SET_INTERFACE**
+
+```c
+// SET_INTERFACE 是 Standard 请求，不是 Class 请求！
+libusb_control_transfer(devh,
+    0x01,           // bmRequestType = Standard, OUT, Interface
+    0x0B,           // bRequest = SET_INTERFACE
+    0x08,           // wValue = Alternate Setting 8
+    0x01,           // wIndex = Interface 1 (VS) — 不拼 Unit ID！
+    NULL, 0, 5000);
+```
+
+**关键认知**
+
+- Alternate Setting 不是新 Interface——bInterfaceNumber 不变
+- 同时只有一个 Alternate 生效——切 Alt 8 后 Alt 0 自动失效
+- 不同 Alternate 可复用端点号——同时只有一个激活，不冲突（规则 3）
+- Alt 0 = 零带宽是 UVC 强制的——核心带宽管理机制
+
+---
+
+## 3.6 ⛁ Endpoint Descriptor — 7 字节逐位解析
+
+| 偏移 | 字段 | 大小 | 含义 | 示例(HID鼠标) |
+|------|------|------|------|------|
+| 0 | bLength | 1 | 固定 0x07 | 0x07 |
+| 1 | bDescriptorType | 1 | 固定 0x05 | 0x05 |
+| 2 | bEndpointAddress | 1 | bit7=方向 + bit3-0=端点号 | 0x81 (EP1, IN) |
+| 3 | bmAttributes | 1 | bit1-0: 传输类型 | 0x03 (中断) |
+| 4-5 | wMaxPacketSize | 2 | 最大包长 | 0x0008 (8B) |
+| 6 | bInterval | 1 | 轮询间隔 | 0x0A (10ms) |
+
+### bEndpointAddress
+
+```
+Bit 7    : 方向 — 1=IN(Device→Host)  0=OUT(Host→Device)
+Bit 6-4  : 保留，写 0
+Bit 3-0  : 端点号 (0~15)
+
+0x82 = 1000 0010 → IN, EP2
+0x01 = 0000 0001 → OUT, EP1
+```
+
+### bmAttributes — 传输类型
+
+```
+Bit 1-0: 00=控制  01=等时  10=批量  11=中断
+
+常见值:
+  0x03 = 中断传输（HID 鼠标/键盘）
+  0x02 = 批量传输（U盘、CDC 数据）
+  0x05 = 等时传输（UVC 视频流）
+```
+
+---
+
+## 3.7 bInterval 在不同速率下的含义
+
+bInterval 是 USB 描述符中**最容易被误解**的字段——同一个值在不同速率/传输类型下含义完全不同。
+
+| 速率 | 传输类型 | 公式 | 单位 | 范围 |
+|------|---------|------|------|------|
+| FS | 中断 | bInterval | **ms** | 1~255 ms |
+| LS | 中断 | bInterval | **ms** | 10~255 ms |
+| FS | 等时 | 2^(bInterval-1) | **帧数 (ms)** | 1~16 ms |
+| HS | 中断 | 2^(bInterval-1) | **微帧 (125μs)** | 125μs~4s |
+| HS | 等时 | bInterval-1 | **微帧 (125μs)** | 125μs~16ms |
+| 所有 | 批量 | 忽略 | — | 有空就来 |
+
+### 常见错误
+
+```c
+// ❌ 错误：把所有传输类型当线性
+uint16_t polling_ms = desc->bInterval;
+
+// ✅ 正确：根据速度和类型用不同公式
+switch (speed) {
+case USB_SPEED_FULL:
+    if (type == USB_ENDPOINT_XFER_INT)  polling_us = desc->bInterval * 1000;
+    if (type == USB_ENDPOINT_XFER_ISOC) polling_us = (1 << (desc->bInterval - 1)) * 1000;
+    break;
+case USB_SPEED_HIGH:
+    if (type == USB_ENDPOINT_XFER_INT)  polling_us = (1 << (desc->bInterval - 1)) * 125;
+    if (type == USB_ENDPOINT_XFER_ISOC) polling_us = (desc->bInterval - 1) * 125;
+    break;
+}
+```
+
+---
+
+## 3.8 ⛁ String Descriptor
+
+### 结构（无固定长度）
+
+```
+Offset  Size  Field          含义
+──────────────────────────────────────────────
+  0      1     bLength        本描述符总字节数
+  1      1     bDescriptorType 0x03
+  2~N   可变   bString         UNICODE 字符串 (UTF-16LE)
+```
+
+英文/数字每个字符就是 `0x00 + ASCII码`——Unicode 前 128 个码点等于 ASCII。
+
+### String Descriptor #0 是特例
+
+存的是**语言 ID 列表**（LANGID）。Host 必须先读它才知道设备支持什么语言：
+
+```
+Host → Get_Descriptor(String, index=0)    → 设备回: [0x0409, ...]
+Host → Get_Descriptor(String, index=2, langid=0x0409) → 产品名英文版
+```
+
+---
+
+## 3.9 Device Qualifier + Other Speed Configuration
+
+### 为什么需要
+
+HS 设备插入 USB 1.1 端口 → 被降级到 FS。两种速度下参数不同：批量端点 512B→64B，bInterval 语义变了。
+
+- **Device Qualifier (0x06, 10字节)**：告诉 Host "如果我在另一速度运行，设备描述符会怎么变"。只有能跑双速的设备才有。
+- **Other Speed Configuration (0x07)**：整条配置链的"另一速度版本"。结构完全一样，只有端点参数按另一速度重写。
+
+Host 的典型用法：设备以 HS 枚举完成后读 Qualifier，如果后面被移到 FS 端口，直接用备胎链配置——**无需重新枚举**。
+
+---
+
+## 3.10 BOS Descriptor
+
+BOS = Binary Device Object Store。USB 3.0 引入的**扩展容器**。
+
+### 解决什么问题
+
+USB 2.0 的 Device Descriptor 是固定 18 字节。USB 3.0 需要宣告新能力（LPM、SuperSpeed 特性等），但不敢改 Device Descriptor 结构——改了老 Host 就不认识了。解决思路：加一个指针指向**可变长的扩展区**。
+
+### 关键 Capability
+
+**USB 2.0 Extension (LPM)**：`bmAttributes[0]=1` 表示支持 LPM Link Power Management，可以在 10μs 级别进出低功耗状态。
+
+---
+
+## 3.11 描述符类型码全集
+
+### 标准描述符
+
+| 值 | 宏名 | 描述符 | 固定长度？ |
+|:--:|------|--------|:--:|
+| 0x01 | `USB_DT_DEVICE` | Device | ✅ 18 字节 |
+| 0x02 | `USB_DT_CONFIG` | Configuration | ✅ 9 字节 |
+| 0x03 | `USB_DT_STRING` | String | ❌ 可变 |
+| 0x04 | `USB_DT_INTERFACE` | Interface | ✅ 9 字节 |
+| 0x05 | `USB_DT_ENDPOINT` | Endpoint | ✅ 7 字节 |
+| 0x06 | `USB_DT_DEVICE_QUALIFIER` | Device Qualifier | ✅ 10 字节 |
+| 0x07 | `USB_DT_OTHER_SPEED_CONFIG` | Other Speed Config | ✅ 9 字节（头）|
+| 0x0B | `USB_DT_INTERFACE_ASSOCIATION` | IAD | ✅ 8 字节 |
+| 0x0F | `USB_DT_BOS` | BOS | ✅ 5 字节（头）|
+
+### 类专用描述符类型码
+
+| 类 | 值 | 描述符 |
+|------|:--:|------|
+| HID | 0x21 | HID Descriptor |
+| HID | 0x22 | Report Descriptor |
+| CDC | 0x24 | CDC 类专用（用 `bDescriptorSubType` 进一步区分）|
+| UVC | 0x24 | UVC 类专用 |
+| Audio | 0x24 | Audio Control 类专用 |
+| Hub | 0x29 | Hub Descriptor |
+
+**0x24 的复用机制：** CDC、UVC、Audio 都把 0x24 用作类专用描述符——不冲突，因为 Host 先读了 Interface Descriptor 的 `bInterfaceClass`，再遇到 0x24 时就知道按哪个类解析。
+
+---
+
+## 补充问答二：控制传输只能在 EP0 吗？
+
+**是的，所有 USB 设备的控制传输只能在端点 0（EP0）上。** 这是 USB 规范从第一天就写死的硬规定。
+
+UVC 的 VC（Video Control）接口名字里带 "Control"，容易让人以为控制命令走它下面的端点。但实际上：
+
+```
+Interface #0 (VC):
+  作用: 用描述符声明"我有哪些控制项"（亮度、对比度、白平衡……）
+  控制命令的实际通道: EP0（永远是 EP0）
+  可选端点: EP3 IN（中断）——不是用来传控制的，是用来做硬件事件通知的
+```
+
+**一句话：所有控制传输走 EP0，VC 接口定义的是"有哪些控制"，而不是"控制走哪个端点"。**
+
+---
+
+## 补充问答三：UVC 扩展单元传大数据怎么办？
+
+假设 UVC 扩展单元要传输 64KB 校准数据：
+
+```
+FS: 64KB ÷ 64B = 1024 次事务 × ~125μs ≈ 128ms
+HS: 64KB ÷ 512B = 128 次事务 × ~10μs ≈ 1.3ms
+```
+
+128ms（FS）或 1.3ms（HS）传输 64KB——对"设置一次，用一辈子"的控制数据来说够了。
+
+对于真的很大的数据，USB 的解决方案是走 Bulk 端点（DFU 固件升级标准就是控制传输只发命令，固件字节走专用 Bulk 端点）。
+
+---
+
+## 补充问答四：控制传输排队会不会无限积累？
+
+不会。USB 在三个层面做了保护：
+
+1. **硬件层**：EP0 状态机天然串行——上一个 STATUS 没闭环就不会发下一个 SETUP
+2. **Host 驱动层**：每个设备一个控制请求槽位——Linux `usb_control_msg()` 同步阻塞，Windows 只有一个 IRP 挂起
+3. **软件应用层**：超时杀死——xHCI 默认 5 秒超时，超时 → 中止端点 → 返回错误
+
+---
+
+## 综合示例：CDC 虚拟串口完整描述符链
+
+以下以一个 STM32 虚拟串口为例，把 3.1~3.11 全部串起来。
+
+### 结构树
+
+```
+Device (VID=0x0483 STM, USB 2.0, CDC类, FS, EP0=64B)
+  └── Config #1 (自供电, 100mA)
+        ├── Interface #0: CDC Control (bInterfaceClass=0x02)
+        │   ├── CDC Header (CDC 1.10)
+        │   ├── CDC ACM (支持 Line_Coding + Control_Line_State)
+        │   ├── CDC Union (Master=#0, Slave=#1)
+        │   ├── CDC Call Mgmt (Data走Interface#1)
+        │   └── EP3 IN (中断, 8B, 10ms) ← SerialState通知
+        │
+        └── Interface #1: CDC Data (bInterfaceClass=0x0A)
+            ├── EP2 OUT (批量, 64B) ← Host→Device 发串口数据
+            └── EP1 IN  (批量, 64B) ← Device→Host 收串口数据
+```
+
+### 数据流
+
+```
+Host 打开串口:
+  ① Host → SETUP(Set_Line_Coding, 115200-8-N-1) → Interface #0, EP0
+  ② Host → SETUP(Set_Control_Line_State, DTR=1, RTS=1) → Interface #0, EP0
+
+Host 发 "Hello":
+  ③ Host → OUT Token → EP2 OUT → "Hello"
+
+Device 回 "World":
+  ④ Host → IN Token → EP1 IN → "World"
+
+设备状态变化:
+  ⑤ Host → IN Token → EP3 IN → SerialState(10B)
+```
+
+---
+
+# 第四篇：真实设备描述符实战
+
+> 基于三台真实海康 USB 摄像头，从字节级拆解 USB 描述符。
+
+## 4.1 三台设备速览
+
+| 项目 | 设备 1 (HikCamera #1) | 设备 2 (HikCamera #2) | 设备 3 (2K USB Camera) |
+|---|---|---|---|
+| VID : PID | 0x2BDF : 0x0101 | 0x2BDF : 0x0101 | 0x2BDF : 0x028A |
+| 序列号 | G11376317 | E83518457 | 无数据 |
+| 功能 | UVC 视频 | UVC 视频 | UVC 视频 + UAC 音频 |
+| 接口数 | 2（IAD 绑定） | 2（IAD 绑定） | ≥4（推断） |
+| 描述符链总长 | 433 B | 433 B | 无数据 |
+| 视频格式 | YUY2/MJPEG/H.264, 最高640×360@30 | 同左 | MJPG/NV12/YUY2, 最高2560×1440@30 |
+| 音频 | 无 | 无 | PCM 16kHz/16bit/单声道 |
+
+## 4.2 描述符获取流程：枚举
+
+```
+ 设备                       Host
+  │  上电 + 复位 (Reset)       │
+  ├───────────────────────────►│  设备在默认地址 0 上等待
+  │◄───────────────────────────┤  GET_DESCRIPTOR(Device, 0, 18)  ① 读设备描述符
+  │◄───────────────────────────┤  SET_ADDRESS(7)                 ② 分配地址
+  │◄───────────────────────────┤  GET_DESCRIPTOR(Device, 0, 18)  ③ 新地址重读
+  │◄───────────────────────────┤  GET_DESCRIPTOR(Config, 0, 9)   ④ 只读9B头
+  │  9 字节应答 (wTotalLength=433)                               → 知道链长
+  │◄───────────────────────────┤  GET_DESCRIPTOR(Config, 0, 433) ⑤ 完整链一次性返回
+  │◄───────────────────────────┤  GET_DESCRIPTOR(String, ...)    ⑥ 按需取字符串
+  │◄───────────────────────────┤  SET_CONFIGURATION(1)           ⑦ 进入Configured
+```
+
+三个关键点：
+1. 描述符是按需索取——Host 先拿 wTotalLength，再按这个长度一次取回整条链
+2. 完整链一次性返回——配置+IAD+接口+类专用+端点，全在一个包里
+3. 字符串是懒加载——描述符里只放索引（iManufacturer=0x01），Host 需要显示时才单独请求
+
+## 4.3 Device Descriptor 关键字段
+
+### bDeviceClass = 0xEF，为什么不直接写 0x0E (Video)？
+
+设备 1/2 明明是摄像头，设备级类码却是 `0xEF (Miscellaneous)`：
+
+- USB 规范规定：**使用 IAD 的复合设备，设备级类码必须声明为 0xEF**（子类 0x02，协议 0x01 = "使用 IAD"）
+- Host 看到 0xEF/0x02/0x01 就知道："这是一个由多个功能组成的复合设备，功能划分请看配置链里的 IAD"
+- 真正的功能分类（Video = 0x0E）写在 IAD 的 `bFunctionClass` 里
+
+**一句话：设备级 class 管"整台机器是不是复合的"，IAD 的 function class 才管"每个功能是什么"。**
+
+## 4.4 IAD（Interface Association Descriptor）
+
+设备 1 的 IAD：
+
+```
+bFirstInterface = 0x00    ← 接口 0 起
+bInterfaceCount = 0x02    ← 绑定接口 0~1
+bFunctionClass  = 0x0E    ← ★ 真正的功能分类：Video
+bFunctionSubClass = 0x03  ← Video Interface Collection
+```
+
+Host 的 UVC 驱动（Windows 的 usbvideo.sys）就是看到 `bFunctionClass=0x0E, bFunctionSubClass=0x03` 才决定加载自己的。
+
+## 4.5 Interface Descriptor — VC vs VS
+
+| 字段 | 接口 0 (VC) | 接口 1 (VS) |
+|------|-------------|-------------|
+| bInterfaceNumber | 0x00 | 0x01 |
+| bInterfaceClass | 0x0E (Video) | 0x0E (Video) |
+| **bInterfaceSubClass** | **0x01 (Video Control)** | **0x02 (Video Streaming)** |
+
+bInterfaceSubClass 是 UVC 描述符体系的第一道分叉口——Host 据此区分控制接口和流接口。
+
+## 4.6 Endpoint Descriptor
+
+设备 1 的两个端点：
+
+| 字段 | EP3 IN (Interrupt) | EP1 IN (Bulk) |
+|------|-------------------|---------------|
+| bEndpointAddress | 0x83 (IN, EP3) | 0x81 (IN, EP1) |
+| bmAttributes | 0x03 (Interrupt) | 0x02 (Bulk) |
+| wMaxPacketSize | 0x0010 (16 B) | 0x0200 (512 B, HS) |
+| bInterval | 0x08 (HS: 16 ms) | 0x00 (忽略) |
+
+设备 1/2 用 Bulk 传视频是因为分辨率低（最高 640×360），Bulk 的重传机制反而更省心。设备 3 做 2K@30 则推断使用等时端点。
+
+## 4.7 UVC 类专用描述符机制（0x24 / 0x25）
+
+UVC 的类专用描述符大量复用同一个 `bDescriptorType`：
+
+```
+bDescriptorType = 0x24 (Video Control Interface)
+   └─ 由"所属接口的 bInterfaceSubClass"决定含义
+        ├─ 接口 subclass = 0x01 (VideoControl) → VC 类描述符
+        │     0x01 VC Header          0x02 Input Terminal
+        │     0x03 Output Terminal    0x05 Processing Unit
+        │     0x06 Extension Unit
+        └─ 接口 subclass = 0x02 (VideoStreaming) → VS 类描述符
+              0x01 VS Input Header     0x04 Uncompressed Format
+              0x06 MJPEG Format        0x10 Frame-Based Format (H.264)
+              0x0D Color Matching
+```
+
+**为什么可以复用同一个类型码？** 因为解析上下文不同——Host 遍历描述符链时，先读到接口描述符，知道当前处于哪个接口（subclass 是多少），之后遇到的 0x24 就按该接口的语义解析。
+
+### UVC 拓扑图：Terminal / Unit 链
+
+```
+  物理相机传感器
+       ↓
+  Input Terminal (IT, ID=2, ITT_CAMERA)
+       ↓
+  Processing Unit (PU, ID=5, 亮度/对比度/增益)
+       ↓
+  Extension Unit (XU, ID=10, 厂商私有扩展, 15 controls)
+       ↓
+  Output Terminal (OT, ID=3, TT_STREAMING)
+       ↓
+  VS 流接口 (接口 1) → EP1 IN Bulk 传视频
+```
+
+### VC Header Descriptor 逐字节（设备 1）
+
+```
+偏移: 0  1  2  3  4  5  6  7  8  9  10 11 12
+      0D 24 01 10 01 51 00 00 6C DC 02 01 01
+```
+
+| 偏移 | 字段 | 值 | 含义 |
+|------|------|------|------|
+| 0 | bLength | 0x0D (13) | 固定 |
+| 1 | bDescriptorType | 0x24 | Video Control Interface |
+| 2 | bDescriptorSubtype | 0x01 | VC Header |
+| 3-4 | bcdUVC | 0x0110 | UVC 1.10 |
+| 5-6 | wTotalLength | 0x0051 (81) | VC 类专用子链总长 |
+| 7-10 | dwClockFreq | 0x02DC6C00 | 48 MHz |
+| 11 | bInCollection | 0x01 | 1 个 VS 接口关联 |
+| 12 | baInterfaceNr[1] | 0x01 | VS 接口号 = 1 |
+
+## 4.8 设备 1 完整 433 字节描述符链追踪
+
+### 逐段验算
+
+```
+配置头 9 + IAD 8 + 接口 9×2 = 35
+VC 类子链:  13 + 18 + 12 + 29 + 9  = 81   (0x51) ✔
+VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔
+端点:       7 + 5 + 7 = 19
+35 + 81 + 298 + 19 = 433 ✔
+```
+
+### 逐段偏移追踪
+
+```
+偏移          描述符                               长度      累计
+0x0000  ┌─ Configuration Descriptor               9 B       0x0009
+0x0009  ├─ IAD Descriptor                         8 B       0x0011
+0x0011  ├─ Interface 0 (VC) Descriptor             9 B       0x001A
+0x001A  │   ├─ VC Header Descriptor               13 B       0x0027
+0x0027  │   ├─ VC Input Terminal Descriptor       18 B       0x0039
+0x0039  │   ├─ VC Processing Unit Descriptor      12 B       0x0045
+0x0045  │   ├─ VC Extension Unit Descriptor       29 B       0x0062
+0x0062  │   ├─ VC Output Terminal Descriptor       9 B  ──▶  81 B (0x51)
+0x006B  │   ├─ Endpoint EP3 IN Interrupt           7 B       0x0072
+0x0072  │   └─ Class-Specific VC EP (0x25)         5 B       0x0077
+0x0077  ├─ Interface 1 (VS) Descriptor             9 B       0x0080
+0x0080  │   ├─ VS Input Header Descriptor         16 B       0x0090
+0x0090  │   ├─ VS Uncompressed Format             27 B       0x00AB
+0x00AB  │   ├─ VS Uncompressed Frame ×3           90 B       0x0105
+0x0105  │   ├─ VS MJPEG Format                    11 B       0x0110
+0x0110  │   ├─ VS MJPEG Frame ×3                  90 B       0x016A
+0x016A  │   ├─ VS Frame-Based Format (H.264)      28 B       0x0186
+0x0186  │   ├─ VS Frame-Based Frame               30 B       0x01A4
+0x01A4  │   └─ VS Color Matching                   6 B  ──▶ 298 B (0x12A)
+0x01AA  └─ Endpoint EP1 IN Bulk                    7 B       0x01B1
+                                                           ────────
+                                         合计 = 433 B = 0x01B1 ✔
+```
+
+## 4.9 设备 1 vs 设备 2 差异分析
+
+| 对比项 | 设备 1 | 设备 2 | 说明 |
+|---|---|---|---|
+| 序列号 | "G11376317" | "E83518457" | **唯一描述符差异** |
+| 设备地址 | 0x07 | 0x08 | Host 枚举时分配，不是描述符 |
+| 抓取时电源状态 | D3（低功耗） | D0（工作态） | 造成 Qualifier 抓取成败 |
+| Device Qualifier | **请求失败** | 完整返回 (10 字节) | 设备在 D3 无法应答 |
+| Other Speed Configuration | 未抓到 | 完整返回 (433 字节) | Bulk 512B→64B, bInterval HS→FS语义 |
+
+### Device Qualifier + Other Speed Config：HS→FS 降级备胎
+
+设备 2 的 Other Speed Config 里：
+- EP1 IN Bulk: `wMaxPacketSize = 0x0040 (64 B)` —— HS 是 `0x0200 (512 B)`
+- EP3 IN Interrupt: `bInterval = 0x08` —— FS 语义下 = **8 ms**，HS 语义下同一字节 = **16 ms**
+
+同一字节，两种速度两种含义。
+
+## 4.10 设备 3 从 KS 数据反推描述符结构
+
+设备 3 没有原始描述符 dump，但从 Windows 驱动层数据反推：
+
+### 已知事实
+
+| 线索 | 值 | 反推出什么 |
+|---|---|---|
+| Device ID | `USB\VID_2BDF&PID_028A&REV_3000&MI_00` | VID/PID/bcdDevice, 复合设备 |
+| 视频节点 | `MI_00` + usbvideo.sys | 接口 0 = VC |
+| 音频节点 | `MI_02` + usbaudio.sys | 接口 2 = AC |
+| 接口号跳跃 | 有 MI_00 和 MI_02，没有 MI_01/03 | VS/AS 被 IAD 并入功能 |
+
+### 推断结构
+
+```
+Device Descriptor          bDeviceClass = 0xEF（复合设备）
+└── Configuration          bNumInterfaces ≥ 4
+    ├── IAD #1             bFunctionClass=0x0E (Video)
+    │   ├── Interface 0: VC     (MI_00)
+    │   └── Interface 1: VS     推断为等时端点，多档 Alternate Setting
+    ├── IAD #2             bFunctionClass=0x01 (Audio)
+    │   ├── Interface 2: AC     (MI_02)
+    │   └── Interface 3: AS     等时端点 (32 kB/s)
+    └── (字符串)
+```
+
+### 为什么 2560×1440@30 MJPEG 需要等时端点
+
+- HS 等时理论上限：~24.6 MB/s
+- 原始 YUY2 2560×1440@30 = 221 MB/s，远超 HS 总线能力
+- MJPEG 压缩后通常 0.5~2 MB/帧，30fps ≈ 15~60 MB/s——仍在等时预算内
+- 设备 1/2 用 Bulk 因为分辨率低；设备 3 做 2K@30 必须用等时 + MJPEG 压缩
+
+---
+
+## 第四篇 FAQ
+
+### Q1: 为什么 bDeviceClass 不直接写 0x0E (Video)？
+
+因为摄像头是复合设备（一个 Video 功能 = VC + VS 两个接口），必须用 IAD。USB 规范规定：使用 IAD 的复合设备，设备级必须声明 0xEF。真正的功能分类在 IAD 的 bFunctionClass。
+
+### Q2: Alternate Setting 在描述符里怎么体现？
+
+同一接口号出现多个接口描述符，bInterfaceNumber 相同、bAlternateSetting 依次递增。Host 用 `SET_INTERFACE` 切换。应用开视频时驱动按所选格式挑一档 alt 并切换，用完切回 alt 0 释放带宽。
+
+### Q3: bMaxPacketSize0 对 HS 设备为什么固定 64 字节？
+
+USB 2.0 规范 §9.6.1 硬性规定：HS 设备的 EP0 最大包长必须是 64 字节。HS 设备统一 64，Host 栈的缓冲区与调度器不用为不同设备准备不同尺寸。
+
+### Q4: Device Qualifier 什么情况下 Host 会请求？
+
+只有能跑双速（HS 与 FS）的设备才有 Device Qualifier；单速设备必须对该请求回 STALL。Host 在设备以 HS 运行时请求它，拿到"若在 FS 运行会是什么样"的信息。
+
+### Q5: IAD 和 Interface Descriptor 里的 Class 有什么不同？
+
+两者是两个层级：IAD 的 bFunctionClass 描述一组接口（功能级），决定归哪个类驱动管；接口的 bInterfaceClass 描述单个接口（接口级），驱动内部再按 subclass 分派角色。
+
+### Q6: UVC Extension Unit 的 15 个 vendor-specific controls 是干什么的？
+
+设备 1/2 的 XU（Unit ID 10）声明 `bNumControls=15`，但 bmControls 只置位低 10 位（实际启用 control 1~10）。这些是标准 UVC 没定义的厂商私有控制——通常是曝光模式、增益、图像翻转等厂商标定参数。
+
+### Q7: 设备 1 & 2 的 bmControls 全是 0，怎么控制摄像头？
+
+Camera IT 和 PU 的 bmControls 全是 0——标准控制真的不存在。实际控制通道是：(1)XU 的 vendor-specific 控制（10 个私有控制，需厂商 SDK）；(2)VS 接口的流控制（PROBE/COMMIT）；(3)其余参数固件自动管理。**bmControls=0 只代表"标准控制没实现"，不代表设备不可控。**
+
+### Q8: 为什么 Bus Hound 抓包看不到 Token 包、Handshake 包和 PID 字段？
+
+Bus Hound 是软件层抓包工具，工作在 USB 驱动栈的 URB 层。Token 包、Handshake 包、PID 字节、SYNC 字段、CRC5/CRC16——这些全在硬件层由 USB 主机控制器（xHCI）自动生成和解析，软件连看都看不到。
+
+```
+你的应用
+   ↓
+WinUSB / 设备驱动         ← Bus Hound 在这里抓包（URB 层）
+   ↓
+USB 主机控制器驱动 (xHCI)
+   ↓
+USB 主机控制器硬件         ← PID/SYNC/CRC 在这里被硬件处理掉了
+   ↓
+物理总线 (D+/D-)
+```
+
+要看到 PID/Token/Handshake？需要硬件 USB 协议分析仪（Ellisys、Total Phase Beagle 等，$500+）。
+
+### Q9: 为什么批量传输的 payload 前面 8 字节长得跟控制传输的 SETUP 包一模一样？
+
+**这不是 USB 规范要求的——是厂商自己抄过去的。** 核心原因：在 EP0 上已经写了一套命令解析代码，再为批量端点重新设计一套格式太傻了。直接把 EP0 那 8 字节头搬过来，解析代码复用。这不算违反 USB 规范——批量端点是"纯数据管道"，数据里面是什么格式完全是厂商的自由。
+
+### Q10: STATUS 阶段只是锦上添花的"收到了"吗？
+
+**不是。STATUS 是不可或缺的协议硬需求——它是设备拒绝不支持的 SETUP 命令的唯一切入点。**
+
+SETUP 必须 ACK（不能在这里拒绝），DATA 可能不存在。那拒绝在哪里表达？STATUS：
+
+```
+SETUP:  "给我不存在的描述符 #99"  → Device → ACK (必须受理)
+DATA:   无数据
+STATUS: Device → STALL ← ❌ 拒绝唯一发生在这里！
+```
+
+**三段式不是冗余设计——是权力分立：** SETUP=提出请求，DATA=提供数据，STATUS=宣布判决。
+
+---
+
+# 第五篇：UVC XU 控制与取流实战
+
+---
+
+## 5.1 UVC XU 扩展协议设计
+
+### CS_ID + SubFunc 二级命名空间
+
+```
+CS_ID = 0x05  功能切换（FUNC_SWITCH）
+CS_ID = 0x17  云台控制（PTZ_CONTROL）
+CS_ID = 0x18  图像参数（IMAGE_CONFIG）
+CS_ID = 0x19  系统信息（SYS_INFO）
+CS_ID = 0xF0  错误码（ERRCODE）
+
+每个 CS_ID 下可挂 0x01~0xFF 个 SubFunc
+总命令空间：~200 × 255 ≈ 51,000 个独立控制项
+```
+
+### CS_ID 分配策略
+
+| 范围 | 用途 | 示例 |
+|------|------|------|
+| 0x01~0x04 | 保留（兼容 UVC 标准） | — |
+| 0x05 | 功能切换（FUNC_SWITCH） | 协议基础设施 |
+| 0x06 | 错误码读取（ERRCODE） | 0x00=成功，0x01=忙 |
+| 0x10~0x1F | 设备控制类 | 0x17=云台，0x18=图像 |
+| 0x20~0x2F | 数据流类 | 0x20=码流类型，0x21=帧率 |
+| 0x30~0x3F | 系统信息类 | 0x30=固件版本，0x31=温度 |
+| 0x80~0xEF | 厂商私有 | 扩展自定义功能 |
+| 0xF0~0xFF | 诊断/调试 | 0xF0=错误码，0xF1=日志 |
+
+### 核心流程（三阶段）
+
+```
+┌─────────────────────┐
+│ 1. FUNC_SWITCH      │  SET_CUR, CS_ID=0x05
+│ Data: [CS_ID, Sub]  │  选择目标功能
+└──────┬──────────────┘
+       │
+┌──────▼──────────────┐
+│ 2. GET_LEN          │  GET_LEN, CS_ID=目标
+│ 返回 2 字节 LE      │  获取参数长度
+└──────┬──────────────┘
+       │
+┌──────▼──────────────┐
+│ 3. GET_CUR / SET_CUR│  读写参数数据
+│ 长度 = GET_LEN 值   │  SET_CUR 后读错误码确认
+└─────────────────────┘
+```
+
+### STALL vs 错误码：两层拒绝
+
+| | STALL（硬件层） | 错误码（应用层） |
+|---|---|---|
+| 含义 | "我不认识这个请求" | "上次那个命令参数不对" |
+| libusb 返回 | `LIBUSB_ERROR_PIPE` | 成功，但 err≠0 |
+| 适用场景 | CS_ID 完全不存在 | SubFunc 不支持、参数非法等 |
+
+推荐的分层拒绝策略：
+```
+CS_ID 不在白名单内    → STALL（硬件拒绝，最快）
+CS_ID 在白名单内，但:
+  SubFunc 不支持       → ACK → 错误码 0x09
+  参数值非法           → ACK → 错误码 0x04 或 0x08
+```
+
+---
+
+## 5.2 新设备上手实操指南
+
+### 三步找到所有参数
+
+**第 1 步：找到设备 VID/PID**
+
+```bash
+lsusb
+# Bus 003 Device 005: ID 2bdf:0101 HIK HikCamera
+```
+
+**第 2 步：找到 Extension Unit 的 ID**
+
+```bash
+sudo lsusb -v -d 2bdf:0101 > /tmp/cam.txt
+grep -n "EXTENSION_UNIT\|bUnitID\|bInterfaceNumber\|Video Control" /tmp/cam.txt
+```
+
+你会得到三个参数：
+
+| 参数 | 值 | 在 SETUP 包里的位置 |
+|------|-----|-------------------|
+| VID:PID | `2bdf:0101` | 不在 SETUP 包里，是 `libusb_open_device_with_vid_pid()` 用的 |
+| XU Unit ID | `0x0A` | **wIndex 高字节** |
+| VC IF number | `0` | **wIndex 低字节** |
+
+**第 3 步：看 bmControls 位图**
+
+```
+bmControls = 0xFF, 0x03, 0x00, 0x00
+LE 还原为 32-bit: 0x000003FF
+bit 0~9 置位 → CS_ID 0x01~0x0A 存在
+```
+
+> 位图规则：bit N = 1 → CS_ID(N+1) 存在。bNumControls 声明有 N 个，但实际启用以 bmControls 位图为准。
+
+### SETUP 包 8 字节构造
+
+对于 UVC Extension Unit 的 Class 请求：
+
+| 字段 | UVC XU 约定 | 你的设备值 |
+|------|------------|-----------|
+| wValue 高字节 | **CS_ID**（你要操作的功能号） | 0x04 / 0x05 / 等 |
+| wValue 低字节 | 0x00 | 0x00 |
+| wIndex 高字节 | **XU Unit ID**（lsusb 查的 bUnitID） | 0x0A |
+| wIndex 低字节 | **接口号**（Video Control 的 bInterfaceNumber） | 0x00 |
+
+**wIndex 是不变的**：不管你操作哪个 CS_ID，`wIndex = (XU_UNIT_ID << 8) | VC_IF_NUM`。
+
+### 三条 SETUP 包的逐字节构造
+
+| 操作 | bmRequestType | bRequest | wValue | wIndex | wLength |
+|------|--------------|----------|--------|--------|---------|
+| SET_CUR（写） | 0x21 | 0x01 | `(CS_ID << 8)` | `(XU_ID << 8) \| IF` | 数据长度 |
+| GET_CUR（读） | 0xA1 | 0x81 | `(CS_ID << 8)` | `(XU_ID << 8) \| IF` | 参数长度 |
+| GET_LEN（问长度） | 0xA1 | 0x85 | `(CS_ID << 8)` | `(XU_ID << 8) \| IF` | 2 |
+
+### 新设备上手的实际顺序
+
+**① 先试 CS_ID=0x04（协议版本）** — 不需要 FUNC_SWITCH，最简单：
+
+```c
+// GET_LEN
+libusb_control_transfer(devh, 0xA1, 0x85, 0x0004, 0x0A00, len_buf, 2, 1000);
+// GET_CUR
+libusb_control_transfer(devh, 0xA1, 0x81, 0x0004, 0x0A00, buf, 4, 1000);
+```
+
+**如果 GET_LEN 回 STALL**：CS_ID 不存在或 XU_ID 不对。**如果 GET_LEN 成功**：通道通了。
+
+**② 再试带 SubFunc 的 CS_ID** — 走三阶段：FUNC_SWITCH → GET_LEN → GET_CUR。
+
+**③ 未知设备探索** — 用 bmControls 位图找支持的 CS_ID，逐个试 GET_LEN。
+
+### libusb 调用和 SETUP 包的对应关系
+
+```c
+libusb_control_transfer(
+    devh,
+    0xA1,           // → SETUP[0] = bmRequestType
+    0x85,           // → SETUP[1] = bRequest
+    0x0004,         // → SETUP[2-3] = wValue LE
+    0x0A00,         // → SETUP[4-5] = wIndex LE
+    buf,            // → DATA 阶段的数据
+    2,              // → SETUP[6-7] = wLength LE
+    1000            // → 超时，不影响 SETUP 包
+);
+// 对应 SETUP 包 8 字节: A1 85 04 00 00 0A 02 00
+```
+
+> **换 XU Unit ID 只改一个地方**：wIndex 的高字节。
+
+### Transaction vs Control Transfer
+
+```
+1 Control Transfer = libusb_control_transfer() 一次调用
+  ├── SETUP 阶段 — 1 个 Transaction
+  ├── DATA 阶段  — 1 个 Transaction
+  └── STATUS 阶段 — 1 个 Transaction
+
+1 Transaction = 一次 Token + Data + Handshake 交换
+```
+
+**libusb_control_transfer() = 1 次完整的控制传输 = 2~3 个总线事务。** Bus Hound 显示为一行 CTL + 一行 IN/OUT。STATUS 阶段驱动层已合并，Bus Hound 不显示。
+
+---
+
+## 5.3 标准 UVC 取流完整流程
+
+### 两个 wIndex 体系对比
+
+```
+VideoControl (XU):     wIndex = (XU Unit ID << 8) | VC_IF
+                           例: (0x0A << 8) | 0 = 0x0A00
+
+VideoStreaming:        wIndex = VS_IF  （没有 Unit ID！）
+                           例: 0x00 或 0x01
+```
+
+### 取流步骤
+
+```
+┌─ 阶段 1：协商参数 ──────────（控制传输，EP0，wIndex=VS_IF）
+│
+│ ① Probe SET_CUR:  Host 提出想要的参数
+│    CTL  21 01  01 00  00 00  1A 00
+│    OUT  01 00 80 02 E0 01 00 00 ...26B
+│
+│ ② Probe GET_CUR:  读回设备实际接受的参数
+│    CTL  A1 81  01 00  00 00  1A 00
+│
+│ ③ Commit SET_CUR: 锁定参数
+│    CTL  21 01  01 00  00 00  1A 00
+│
+├─ 阶段 2：开启流 ────────────（控制传输，EP0，bmRT=Standard）
+│
+│ ④ SET_INTERFACE: 切换到非 0 的 alternate setting
+│    CTL  01 0B  01 00  01 00  00 00    ← bmRT=0x01(Standard!)
+│
+├─ 阶段 3：读视频数据 ────────（批量传输，EP 0x81）
+│
+│ ⑤ 循环读帧: libusb_bulk_transfer(devh, 0x81, buf, size, &recv_len, timeout);
+│
+└─ 关闭流: SET_INTERFACE → Alternate 0（零带宽）
+```
+
+### Probe 结构体 26 字节核心字段
+
+```c
+struct uvc_probe {
+    uint16_t bmHint;              // offset 0:  哪些字段 Host 在意
+    uint8_t  bFormatIndex;        // offset 2:  格式号
+    uint8_t  bFrameIndex;         // offset 3:  帧描述符索引号
+    uint32_t dwFrameInterval;     // offset 4:  帧间隔（100ns 单位）
+    uint32_t dwMaxVideoFrameSize; // offset 18: 最大帧缓冲（malloc 参考值！）
+    uint32_t dwMaxPayloadTransferSize; // offset 22: 单次传输最大载荷
+};
+```
+
+### SETUP 包三对比
+
+```c
+/* VideoControl XU:     */ wIndex = (XU_ID << 8) | VC_IF;   // 0x0A00
+/* VideoStreaming:      */ wIndex = VS_IF;                   // 0x0000
+/* SET_INTERFACE 开流:  */ bmRT = 0x01(Standard), bReq = 0x0B, wValue = alt
+```
+
+---
+
+## 5.4 码流类型切换实战
+
+> 本节是 `uvc_stream_viewer.cpp` 开发过程中踩坑的总结。
+
+### 热成像摄像头的数据分层模型
+
+```
+探测器（FPA）
+  ↓
+原始数据（14~16bit 温度值）
+  ↓
+┌─测温矩阵（16bit）  ───┐
+└─伪彩映射（温度→RGB）──┘
+  ↓
+★ 码流类型多路复用器（XU CS_ID=0x03）★
+  类型 2:  全屏测温矩阵（纯温度数据）
+  类型 6:  YUV 实时流 + 测温头
+  类型 8:  全屏测温数据 + YUV 实时流
+  ★ 类型 10: 仅 YUV 实时流（无测温头，纯画面）★
+  ↓
+UVC 传输层（Probe/Commit/ISOC）
+  ↓
+USB 总线 → 主机
+```
+
+### 为什么需要 XU 切换码流类型
+
+标准 UVC（Probe/Commit/SET_INTERFACE）只管**传输格式**，不管数据内容。如果不发 XU 切换命令，摄像头按默认类型（通常是类型 8：测温+YUV 混合）输出，解码器按纯 YUYV 解析 → 花屏。
+
+**UVC 管的事**：分辨率、帧率、编码格式、带宽分配
+**UVC 不管的事**：数据内容（纯画面 vs 画面+温度）、数据排列、帧头结构
+
+### ★ XU 切换 vs UVC 取流：先后顺序（极其重要）
+
+```
+正确顺序：先配置内容，再开传输
+
+  ① XU: 切换码流类型       → 告诉摄像头"我要什么内容"   ← 先！
+  ② UVC: Probe/Commit     → 协商传输参数
+  ③ uvc_start_streaming   → 打开管道，开始收帧           ← 后！
+
+错误顺序：
+  ① UVC: 开流 → 管道已建立
+  ② XU: 切换码流 → 数据格式突变 → 花屏/崩溃
+```
+
+### ★ 取流中能不能发 XU？能，但要分类讨论
+
+```
+切换码流类型 (CS_ID=0x03)：
+  → 数据格式突变 → ★ 必须先停流再切换
+
+切换伪彩 (CS_ID=0x02)：
+  → 只改颜色映射表，数据格式不变 → 取流中可以热切换
+
+读取协议版本/错误码 (CS_ID=0x04/0x06)：
+  → 纯读操作 → 随时可以读
+```
+
+### ★ YUYV vs MJPEG 描述符欺诈
+
+此设备（2bdf:0101）的 UVC 描述符声称 UncompressedFormat 送的是 YUY2，但**实际帧数据以 `FF D8`（JPEG SOI 标记）开头**：
+
+```
+UVC 描述符          →  libuvc 信了          →  实际帧数据
+UncompressedFormat      按 YUYV 协商成功       FF D8 FF E0 ...（JPEG！）
+bits per pixel: 16      fmt=YUYV 标记          bytes=~10000（压缩后）
+GUID: YUY2              期望 38400 字节         不是 38400 字节
+```
+
+**教训**：不能完全信任 UVC 描述符。在回调里检测 `data[0]==0xFF && data[1]==0xD8`，如果是 JPEG 就强制走 `cv::imdecode`。
+
+### ★ MJPEG 省 74% 带宽
+
+120x160 YUYV = 38400 字节，MJPEG 压缩后 ~10000 字节。摄像头说谎是为了兼容性（YUYV 描述符更容易被 OS 匹配）但实际送 MJPEG 省带宽。
+
+---
+
+## 5.5 uvc_stream_viewer 完整流程
+
+```
+① libusb 打开 → detach 内核驱动
+② XU FUNC_SWITCH → XU SET_CUR [01 0A] (YUV_ONLY)  ← ★ 必须在 uvc_open 之前
+③ usleep(200ms)  ← 等设备内部切换完成
+④ uvc_open → uvc_get_stream_ctrl_format_size → uvc_start_streaming
+⑤ 帧回调：检测 FF D8 → cv::imdecode(MJPEG) 或 uvc_any2rgb(YUYV) → cv::cvtColor(RGB2BGR)
+⑥ cv::imshow → cv::waitKey(10) → ESC 退出
+```
+
+### 编译命令
+
+```bash
+g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cflags --libs opencv4)
+```
+
+---
+
+## 5.6 实战踩坑全记录（★★★★★ 最重要）
+
+| # | 症状 | 根因 | 修复 | 重要度 |
+|---|------|------|------|--------|
+| 1 | SDL2 播放数秒后 segfault | 回调线程和主线程同时写/读帧缓冲区，无锁 | 换 OpenCV + `pthread_mutex_t` 保护所有帧访问 | ★★ |
+| 2 | 花屏（雪花状噪点） | 默认码流类型含测温数据混在 YUV 里 | XU 命令切到类型 10 (YUV_ONLY)：FUNC_SWITCH → GET_LEN → SET_CUR [01 0A] | ★★ |
+| 3 | 花屏仍在，帧只有 ~10000 字节（应该是 38400） | **描述符声称 YUYV，实际送 MJPEG**（帧数据以 `FF D8` JPEG SOI 开头） | 帧回调检测 `FF D8` 头 → 强制 `cv::imdecode` | ★★★ |
+| 4 | XU 命令不执行（编译报错参数数量不对） | `libusb_control_transfer` 8 个参数漏了 `bRequest` | 补全：bmRT + bReq + wVal + wIdx + data + wLen + timeout | ★★★ |
+| 5 | XU 返回 `LIBUSB_ERROR_IO` | XU 在 `uvc_open` 之后发，设备已被 uvc 占用状态不一致 | **XU 必须在 `uvc_open` 之前发**，复用 detach 时的 libusb 句柄 | ★★★ |
+| 6 | OpenCV `cvtColor(YUV2BGR)` 花屏 | OpenCV YUYV 字节序与该设备不匹配 | 统一用 libuvc 的 `uvc_any2rgb` + `cvtColor(RGB2BGR)` | ★ |
+| 7 | `frame->data[0]` 编译报错 | `uvc_frame_t::data` 是 `void*`，C++ 不允许 void* 下标 | 先转 `(const uint8_t *)frame->data` | ★ |
+
+### 对应的深层理解
+
+1. **UVC 管传输、XU 管内容** — 两层独立。UVC 管分辨率/帧率/编码，XU 管帧里装什么数据
+2. **先 XU 后 UVC** — 顺序不可逆。必须先配置内容再开传输
+3. **取流中能发 XU，但要分类讨论** — 判断标准不是物理冲突，而是语义影响
+4. **不能信任 UVC 描述符** — 必须在回调里检测实际数据头
+5. **MJPEG 省带宽** — 摄像头说谎是为了兼容性
+6. **`libusb_control_transfer` 签名** — 8 个参数，极易漏 `bRequest`
+7. **XU 控制传输走 EP0，不需要 claim 接口** — 可以独立开 libusb 句柄
+8. **帧回调不能做渲染** — 回调只转换数据，主线程渲染，用 `pthread_mutex_t` 保护
+
+---
+
+## 5.7 Interface 和 Endpoint 区分
+
+**一句话总结：**
+- **控制传输 = 发命令**（"请把分辨率调到 640x480"），走 EP0
+- **批量传输 = 搬数据**（"把这一帧像素数据传过来"），走数据端点
+- 两条通道互不阻塞——流开着的时候你照样可以用 EP0 调参数
+- 端点有主——IF=0 的端点 IF=1 不能碰
+
+| | 控制传输 (EP0) | 批量传输 | 中断传输 |
+|---|---|---|---|
+| libusb 函数 | `control_transfer` | `bulk_transfer` | `interrupt_transfer` |
+| 走哪个端点 | EP0 | VS 端点 (如 0x81) | VC 中断端点 (如 0x83) |
+| 参数指定方式 | bmRequestType+wValue+wIndex | 端点地址 | 端点地址 |
+| 有 SETUP 包？ | 有（8 字节） | 无 | 无 |
+
+---
+
+# 附录：快速参考手册
+
+---
+
+## A.1 SETUP 包 8 字节速查
+
+```
+Byte 0: bmRequestType    0x21=OUT Class IF   0xA1=IN Class IF   0x01=Standard
+Byte 1: bRequest         0x01=SET_CUR        0x81=GET_CUR       0x85=GET_LEN
+Byte 2-3: wValue (LE)   高字节=CS_ID, 低字节=0
+Byte 4-5: wIndex  (LE)  高字节=XU Unit ID, 低字节=接口号  — 换设备只改这里！
+Byte 6-7: wLength (LE)  DATA 阶段字节数
+```
+
+### bmRequestType 三个字段
+
+```
+Bit 7:   方向 — 0=OUT(Host→Dev)  1=IN(Dev→Host)
+Bit 6-5: 字典 — 00=Standard  01=Class  10=Vendor
+Bit 4-0: 接收者 — 0=Device  1=Interface  2=Endpoint
+```
+
+## A.2 三种 wIndex 填法
+
+| 场景 | wIndex | bmRequestType |
+|------|--------|--------------|
+| VC XU 命令 | `(XU_ID<<8) \| VC_IF` | 0x21/0xA1 (Class) |
+| VS Probe/Commit | `VS_IF` | 0x21/0xA1 (Class) |
+| SET_INTERFACE 开流 | `VS_IF` | 0x01 (Standard), bReq=0x0B |
+
+## A.3 控制传输核心
+
+- **三阶段模型**：SETUP(必须ACK) + DATA(可选) + STATUS(方向与DATA相反，零长度包)
+- **SETUP 包 8 字节**：bmRequestType(1) + bRequest(1) + wValue(2 LE) + wIndex(2 LE) + wLength(2 LE)
+- **bmRequestType 三把钥匙**：D7=方向, D6-5=字典, D4-0=接收者
+- **ACK vs STATUS**：ACK=包级"CRC对了"，STATUS=传输级"交易关闭/拒绝"
+- **STATUS 是拒绝唯一入口**：SETUP 必须 ACK → 不支持的请求只能在 STATUS 回 STALL
+- **批量传输无 STATUS**：ACK 就是事务终点
+
+## A.4 新设备上线检查清单
+
+```
+□ lsusb                              → VID:PID
+□ sudo lsusb -v -d VID:PID           → bUnitID (XU Unit ID)
+□                                       bInterfaceNumber (VC IF)
+□ 确认 XU_ID 和 IF 填对              → SETUP wIndex 高/低字节
+□ 用 CS_ID=0x04 GET_LEN 试通         → 验证通道 + 拿到协议版本
+□ 看 bmControls 位图                 → 了解支持哪些 CS_ID
+□ 选一个已知 CS_ID 走三阶段          → FUNC_SWITCH → GET_LEN → GET_CUR
+```
+
+## A.5 新设备码流切换检查清单
+
+```
+□ lsusb                              → VID:PID
+□ sudo lsusb -v -d VID:PID           → bUnitID (XU), bInterfaceNumber (VC IF)
+□ 确认 XU_ID 和 VC_IF                → wIndex = (XU_ID<<8) | VC_IF
+□ ★ 先发 XU 切码流类型                → FUNC_SWITCH → GET_LEN → SET_CUR [01 0A]
+  □ 用独立 libusb 句柄，EP0 不需要 claim
+  □ 在 uvc_open 之前！不要之后！
+  □ usleep(200ms) 等设备就绪
+□ uvc_open → uvc_get_stream_ctrl_format_size（可能需要 raw descriptor walk）
+□ 帧回调检测 FF D8 头 → 如果是 JPEG 走 cv::imdecode，否则走 uvc_any2rgb
+□ 帧回调只做转换，不渲染。渲染在主线程，加 pthread_mutex_t 保护
+```
+
+## A.6 编译运行速查
+
+```bash
+# XU 交互工具
+gcc -o xu_interactive xu_interactive.c -lusb-1.0
+sudo ./xu_interactive
+
+# UVC 取流
+g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cflags --libs opencv4)
+
+# 查描述符
+sudo lsusb -v -d 2bdf:0101 > /tmp/cam.txt
+grep -n "EXTENSION_UNIT\|bUnitID\|bInterfaceNumber" /tmp/cam.txt
+```
+
+## A.7 PID 编码全表
+
+| 类别 | PID | 值(hex) | 含义 |
+|------|-----|---------|------|
+| TOKEN | OUT | 0xE1 | Host→Device数据 |
+| TOKEN | IN | 0x69 | Host←Device数据 |
+| TOKEN | SOF | 0xA5 | 帧起始 |
+| TOKEN | SETUP | 0x2D | 控制传输SETUP |
+| DATA | DATA0 | 0xC3 | 翻转位=0 |
+| DATA | DATA1 | 0x4B | 翻转位=1 |
+| HANDSHAKE | ACK | 0xD2 | 正确接收 |
+| HANDSHAKE | NAK | 0x5A | 暂时忙 |
+| HANDSHAKE | STALL | 0x1E | 端点Halted |
+| HANDSHAKE | NYET | 0x96 | HS批量FIFO满 |
+| SPECIAL | PING | 0xB4 | HS批量流控探测 |
+
+## A.8 描述符类型码全表
+
+| 值 | 描述符 | 固定长度？ |
+|:--:|--------|:--:|
+| 0x01 | Device | ✅ 18 字节 |
+| 0x02 | Configuration | ✅ 9 字节 |
+| 0x03 | String | ❌ 可变 |
+| 0x04 | Interface | ✅ 9 字节 |
+| 0x05 | Endpoint | ✅ 7 字节 |
+| 0x06 | Device Qualifier | ✅ 10 字节 |
+| 0x07 | Other Speed Config | ✅ 9 字节（头）|
+| 0x0B | IAD | ✅ 8 字节 |
+| 0x0F | BOS | ✅ 5 字节（头）|
+
+## A.9 MQTT 类比速查表
+
+| MQTT | USB |
+|------|-----|
+| CONNECT 报文 | Device Descriptor |
+| Topic 权限声明 | Configuration Descriptor |
+| Topic QoS 定义 | Interface Descriptor |
+| TCP 连接参数 | Endpoint Descriptor |
+| `$SYS/` 系统主题 | EP0（控制端点） |
+| PUBLISH body | 流管道（中断/批量/等时） |
+| QoS | ACK/NAK/STALL 握手机制 |
+| Topic 下挂子 Topic | Interface 下挂 Endpoint |
+| 多个 Topic 共用一个 TCP 连接 | 多个 Interface 共用 EP0 |
+| Fixed Header 第一个字节 | `bLength + bDescriptorType` 前 2 字节铁律 |
+| Keep Alive 心跳 | bInterval 轮询间隔 |
+
+---
+
+> **创建日期**：2026-08-02
+> **覆盖范围**：Phase 1-3（32/67 知识点）+ 真实设备实战 + UVC XU 控制与取流
+> **代码参考**：`code/xu_minimal_get.c` / `code/xu_interactive.c` / `code/uvc_stream_viewer.cpp` / `code/HIKVISION_TM76_libusb_3.c`

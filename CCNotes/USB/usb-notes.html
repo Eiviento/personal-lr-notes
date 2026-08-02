@@ -54,8 +54,10 @@ else document.documentElement.classList.add('dark');})();
         <summary><span>📡 Phase 2: USB 通信模型</span><span class="badge phase-done">19/19 ✓</span></summary>
         <a class="sub-item" href="#kp-2-1">2.1 三层通信模型</a>
         <a class="sub-item" href="#kp-2-2">2.2 端点(Endpoint)深入</a>
+        <a class="sub-item" href="#kp-2-2a">⟐ EP0 64B vs Bus Hound 512B</a>
         <a class="sub-item" href="#kp-2-3">2.3 管道(Pipe)深入</a>
         <a class="sub-item" href="#kp-2-3a">⟐ 接口与端点的归属关系</a>
+        <a class="sub-item" href="#kp-2-3b">⟐ Alternate Setting 详解</a>
         <a class="sub-item" href="#kp-2-4">2.4 四种传输类型全景</a>
         <a class="sub-item" href="#kp-2-5">2.5 传输/事务/包三层映射</a>
         <a class="sub-item" href="#kp-2-6">⛁ 2.6 PID 编码表</a>
@@ -73,6 +75,7 @@ else document.documentElement.classList.add('dark');})();
         <a class="sub-item" href="#kp-2-18">⟐ 2.18 完整帧内数据全景图</a>
         <a class="sub-item" href="#kp-2-19">2.19 127设备一帧照顾得过来？</a>
         <a class="sub-item" href="#kp-2-20">⟐ 2.20 UVC XU 扩展协议设计</a>
+        <a class="sub-item" href="#kp-2-21">⚡ 2.21 码流类型切换实战</a>
         <a class="sub-item" href="#kp-dev-tips">✏ 开发实战踩坑记录</a>
     </details>
 
@@ -482,6 +485,62 @@ else document.documentElement.classList.add('dark');})();
     UVC摄像头(HS): EP0(控制64B), EP1 IN(中断16B可选), EP2 IN(等时512B)</code></pre>
     </article>
 
+    <!-- kp-2-2a -->
+    <article class="card" id="kp-2-2a">
+        <h3>补充问答：EP0 的 64 字节 vs Bus Hound 的 512 字节</h3>
+
+        <div class="info-box">
+          <strong>核心问题</strong>：HS 下 EP0 最大包固定 64 字节——那 Bus Hound 抓包看到的一包 512 字节是什么？<br>
+          答案：要么是 VS 批量端点（真的 512B/包），要么是 Bus Hound 把多个 64B 事务合并显示为一整行。
+        </div>
+
+        <h4>可能一（最常见）：VS 端点，不是 EP0</h4>
+        <pre><code>VC Interface (IF=0)
+          └─ EP0 (控制)         ← XU 命令、枚举走这里，HS=固定 64B
+        VS Interface (IF=1)
+          └─ EP 0x81 (Bulk IN)  ← 视频数据走这里，HS=最大 512B  ← 你看到的</code></pre>
+        <table>
+          <tr><th>端点类型</th><th>HS 最大包</th><th>你在哪看到</th></tr>
+          <tr><td>EP0（控制）</td><td><strong>64（固定）</strong></td><td>XU 命令、枚举回答</td></tr>
+          <tr><td>Bulk Endpoint</td><td><strong>512</strong></td><td>取流视频数据</td></tr>
+          <tr><td>ISOC Endpoint</td><td><strong>1024</strong></td><td>等时视频流</td></tr>
+        </table>
+
+        <h4>可能二：如果是 EP0 — Bus Hound 把多个 64B 包"合并"了</h4>
+        <p>控制传输 DATA 阶段有 512 字节数据时（wLength=512），USB 总线上的真实情况：</p>
+        <pre><code>512 ÷ 64 = 8 个总线事务，每个都有独立 Token + DATA + ACK
+        IN Token → DATA0(64B) → ACK
+        IN Token → DATA1(64B) → ACK   ← DATA0/DATA1 翻转
+        IN Token → DATA0(64B) → ACK
+        ... (重复 8 次)
+        最后 STATUS: OUT Token → DATA1(0B) → ACK</code></pre>
+
+        <p><strong>Bus Hound 看到 vs 总线真实发生：</strong></p>
+        <pre><code>Bus Hound 显示:                    USB 总线真实:
+        ┌─────────────────────┐        ┌───────────────────────────┐
+        │ CTL  8 bytes        │  ←──→  │ SETUP Token + DATA0(8B)   │ 1 事务
+        │ IN   512 bytes       │  ←──→  │ IN ×8 次 + OUT STAT ×1    │ 9 事务
+        └─────────────────────┘        └───────────────────────────┘
+
+        Bus Hound 一行 IN = 总线上 9 个事务！STATUS 阶段也不显示。</code></pre>
+
+        <div class="info-box">
+          <strong>本质原因</strong>：Bus Hound 工作在 <strong>URB 层</strong>（USB Request Block，驱动向控制器提交的请求），不是总线事务层。<br>
+          类比：快递运单系统记录"这一单总共 512 件"，不记录每辆车装了多少件。<br>
+          USB 协议分析仪（硬件）才能看到逐个 64B 事务。
+        </div>
+
+        <h4>怎么区分你看到的是哪种？</h4>
+        <p>看 Bus Hound 抓包行里标注的 <strong>端点地址</strong>：</p>
+        <table>
+          <tr><th>端点地址</th><th>含义</th><th>512 字节是...</th></tr>
+          <tr><td>0x00 / 未标注</td><td>EP0 控制端点</td><td>多个 64B 事务合并显示</td></tr>
+          <tr><td>0x81 / 0x82 / ...</td><td>非 EP0（批量/中断/等时）</td><td>真实单包 512B</td></tr>
+        </table>
+
+        <p><strong>这也解释了为什么 STATUS 阶段在 Bus Hound 中不可见</strong>（HANDOFF §六 第 27 条）——同一个局限的延伸：DATA 阶段的包拆分也被驱动层合并了。</p>
+    </article>
+
     <!-- kp-2-3 -->
     <article class="card" id="kp-2-3">
         <h3>2.3 管道 (Pipe) 深入</h3>
@@ -612,6 +671,75 @@ else document.documentElement.classList.add('dark');})();
             <p>SET_INTERFACE 切换到 Alt 1+ = 开流；切回 Alt 0 = 关流。端点号一样（EP81），但传输类型和数据量变了。</p>
           </details>
         </div>
+    </article>
+
+    <!-- kp-2-3b -->
+    <article class="card" id="kp-2-3b">
+        <h3>补充问答：Alternate Setting 详解——同一 Interface 的"多重人格"</h3>
+
+        <div class="info-box">
+          <strong>一句话</strong>：Alternate Setting 允许同一个 Interface 在不同时刻以不同的"配置档"运行——切换端点数量、传输类型、带宽分配，但不改变功能类别。<br>
+          门还是那扇门（IF=1, Video Streaming），开法不同。切换时用 SET_INTERFACE 当场切换，总线不断开，描述符不用重读。
+        </div>
+
+        <h4>最熟悉的例子：HIK 2bdf:0101 的 VS Interface</h4>
+        <pre><code>Interface 1 (Video Streaming, bInterfaceClass=0x0E Video)
+        │
+        ├── Alternate 0  ← 默认，"零带宽" — 没有数据端点
+        ├── Alternate 1  ← 等时, 256B/包, 160×120
+        ├── Alternate 2  ← 等时, 512B/包, 320×240
+        ├── ...Alternate 3~7...
+        └── Alternate 8  ← 批量, 512B/包 ← 你取流用的这个！
+
+        所有 Alt 0~8: bInterfaceNumber 都是 1, bInterfaceClass 都是 0x0E
+        只有 bAlternateSetting 和端点配置不同</code></pre>
+
+        <h4>Alternate Setting vs Configuration</h4>
+        <table>
+          <tr><th></th><th>Alternate Setting</th><th>Configuration</th></tr>
+          <tr><td>切换范围</td><td>一个 Interface 内部</td><td>整个设备</td></tr>
+          <tr><td>切换方式</td><td><strong>SET_INTERFACE</strong></td><td>Set_Configuration</td></tr>
+          <tr><td>其他 Interface 受影响？</td><td><strong>不影响</strong></td><td>全部重置</td></tr>
+          <tr><td>典型用途</td><td>开关流、换分辨率</td><td>切换工作模式</td></tr>
+          <tr><td>切换速度</td><td>快（局部调整）</td><td>慢（全局重构）</td></tr>
+        </table>
+
+        <h4>为什么需要 Alternate Setting？——带宽管理</h4>
+        <p>等时传输预约的带宽即使不用也占着——别的设备不能抢。摄像头关流后如果还占着等时带宽，纯浪费。</p>
+        <p><strong>UVC 规范强制每 VS Interface 的 Alt 0 为零带宽</strong>（bNumEndpoints=0）。关流时切 Alt 0 → 释放带宽给其他设备。</p>
+
+        <h4>SET_INTERFACE 在代码里</h4>
+        <pre><code>// Standard 请求, 不是 Class 请求！
+        libusb_control_transfer(devh,
+            0x01,           // bmRequestType = Standard, OUT, Interface
+            0x0B,           // bRequest = SET_INTERFACE
+            0x08,           // wValue = Alternate Setting 8
+            0x01,           // wIndex = Interface 1 (VS) — 只填接口号，不拼 Unit ID!
+            NULL, 0, 5000);</code></pre>
+        <p>取流完整顺序：Alt 0（默认关流）→ Probe/Commit（协商）→ <strong>SET_INTERFACE(Alt 8)</strong> → bulk_transfer。关流时 SET_INTERFACE(Alt 0)。</p>
+
+        <h4>描述符中的体现</h4>
+        <p>lsusb -v 中同一个 bInterfaceNumber 出现多次，bAlternateSetting 递增：</p>
+        <pre><code>Interface Descriptor:              ← IF=1, Alt=0
+          bInterfaceNumber: 1
+          bAlternateSetting: 0
+          bNumEndpoints: 0              ← 零带宽
+
+        Interface Descriptor:              ← IF=1, Alt=1
+          bInterfaceNumber: 1             ← 还是同一个 Interface
+          bAlternateSetting: 1            ← 不同档位
+          Endpoint: EP 0x81, Isoch, 256B</code></pre>
+
+        <h4>关键认知</h4>
+        <table>
+          <tr><th>认知</th><th>说明</th></tr>
+          <tr><td>不是新 Interface</td><td>bInterfaceNumber 相同，只是 bAlternateSetting 不同</td></tr>
+          <tr><td>同时只有一个生效</td><td>切 Alt 8 后 Alt 0 自动失效</td></tr>
+          <tr><td>不同 Alt 可复用端点号</td><td>Alt 1~8 都声明 EP 0x81——同时只有一个激活，不冲突</td></tr>
+          <tr><td>Alt 0 = 零带宽</td><td>UVC 强制要求，关流释放带宽</td></tr>
+          <tr><td>SET_INTERFACE 是 Standard</td><td>wIndex 只填 IF 号，不拼 Unit ID</td></tr>
+          <tr><td>vs Configuration</td><td>Alt 切换 = 局部微调，Config 切换 = 全局重构</td></tr>
+        </table>
     </article>
 
     <!-- kp-2-4 -->
@@ -1835,6 +1963,222 @@ else document.documentElement.classList.add('dark');})();
 
     排查方法: 换一个已知的 CS_ID (如 0x04) 试，确认通道没问题</code></pre>
     	  </details></div>
+    </article>
+
+    <!-- ⚡ kp-2-21: 码流类型切换实战 -->
+    <article class="card" id="kp-2-21">
+        <h3>⚡ 2.21 码流类型切换实战 — 标准UVC + XU私有协议协作</h3>
+        <p>本章来自 <code>uvc_stream_viewer.cpp</code> 开发过程中的全部踩坑总结。<strong>热成像摄像头不是普通 webcam</strong>——数据<em>内容</em>和传输<em>格式</em>是两层独立控制，分别由 XU 命令和标准 UVC 协议管辖。<span style="background:rgba(240,160,48,0.18);padding:1px 6px;border-radius:3px;font-weight:700;">★★★ 这是理解"标准取流为何还需要 XU"的核心章节</span></p>
+
+        <!-- 2.21.1 数据分层模型 -->
+        <h4>2.21.1 热成像摄像头的数据分层模型</h4>
+        <pre style="font-size:13px;line-height:1.55;background:var(--color-bg-code);padding:14px 16px;border-radius:6px;overflow-x:auto;">
+┌──────────────────────────────────────────────────────────────┐
+│                      热成像摄像头                              │
+│                                                              │
+│  探测器（FPA — 焦平面阵列，每个像素是 14~16bit 温度值）         │
+│    ↓                                                         │
+│  ┌──────────┐  ┌──────────────┐                               │
+│  │ 测温矩阵  │  │ 伪彩映射     │                               │
+│  │ 16bit×   │  │ 温度→RGB/YUV │                               │
+│  │ W×H      │  │ （调色板）    │                               │
+│  └────┬─────┘  └──────┬───────┘                               │
+│       └───┬───────────┘                                       │
+│           ↓                                                   │
+│  ┌──────────────────────────────────────────────────────┐    │
+│  │     ★ 码流类型多路复用器 — XU CS_ID=0x03 控制 ★       │    │
+│  │                                                      │    │
+│  │  类型 2:  全屏测温矩阵（纯温度数据，16bit float）       │    │
+│  │  类型 3:  实时裸数据（NUC 校正前的原始探测器输出）      │    │
+│  │  类型 6:  YUV 实时流 + 测温头（画面混温度采样点）      │    │
+│  │  类型 8:  全屏测温数据 + YUV 实时流（两套数据拼接）     │    │
+│  │  ★ 类型 10: 仅 YUV 实时流（无测温头，纯画面）★         │    │
+│  │  类型 9:  实时裸数据 + YUV                             │    │
+│  └──────────────────────┬───────────────────────────────┘    │
+│                         ↓                                     │
+│  ┌──────────────────────────────────────────────────────┐    │
+│  │           UVC 传输层（Probe / Commit / ISOC）          │    │
+│  │   管"怎么传" — 分辨率、帧率、YUYV/MJPEG 编码           │    │
+│  └──────────────────────────────────────────────────────┘    │
+│                         ↓                                     │
+│                   USB 总线 → 主机                              │
+└──────────────────────────────────────────────────────────────┘</pre>
+        <p><strong>关键理解</strong>：探测器只有一个，但不同应用场景需要不同类型的数据——测温场景要温度矩阵（类型2），看画面要纯YUV（类型10），又要画面又要测温点用类型6。摄像头默认通常是类型8（测温+YUV混合），<strong>必须用 XU 命令切换到你需要的类型</strong>。</p>
+
+        <!-- 2.21.2 为什么需要XU切换 ★ -->
+        <h4>2.21.2 为什么需要 XU 切换 ★</h4>
+        <div style="background:rgba(240,160,48,0.1);border-left:3px solid #f0a030;padding:10px 14px;margin:8px 0;border-radius:0 4px 4px 0;">
+        <strong>核心结论：标准 UVC 只管传输格式，不管数据内容。XU 才是数据内容的开关。</strong>
+        </div>
+        <table>
+            <tr><th>层面</th><th>谁管</th><th>管什么</th><th>例子</th></tr>
+            <tr>
+                <td><strong>传输格式</strong></td>
+                <td>标准 UVC（Probe/Commit/SET_INTERFACE）</td>
+                <td>分辨率、帧率、编码、带宽</td>
+                <td>120x160 YUYV @25fps</td>
+            </tr>
+            <tr>
+                <td><strong>数据内容</strong></td>
+                <td>XU 命令（CS_ID=0x03 SubFunc=0x05）</td>
+                <td>帧里装什么——纯画面还是画面+温度</td>
+                <td>类型10=纯YUV  vs  类型8=测温+YUV混合</td>
+            </tr>
+        </table>
+        <p><strong>类比</strong>：UVC = 快递公司（管包裹大小、送达速度），XU = 你跟厂家说"包裹里装什么"。快递公司不关心包裹内容。如果你不发 XU，厂家默认给你寄测温+YUV混合包裹，解码器打开一看——花屏。</p>
+
+        <!-- 2.21.3 先后顺序 ★★★ -->
+        <h4>2.21.3 XU vs UVC 取流的先后顺序 ★★★</h4>
+        <div style="background:rgba(240,80,50,0.12);border-left:3px solid #e04030;padding:12px 16px;margin:10px 0;border-radius:0 4px 4px 0;">
+        <strong style="font-size:15px;">★★★ 先配置内容（XU），再开传输（UVC）</strong>
+        <pre style="margin:8px 0 0;background:transparent;padding:0;font-size:13px;">
+正确顺序：                          错误顺序：
+  ① uvc_open                         ① uvc_open
+  ② <strong>XU: 切换码流类型</strong>                ② UVC: 开流 → 管道跑起来了
+  ③ UVC: Probe/Commit                ③ <strong>XU: 切换码流</strong> → 数据格式突变！
+  ④ uvc_start_streaming              ④ libuvc 仍按老格式解码 → <strong>花屏</strong>
+
+类比：先拧旋钮选"纯净水"，再开水龙头。  先开水龙头，再拧旋钮 → 半杯混合水。</pre>
+        </div>
+        <p><strong>为什么不能先开流再发 XU？</strong>UVC 管道建立后帧数据持续传输。XU 切换码流类型的瞬间，数据源变了（YUV变成测温矩阵或反之），但 UVC 管道不知道——libuvc 仍按旧的 Probe 参数去解码，字节偏移全错。</p>
+        <p><strong>设备收到 XU 命令后多久生效？</strong></p>
+        <table>
+            <tr><th>XU 命令</th><th>生效延迟</th><th>说明</th></tr>
+            <tr><td>码流类型切换 (CS_ID=0x03)</td><td>SET_CUR 完成后 ~1-3 帧</td><td><strong>必须先停流再切换</strong>，切换完等 200ms 再开流</td></tr>
+            <tr><td>伪彩切换 (CS_ID=0x02)</td><td>~100-200ms</td><td>只改颜色映射，YUV 数据格式不变，<strong>取流中可以热切换</strong></td></tr>
+            <tr><td>读协议版本 (CS_ID=0x04)</td><td>立即</td><td>纯读操作，不影响管道</td></tr>
+            <tr><td>读错误码 (CS_ID=0x06)</td><td>立即</td><td>纯读操作，随时可读</td></tr>
+        </table>
+
+        <!-- 2.21.4 取流中能不能发XU ★ -->
+        <h4>2.21.4 取流中能不能发 XU？★</h4>
+        <div style="background:rgba(240,160,48,0.1);border-left:3px solid #f0a030;padding:10px 14px;margin:8px 0;border-radius:0 4px 4px 0;">
+        <strong>能，但要分类讨论——不是所有 XU 命令都"安全"。</strong>
+        </div>
+        <table>
+            <tr><th>XU 命令类型</th><th>取流中能发吗</th><th>后果</th><th>建议</th></tr>
+            <tr>
+                <td><strong>切换码流类型</strong><br><small>CS_ID=0x03 SubFunc=0x05</small></td>
+                <td style="color:#e04030;font-weight:700;">❌ 不能</td>
+                <td>管道中数据格式突变 → 花屏/崩溃</td>
+                <td>先停流 → 切换 → 等 200ms → 再开流</td>
+            </tr>
+            <tr>
+                <td><strong>切换伪彩</strong><br><small>CS_ID=0x02 SubFunc=0x05</small></td>
+                <td style="color:#2ea043;font-weight:700;">✅ 能</td>
+                <td>画面颜色跳变（正常），格式不变</td>
+                <td>取流中直接热切换，~200ms 后生效</td>
+            </tr>
+            <tr>
+                <td><strong>读版本/读错误码</strong><br><small>CS_ID=0x04/0x06</small></td>
+                <td style="color:#2ea043;font-weight:700;">✅ 能</td>
+                <td>无影响（纯读操作，走 EP0）</td>
+                <td>任何时候都能读</td>
+            </tr>
+        </table>
+        <p><strong>原理</strong>：XU 控制传输走 EP0（控制端点），跟 UVC 视频流走的是不同端点（ISOC/BULK），物理上不冲突。冲突在<strong>语义层</strong>——如果 XU 命令改动了管道里正在传输的数据格式，接收方就乱了。所以"能不能发"取决于命令<strong>是否改动数据格式</strong>，不是物理冲突问题。</p>
+
+        <!-- 2.21.5 测温头 -->
+        <h4>2.21.5 测温头是什么 — 为什么默认码流会导致花屏</h4>
+        <pre style="font-size:13px;line-height:1.55;background:var(--color-bg-code);padding:14px 16px;border-radius:6px;overflow-x:auto;">
+类型 10 — 纯 YUV（你要的）：           类型 6 — YUV + 测温头（默认的）：
+┌────────────────────┐               ┌────────────────────┐
+│                    │               │                    │
+│   YUV 图像数据      │               │   YUV 图像数据      │
+│   120×160×2        │               │   120×160×2        │
+│   = 38400 字节      │               │   ≈ 38400 字节     │
+│                    │               │                    │
+│   ← 帧尾            │               ├────────────────────┤
+│                    │               │ ★ 测温头数据 ★      │
+│                    │               │   温度值 + 坐标      │
+│                    │               │   ～200~500 字节    │
+└────────────────────┘               └────────────────────┘
+
+解码器按纯 YUV 读：               解码器按纯 YUV 读：
+  一行一行正常解析 ✓                读到测温头 → 像素错位 → 花屏 ✗</pre>
+        <p>测温头通常包含：中心点温度（2B）、最高温/最低温+坐标（各4B）、ROI区域平均温度。如果你只<strong>看画面</strong>（不需要测温），用类型 10 就够了——省带宽、不需要自己解析测温头、标准播放器直接能放。</p>
+
+        <!-- 2.21.6 MJPEG欺诈 ★ -->
+        <h4>2.21.6 ★ MJPEG 描述符欺诈（2bdf:0101 特有坑）</h4>
+        <div style="background:rgba(240,80,50,0.12);border-left:3px solid #e04030;padding:12px 16px;margin:10px 0;border-radius:0 4px 4px 0;">
+        <strong style="font-size:15px;">不能完全信任 UVC 描述符！</strong>
+        </div>
+        <table>
+            <tr><th></th><th>描述符声称</th><th>实际数据</th></tr>
+            <tr><td>格式</td><td>UncompressedFormat, YUY2 (YUYV)</td><td>MJPEG（<code>FF D8 FF E0...</code>）</td></tr>
+            <tr><td>bits per pixel</td><td>16</td><td>N/A（压缩后变长）</td></tr>
+            <tr><td>帧大小 (120×160)</td><td>38400 字节</td><td>~10000 字节（JPEG压缩后）</td></tr>
+        </table>
+        <p><strong>为什么摄像头这么做？</strong>UVC 描述符里 YUYV 格式更容易被操作系统识别和匹配；实际输出 MJPEG 可以大幅降低 USB 带宽（38400 → ~10000，省了 74%），但对主机透明——主机必须自己检测。</p>
+        <p><strong>修复方案</strong>：在帧回调里检测数据头：</p>
+        <pre><code>const uint8_t *raw = (const uint8_t *)frame->data;
+int is_jpeg = (frame->data_bytes >= 2 &&
+               raw[0] == 0xFF && raw[1] == 0xD8);
+if (is_jpeg) {
+    // ★ 强制走 MJPEG 路径：cv::imdecode(raw_data, IMREAD_COLOR)
+} else {
+    // 真·YUYV：uvc_any2rgb(frame, rgb_frame)
+}</code></pre>
+
+        <!-- 2.21.7 踩坑记录 -->
+        <h4>2.21.7 uvc_stream_viewer 开发踩坑全记录</h4>
+        <table>
+            <tr><th>#</th><th>症状</th><th>根因</th><th>修复</th></tr>
+            <tr>
+                <td>1</td>
+                <td>SDL2 播放数秒后 segfault</td>
+                <td>回调线程和主线程同时访问帧缓冲区，无同步</td>
+                <td>换 OpenCV + <code>pthread_mutex_t</code></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>花屏（雪花状噪点）</td>
+                <td>默认码流含测温数据混在 YUV 里</td>
+                <td>XU 命令切到类型 10 (YUV_ONLY)</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>花屏仍在，帧只有 ~10000 字节</td>
+                <td>描述符说 YUYV，实际送 MJPEG（<code>FF D8</code>头）</td>
+                <td>帧回调检测 JPEG 头，强制 <code>cv::imdecode</code></td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>XU 命令不执行（编译报错/无输出）</td>
+                <td><code>libusb_control_transfer</code> 漏了 <code>bRequest</code> 参数</td>
+                <td>补全 8 参数：bmRT + bReq + wVal + wIdx + data + len + timeout</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>XU 返回 <code>LIBUSB_ERROR_IO</code></td>
+                <td>XU 在 <code>uvc_open</code> 之后发，设备状态不一致</td>
+                <td>XU 移到 <code>uvc_open</code> <strong>之前</strong>，复用 detach 时的 libusb 句柄</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>OpenCV <code>cvtColor(YUV2BGR)</code> 花屏</td>
+                <td>OpenCV 的 YUYV 字节序与设备不匹配</td>
+                <td>统一用 libuvc 的 <code>uvc_any2rgb</code> + <code>cvtColor(RGB2BGR)</code></td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td><code>frame->data[0]</code> 编译报错</td>
+                <td><code>uvc_frame_t::data</code> 是 <code>void*</code></td>
+                <td>先转 <code>(const uint8_t *)frame->data</code></td>
+            </tr>
+        </table>
+
+        <div style="background:rgba(240,160,48,0.1);border-left:3px solid #f0a030;padding:10px 14px;margin:16px 0 0;border-radius:0 4px 4px 0;">
+        <strong>★ 标准取流+私有切换的完整流程（推荐模板）：</strong>
+        <pre style="margin:8px 0 0;background:transparent;padding:0;font-size:13px;">
+① libusb_open → detach 内核驱动
+② <strong>libusb_control_transfer: XU FUNC_SWITCH → XU SET_CUR → YUV_ONLY</strong>
+   usleep(200ms)  ← 等设备内部切换完成
+③ uvc_open → uvc_get_stream_ctrl_format_size → uvc_start_streaming
+④ 帧回调：检测 FF D8 头 → MJPEG(cv::imdecode) 或 YUYV(uvc_any2rgb) → 显示</pre>
+        </div>
+
+        <p style="margin-top:12px;font-size:13px;color:var(--color-dim);">📎 完整代码见 <code>code/uvc_stream_viewer.cpp</code>，详细笔记见 <code>notes/xu-new-device-setup-guide.md</code> 第九章。</p>
     </article>
 
     <div class="phase-header" id="phase-3"><h2>Phase 3: USB 描述符体系 — 逐字节解剖 <span style="font-size:14px;color:var(--color-addr);margin-left:8px;">11/11 ✓</span></h2></div>

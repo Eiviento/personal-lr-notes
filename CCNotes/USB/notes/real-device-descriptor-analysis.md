@@ -980,6 +980,119 @@ IAD 是"功能级"的：usbvideo.sys 看到 Video Interface Collection（0x0E/0x
 
 结论：**bmControls=0 只代表"标准控制没实现"，不代表设备不可控**——看 XU 和 VS 控制才是这类摄像头应用的正确姿势。做应用时先枚举 XU（GET_INFO），别假设标准控制可用。
 
+### Q8: 为什么 Bus Hound 抓包看不到 Token 包、Handshake 包和 PID 字段？
+
+这是 USB 学习中一个经典分水岭——你抓到的数据**完全正确**，Bus Hound 本来就看不到这些东西。
+
+**根本原因：Bus Hound 是软件层抓包工具，工作在 USB 驱动栈里。**
+
+```
+你的应用
+   ↓
+WinUSB / 设备驱动         ← Bus Hound 在这里抓包（URB 层）
+   ↓
+USB 主机控制器驱动 (xHCI)
+   ↓
+USB 主机控制器硬件         ← PID/SYNC/CRC 在这里被硬件处理掉了
+   ↓
+物理总线 (D+/D-)
+```
+
+Bus Hound 插在操作系统驱动栈中间，截获的是 **URB（USB Request Block）和传输的数据负载**——这是驱动层看到的东西。Token 包、Handshake 包、PID 字节、SYNC 字段、CRC5/CRC16——这些全在**硬件层**由 USB 主机控制器（xHCI）自动生成和解析，软件连看都看不到。
+
+**类比：这就像用 Wireshark 抓 HTTP 却看不到 TCP 的 SYN/ACK seq 号。**
+
+| Wireshark 抓 HTTP | Bus Hound 抓 USB |
+|---|---|
+| HTTP 请求/响应（文本） | 你的数据（调色板、码流类型、YUV 帧） |
+| TCP 段（seq/ack 号） | URB（传输状态、字节数、端点地址） |
+| IP 帧 → 以太网帧 | **Token/Data/Handshake 包** ← 你学过的那些 |
+| 电平信号 | **SYNC + PID + CRC + EOP** ← 硬件处理 |
+
+TCP 栈剥掉了 IP/以太网帧头，应用层只看到数据流。同样，xHCI 硬件剥掉了 PID/CRC/SYNC/EOP，驱动层只看到"这个 URB 传了多少字节，状态是什么"。你代码里写 `libusb_bulk_transfer(devh, 0x81, buf, size, &recv_len, timeout)` 的时候，底层发生的是：
+
+```
+Host 控制器自动生成:
+  IN Token  →  [SYNC][PID=0x69(IN)][ADDR][ENDP=1][CRC5][EOP]
+Device 回应:
+  DATA0/1   →  [SYNC][PID=0xC3(DATA0)][512 bytes YUV payload][CRC16][EOP]
+Host 应答:
+  ACK       →  [SYNC][PID=0xD2(ACK)][EOP]
+```
+
+Bus Hound 只告诉你 "这次 bulk transfer 收到了 512 字节"——那 512 字节就是 DATA 包里**去掉 PID 和 CRC 后的 payload**。Token 是谁发的、Device 回的 DATA 包 PID 是 DATA0 还是 DATA1、有没有 NAK 重试——这些在硬件层自动完成，软件完全感知不到。
+
+**怎么才能看到 PID/Token/Handshake？需要硬件 USB 协议分析仪。**
+
+| 工具 | 价格 | 用途 |
+|---|---|---|
+| Ellisys USB Explorer | $3000+ | 专业级，USB 3.0/2.0 |
+| Total Phase Beagle 480 | ~$500 | USB 2.0 协议分析 |
+| OpenVizsla（开源） | ~$150 | 入门级 USB 2.0 嗅探 |
+
+这些设备直接串在 D+/D- 物理线上，能抓到最原始的包——SYNC、PID、Token、Data、Handshake、CRC、EOP 全部可见。
+
+**那之前学的那些白学了吗？没有，完全不是。** 理解 Token→Data→Handshake 的事务模型、理解 PID 编码（高 4 位 = ~低 4 位）、理解 DATA0/1 翻转——这些东西在你看到 Bus Hound 里出现一连串超时或 STALL 的时候，是你做调试的唯一线索。USB 不像 TCP 有丰富的内核统计（`ss -i` / `netstat -s`），出问题了你只能靠协议模型推理。"Host 中心化"意味着 Device 绝不会主动发数据——如果你在 Bus Hound 上看到数据到了，那一定是 Host 先发了 IN Token。**你看见了数据，看不见谁请的客，但你知道一定有请客的那一下。**
+
+### Q9: 为什么批量传输的 payload 前面 8 字节长得跟控制传输的 SETUP 包一模一样？
+
+**这不是 USB 规范要求的——是厂商自己抄过去的。**
+
+USB 规范层面：控制传输的 SETUP 包有固定 8 字节格式（bmRequestType + bRequest + wValue + wIndex + wLength），批量传输是纯数据管道，爱发什么发什么。
+
+但实际设备中，你经常在 Bus Hound 里看到：
+
+```
+Bulk OUT  0x03  12B    A1 81 00 04 00 0A 04 00 [32 2E 30 00]
+                       ↑── 跟 SETUP 包完全一样的 8 字节 ──↑ ↑ payload ↑
+```
+
+**为什么厂商要这么干？**
+
+| | EP0 控制传输 | 批量端点模拟 |
+|---|---|---|
+| 并发 | 一次一个请求，等 STATUS 完 | 可以排多个命令，异步执行 |
+| 数据量 | wLength 最大 64KB，HS 每包 64B | 512B/包，多大命令都行 |
+| 排队 | 必须等上一笔 STATUS 闭环 | 可以 pipeline |
+| 代码复用 | — | **直接复用 EP0 的命令解析代码** |
+
+核心原因就一句话：**"我们在 EP0 上已经写了一套命令解析代码，再为批量端点重新设计一套格式太傻了。直接把 EP0 那 8 字节头搬过来，解析代码复用，唯一的区别是——不走 EP0 那个慢车道，走批量端点这条高速公路。"**
+
+**这算违反 USB 规范吗？不算。** 规范只规定 EP0 必须是控制传输（有那 8 字节头），但没有禁止其他端点模仿。批量端点是"纯数据管道"——数据里面是什么格式，完全是厂商的自由。类比：TCP 定义了 SYN/ACK/FIN 握手，但没有禁止你在 payload 里传 HTTP 格式。HTTP、gRPC、MQTT——都是"用了 TCP 的传输能力，自己的协议格式塞 payload 里"。
+
+**Bus Hound 怎么看穿？** Bus Hound 不管这些——控制传输的 `CTL` 行会帮你展开那 8 字节，批量传输的 `Bulk` 行就是一坨 hex。当你看到 `Bulk OUT, 12B, A1 81 00 04 00 0A...`，能认出来这是 UVC GET_CUR 的格式——说明你 USB 协议已经入门了。
+
+### Q10: STATUS 阶段只是锦上添花的"收到了"吗？
+
+**不是。STATUS 是不可或缺的协议硬需求——它是设备拒绝不支持的 SETUP 命令的唯一切入点。**
+
+理解为什么，要先看三个约束：
+
+1. **SETUP 阶段设备必须 ACK**（见 Q8 和 2.17）——SETUP Token 一到达，硬件自动清空状态机、强制 DATA0，设备**不能**在这里说"不支持"
+2. **DATA 阶段不一定有**——如果 wLength=0（纯控制命令，不需要数据），DATA 阶段直接跳过
+3. **Endpoint 0 是共享资源**——Host 需要明确知道"这笔交易完了，可以发下一个 SETUP 了"
+
+三条加在一起：SETUP 拦不住拒绝，DATA 可能不存在，那拒绝在哪里表达？
+
+```
+SETUP:  "给我不存在的描述符 #99"
+        Device → ACK  ← SETUP 必须 ACK，不能拒绝
+DATA:   无数据（或回了也是错的）
+STATUS: Device → STALL ← ❌ 拒绝唯一发生在这里！
+        或
+        Device → ACK  ← ✅ 交易成功
+
+对比批量传输——没有 STATUS 阶段，每个包都可以直接回 STALL:
+  OUT Token → DATA → STALL  ← 当场拒绝，不需要 STATUS
+```
+
+**STATUS 不是"锦上添花"——它是控制传输的"判决书"。** SETUP 是"请求"，DATA 是"证据"，STATUS 是"裁决"——成功（ACK）还是驳回（STALL）。去掉 STATUS，设备对不支持的 SETUP 命令连说"不"的权利都没有。
+
+**所以三段式不是冗余设计——是权力分立：**
+- SETUP = 提出请求（必须受理）
+- DATA = 提供数据（可选）
+- STATUS = 宣布判决（✅ 或 ❌，必须做出）
+
 ---
 
 # 附录 A 设备 1 完整原始 dump（精简）

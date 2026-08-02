@@ -1,0 +1,590 @@
+  +++++++++++++++++ Device Information ++++++++++++++++++
+Friendly Name            : 2K USB Camera
+Device Description       : USB 视频设备
+BusReported Device Desc  : 2K USB Camera
+Device Path 1            : \\?\USB#VID_2BDF&PID_028A&MI_00#6&74a4493&0&0000#{e5323777-f976-4f5b-9b55-b94699c46e44}\global (KSCATEGORY_VIDEO_CAMERA)
+Device Path 2            : \\?\USB#VID_2BDF&PID_028A&MI_00#6&74a4493&0&0000#{65e8773d-8f56-11d0-a3b9-00a0c9223196}\global (AM_KSCATEGORY_CAPTURE)
+Device Path 3            : \\?\USB#VID_2BDF&PID_028A&MI_00#6&74a4493&0&0000#{6994ad05-93ef-11d0-a3cc-00a0c9223196}\global (AM_KSCATEGORY_VIDEO)
+Kernel Name              : \Device\00000116
+Device ID                : USB\VID_2BDF&PID_028A&MI_00\6&74A4493&0&0000
+Hardware IDs             : USB\VID_2BDF&PID_028A&REV_3000&MI_00 USB\VID_2BDF&PID_028A&MI_00
+Driver KeyName           : {ca3e7ab9-b4c3-4ae6-8251-579ef933890f}\0001 (GUID_DEVCLASS_CAMERA)
+Driver                   : \SystemRoot\System32\Drivers\usbvideo.sys (Version: 10.0.26100.4484  Date: 2025-07-22  Company: Microsoft Corporation)
+Driver Inf               : C:\WINDOWS\inf\usbvideo.inf
+Legacy BusType           : PNPBus
+Class                    : Camera
+Class GUID               : {ca3e7ab9-b4c3-4ae6-8251-579ef933890f} (GUID_DEVCLASS_CAMERA)
+Service                  : usbvideo
+Enumerator               : USB
+Location Info            : 0000.0014.0000.011.000.000.000.000.000
+Address                  : 11
+Manufacturer Info        : Microsoft
+Capabilities             : 0xA4 (Removable, SilentInstall, SurpriseRemovalOK)
+Status                   : 0x0180600A (DN_DRIVER_LOADED, DN_STARTED, DN_DISABLEABLE, DN_REMOVABLE, DN_NT_ENUMERATOR, DN_NT_DRIVER)
+Lower Filters            : WdmCompanionFilter
+First Install Date       : 2026-04-11 22:03:55
+Last Arrival Date        : 2026-08-01 10:34:08
+EnhancedPowerMgmtEnabled : 0
+Power State              : D3 (supported: D0, D3, wake from D0)
+
+
+             +++++++++++ Kernel Streaming Information ++++++++++
+
+                 -------- Video Modes --------
+2560 x 1440 @ 30 fps     : MJPG
+1920 x 1080 @ 30 fps     : MJPG
+1920 x 1080 @ 5 fps      : NV12, YUY2
+1280 x 960 @ 30 fps      : MJPG
+1280 x 960 @ 10 fps      : NV12
+1280 x 960 @ 5 fps       : YUY2
+1280 x 720 @ 30 fps      : MJPG
+1280 x 720 @ 15 fps      : NV12
+1280 x 720 @ 10 fps      : YUY2
+640 x 480 @ 30 fps       : MJPG, NV12, YUY2
+640 x 360 @ 30 fps       : MJPG, NV12, YUY2
+
+                 ---------- Details ----------
+Pin Count                : 2
+
+-------------- Pin 0 --------------
+Name                     : ²¶»ñ
+DataFlow                 : KSPIN_DATAFLOW_OUT
+Category                 : {FB6C4281-0353-11D1-905F-0000C0CC16BA} (PIN_CATEGORY_CAPTURE)
+Data Ranges              : 32 Data Ranges
+
+---- Data Range 0  (1/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 640 × 480
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 147456000 bps -> 18.432 MB/s
+
+---- Data Range 1  (2/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 640 × 480
+Aspect Ratio             : 4 : 3
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 147456000 bps -> 18.432 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 2  (3/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 1920 × 1080
+Average Time per Frame   : 2000000 × 100 ns -> 200.0000 ms -> 5.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 165888000 bps -> 20.736 MB/s
+
+---- Data Range 3  (4/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 1920 × 1080
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 2000000 × 100 ns -> 200.0000 ms -> 5.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 165888000 bps -> 20.736 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 4  (5/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 1280 × 960
+Average Time per Frame   : 2000000 × 100 ns -> 200.0000 ms -> 5.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 98304000 bps -> 12.288 MB/s
+
+---- Data Range 5  (6/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 1280 × 960
+Aspect Ratio             : 4 : 3
+Average Time per Frame   : 2000000 × 100 ns -> 200.0000 ms -> 5.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 98304000 bps -> 12.288 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 6  (7/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 1280 × 720
+Average Time per Frame   : 1000000 × 100 ns -> 100.0000 ms -> 10.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 147456000 bps -> 18.432 MB/s
+
+---- Data Range 7  (8/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 1280 × 720
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 1000000 × 100 ns -> 100.0000 ms -> 10.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 147456000 bps -> 18.432 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 8  (9/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 640 × 360
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 110592000 bps -> 13.824 MB/s
+
+---- Data Range 9  (10/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {32595559-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_YUY2)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 640 × 360
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 16 bpp
+Bit Rate                 : 110592000 bps -> 13.824 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 10 (11/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 640 × 480
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 221184000 bps -> 27.648 MB/s
+
+---- Data Range 11 (12/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 640 × 480
+Aspect Ratio             : 4 : 3
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 221184000 bps -> 27.648 MB/s
+Control Flags            : 0x008D1181
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D11
+  Chroma Subsampling     : 0x01 (Vertical Cosited)
+  Nominal Range          : 1 (0..255)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 12 (13/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 2560 × 1440
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 2654208000 bps -> 331.776 MB/s
+
+---- Data Range 13 (14/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 2560 × 1440
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 2654208000 bps -> 331.776 MB/s
+Control Flags            : 0x008D1181
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D11
+  Chroma Subsampling     : 0x01 (Vertical Cosited)
+  Nominal Range          : 1 (0..255)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 14 (15/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 1920 × 1080
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 1492992000 bps -> 186.624 MB/s
+
+---- Data Range 15 (16/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 1920 × 1080
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 1492992000 bps -> 186.624 MB/s
+Control Flags            : 0x008D1181
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D11
+  Chroma Subsampling     : 0x01 (Vertical Cosited)
+  Nominal Range          : 1 (0..255)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 16 (17/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 1280 × 960
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 884736000 bps -> 110.592 MB/s
+
+---- Data Range 17 (18/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 1280 × 960
+Aspect Ratio             : 4 : 3
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 884736000 bps -> 110.592 MB/s
+Control Flags            : 0x008D1181
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D11
+  Chroma Subsampling     : 0x01 (Vertical Cosited)
+  Nominal Range          : 1 (0..255)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 18 (19/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 1280 × 720
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 663552000 bps -> 82.944 MB/s
+
+---- Data Range 19 (20/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 1280 × 720
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 663552000 bps -> 82.944 MB/s
+Control Flags            : 0x008D1181
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D11
+  Chroma Subsampling     : 0x01 (Vertical Cosited)
+  Nominal Range          : 1 (0..255)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 20 (21/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 640 × 360
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 165888000 bps -> 20.736 MB/s
+
+---- Data Range 21 (22/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {47504A4D-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_MJPG)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 640 × 360
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 24 bpp
+Bit Rate                 : 165888000 bps -> 20.736 MB/s
+Control Flags            : 0x008D1181
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D11
+  Chroma Subsampling     : 0x01 (Vertical Cosited)
+  Nominal Range          : 1 (0..255)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 22 (23/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 640 × 480
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 110592000 bps -> 13.824 MB/s
+
+---- Data Range 23 (24/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 640 × 480
+Aspect Ratio             : 4 : 3
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 110592000 bps -> 13.824 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 24 (25/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 1920 × 1080
+Average Time per Frame   : 2000000 × 100 ns -> 200.0000 ms -> 5.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 124416000 bps -> 15.552 MB/s
+
+---- Data Range 25 (26/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 1920 × 1080
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 2000000 × 100 ns -> 200.0000 ms -> 5.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 124416000 bps -> 15.552 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 26 (27/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 1280 × 960
+Average Time per Frame   : 1000000 × 100 ns -> 100.0000 ms -> 10.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 147456000 bps -> 18.432 MB/s
+
+---- Data Range 27 (28/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 1280 × 960
+Aspect Ratio             : 4 : 3
+Average Time per Frame   : 1000000 × 100 ns -> 100.0000 ms -> 10.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 147456000 bps -> 18.432 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 28 (29/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 1280 × 720
+Average Time per Frame   : 666666 × 100 ns -> 66.6666 ms -> 15.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 165888000 bps -> 20.736 MB/s
+
+---- Data Range 29 (30/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 1280 × 720
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 666666 × 100 ns -> 66.6666 ms -> 15.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 165888000 bps -> 20.736 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+---- Data Range 30 (31/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {05589F80-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SPECIFIER_VIDEOINFO)
+Resolution               : 640 × 360
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 82944000 bps -> 10.368 MB/s
+
+---- Data Range 31 (32/32) ----
+Major Format             : {73646976-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_VIDEO)
+Sub Format               : {3231564E-0000-0010-8000-00AA00389B71} (MEDIASUBTYPE_NV12)
+Specifier                : {F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA} (KSDATAFORMAT_SPECIFIER_VIDEOINFO2)
+Resolution               : 640 × 360
+Aspect Ratio             : 16 : 9
+Average Time per Frame   : 333333 × 100 ns -> 33.3333 ms -> 30.0000 fps
+Bits per Pixel           : 12 bpp
+Bit Rate                 : 82944000 bps -> 10.368 MB/s
+Control Flags            : 0x008D2681
+ Low Bits (KS_AMCONTROL) : 0x81 (KS_AMCONTROL_USED, KS_AMCONTROL_COLORINFO_PRESENT)
+ High Bits (DXVA Color)  : 0x008D26
+  Chroma Subsampling     : 0x06 (Horiz Cosited, 4:2:0)
+  Nominal Range          : 2 (16..235)
+  Transfer Matrix        : 2 (BT.601)
+  Lighting               : 3 (Dim)
+  Primaries              : 2 (BT.709)
+  Transfer Function      : 0 (Unknown)
+
+-------------- Pin 1 --------------
+Name                     : --- (ERROR_FILE_NOT_FOUND)
+DataFlow                 : KSPIN_DATAFLOW_IN
+Category                 : {3EBC7959-3310-493B-AA81-C7E132D56F71}
+Data Ranges              : 0 Data Ranges
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
++++++++++++++++++ Device Information ++++++++++++++++++
+Friendly Name            : 2K USB Camera-Audio
+Device Description       : USB Audio Device
+BusReported Device Desc  : 2K USB Camera-Audio
+Device Path 1            : \\?\USB#VID_2BDF&PID_028A&MI_02#6&74a4493&0&0002#{65e8773d-8f56-11d0-a3b9-00a0c9223196}\global (AM_KSCATEGORY_CAPTURE)
+Device Path 2            : \\?\USB#VID_2BDF&PID_028A&MI_02#6&74a4493&0&0002#{02baa4b5-33b5-4d97-ae4f-e86dde17536f}\usbaudio1_sideband_ddi_ref
+Device Path 3            : \\?\USB#VID_2BDF&PID_028A&MI_02#6&74a4493&0&0002#{5ef5d091-6eed-47a3-aa2f-4b3f77520791}\global
+Kernel Name              : \Device\00000117
+Device ID                : USB\VID_2BDF&PID_028A&MI_02\6&74A4493&0&0002
+Hardware IDs             : USB\VID_2BDF&PID_028A&REV_3000&MI_02 USB\VID_2BDF&PID_028A&MI_02
+Driver KeyName           : {4d36e96c-e325-11ce-bfc1-08002be10318}\0014 (GUID_DEVCLASS_MEDIA)
+Driver                   : \SystemRoot\system32\drivers\usbaudio.sys (Version: 10.0.26100.4484  Date: 2025-07-22  Company: Microsoft Corporation)
+Driver Inf               : C:\WINDOWS\inf\wdma_usb.inf
+Legacy BusType           : PNPBus
+Class                    : MEDIA
+Class GUID               : {4d36e96c-e325-11ce-bfc1-08002be10318} (GUID_DEVCLASS_MEDIA)
+Service                  : usbaudio
+Enumerator               : USB
+Location Info            : 0000.0014.0000.011.000.000.000.000.000
+Address                  : 13
+Manufacturer Info        : (通用 USB 音频)
+Capabilities             : 0xA0 (SilentInstall, SurpriseRemovalOK)
+Status                   : 0x0180200A (DN_DRIVER_LOADED, DN_STARTED, DN_DISABLEABLE, DN_NT_ENUMERATOR, DN_NT_DRIVER)
+First Install Date       : 2026-04-11 22:03:54
+Last Arrival Date        : 2026-08-01 10:34:08
+EnhancedPowerMgmtEnabled : 0
+Power State              : D0 (supported: D0, D3, wake from D0)
+
+
+             +++++++++++ Kernel Streaming Information ++++++++++
+
+                 ------- Audio Modes In ------
+16000 Hz 16 bps 1 ch     : PCM
+
+                 ---------- Details ----------
+Pin Count                : 2
+
+-------------- Pin 0 --------------
+Name                     : ²¶»ñ
+DataFlow                 : KSPIN_DATAFLOW_OUT
+Category                 : {FB6C4281-0353-11D1-905F-0000C0CC16BA} (PIN_CATEGORY_CAPTURE)
+Data Ranges              : 1 Data Range
+
+---- Data Range 0  (1/1) ----
+Major Format             : {73647561-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_AUDIO)
+Sub Format               : {00000001-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_SUBTYPE_PCM)
+Specifier                : {05589F81-C356-11CE-BF01-00AA0055595A} (KSDATAFORMAT_SUBTYPE_PCM)
+Minimum Sample Frequency : 16000 Hz
+Maximum Sample Frequency : 16000 Hz
+Minimum Bits Per Sample  : 16 Bits
+Maximum Bits Per Sample  : 16 Bits
+Maximum Channels         : 1 Channel
+
+-------------- Pin 1 --------------
+Name                     : Âó¿Ë·ç
+DataFlow                 : KSPIN_DATAFLOW_IN
+Category                 : {DFF21BE1-F70F-11D0-B917-00A0C9223196} (KSNODETYPE_MICROPHONE)
+Data Ranges              : 1 Data Range
+
+---- Data Range 0  (1/1) ----
+Major Format             : {73647561-0000-0010-8000-00AA00389B71} (KSDATAFORMAT_TYPE_AUDIO)
+Sub Format               : {6DBA3190-67BD-11CF-A0F7-0020AFD156E4} (KSDATAFORMAT_SUBTYPE_ANALOG)
+Specifier                : {0F6417D6-C318-11D0-A43F-00A0C9223196}
+

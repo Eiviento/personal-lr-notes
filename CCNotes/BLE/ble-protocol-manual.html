@@ -1955,6 +1955,122 @@ SKDm/SKDs 每次连接都是全新随机数
 
   <p class="section-text"><strong>MIC 失败排查</strong>：最常见原因是双方 LTK 不一致——例如手机端 removeBond() 删了绑定但设备端还保留旧 LTK。解决：双方都清绑定 → 重新配对。</p>
 
+  <h3 class="section-subtitle" id="sec-enc-lifecycle">9.7 加密生命周期：场景、全加密开关、暂停恢复</h3>
+
+  <h4 class="section-subsubtitle">9.7a 什么场景需要加密？</h4>
+
+  <p class="section-text">加密由 GATT Characteristic 的权限（Permission）控制，<strong>不是 App 手动开关</strong>。协议栈发现权限不够时自动触发：</p>
+
+  <pre class="ascii-diagram">App: readCharacteristic(handle=0x0015)
+  → GATT 查权限: 需要 "Encryption Required"
+  → 当前链路未加密
+  → 协议栈自动:
+      如果绑定过 → 直接用 LTK 启动加密（用户无感）
+      如果首次连 → 弹出配对对话框 → 用户确认 → 加密
+  → 加密完成后 → 自动执行原来的 readCharacteristic</pre>
+
+  <blockquote class="callout"><strong>触发加密的不是 App，是 GATT 权限。</strong>App 正常读写，协议栈发现权限不够时自动拦截、加密、然后重放。</blockquote>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>场景</th><th>为什么需要加密</th><th>安全等级</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>医疗设备</strong>（心率/血糖/血氧）</td><td>健康数据受法律保护，明文 = 隐私泄露</td><td>Level 3~4</td></tr>
+      <tr><td><strong>支付终端</strong>（POS/ATM）</td><td>交易数据明文 = 金融欺诈</td><td>Level 4</td></tr>
+      <tr><td><strong>智能门锁/车钥匙</strong></td><td>开锁指令被重放 = 物理安全失守</td><td>Level 4</td></tr>
+      <tr><td><strong>固件 OTA 升级</strong></td><td>固件被篡改 = 设备变砖/成肉鸡</td><td>Level 3~4</td></tr>
+      <tr><td><strong>工业传感器</strong>（流量计等）</td><td>计量数据被篡改 = 计量欺诈</td><td>Level 2~3</td></tr>
+      <tr><td><strong>个人设备</strong>（手表/手环/TWS）</td><td>消息内容泄露 = 隐私侵犯</td><td>Level 2~3</td></tr>
+      <tr><td><strong>HID 键盘</strong></td><td>输入凭证明文 = 密码泄露</td><td>Level 3+</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">9.7b 开了加密后，所有数据都加密吗？</h4>
+
+  <p class="section-text"><strong>是的，无一例外。</strong>加密是链路层总开关——LL_START_ENC_RSP 之后，这条连接上所有包的 Payload + MIC 全部 AES-CCM 加密，和上层传什么数据无关：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>包类型</th><th>加密？</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>ATT Write Request / Command</td><td>✅ <strong>加密</strong></td><td>写敏感数据</td></tr>
+      <tr><td>ATT Read Request / Response</td><td>✅ <strong>加密</strong></td><td>读数据</td></tr>
+      <tr><td>ATT Notification / Indication</td><td>✅ <strong>加密</strong></td><td>推送通知</td></tr>
+      <tr><td>ATT Read（读公开设备名 0x2A00）</td><td>✅ <strong>加密</strong></td><td>即使是公开信息，照样加密</td></tr>
+      <tr><td><strong>空包（心跳/ACK，Payload=0）</strong></td><td>✅ <strong>也加密！</strong></td><td>空包 Payload 长度为 0 但 MIC 仍存在——不带 MIC 的攻击者可以插入伪造空包扰乱 SN/NESN 序列号导致 DoS</td></tr>
+      <tr><td>LL Control PDU（参数更新、断开等）</td><td>❌ <strong>明文</strong></td><td>Control PDU 始终明文（LLID=11，链路层自己处理）</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="section-subsubtitle">9.7c 有停止加密的命令吗？</h4>
+
+  <p class="section-text"><strong>有暂停，没有永久停止。</strong></p>
+
+  <p class="section-text">BLE 4.2 引入了加密暂停/恢复机制，但设计目的是<strong>换钥匙</strong>，不是<strong>关掉省电</strong>：</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>PDU</th><th>Opcode</th><th>方向</th><th>作用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>LL_PAUSE_ENC_REQ</td><td>0x0A</td><td>M→S</td><td>Master 请求暂停加密</td></tr>
+      <tr><td>LL_PAUSE_ENC_RSP</td><td>0x0B</td><td>S→M</td><td>Slave 确认暂停</td></tr>
+    </tbody>
+  </table>
+
+  <pre class="ascii-diagram">═══ 旧 LTK 加密 ═══
+      │
+      ├── LL_PAUSE_ENC_REQ/RSP    ← 暂停，回到明文
+      │
+      ├── SMP: 重新配对，生成新 LTK
+      │
+      ├── LL_ENC_REQ/RSP          ← 用新 LTK 派生新 SessionKey
+      ├── LL_START_ENC_REQ/RSP    ← 恢复，用新密钥加密
+      │
+  ═══ 新 LTK 加密 ═══</pre>
+
+  <p class="section-text">典型场景：<strong>安全升级</strong>（Legacy → LE Secure Connections）、<strong>密钥轮换</strong>（长连接定期换密钥降低暴露风险）、<strong>权限降级后重加密</strong>。</p>
+
+  <p class="section-text"><strong>不存在 LL_STOP_ENC。</strong>原因：①如果允许单方面关加密，攻击者可以伪造这条命令把加密链路降级为明文；②加密开销接近零（硬件 AES 强制内置），不存在"为了省电关加密"的需求。</p>
+
+  <blockquote class="callout"><strong>退出加密的唯一方式：断开连接。</strong><br><br>加密连接 → LL_TERMINATE_IND → 断开 → 重新 CONNECT_IND → 明文链路<br><br><strong>但：设备重新建连后，如果 App 访问需要加密的 Characteristic，协议栈又会自动触发加密。</strong>不访问需要加密的属性就不会触发——加密的触发权在 GATT 权限表。</blockquote>
+
+  <h4 class="section-subsubtitle">9.7d 加密生命周期状态机</h4>
+
+  <pre class="ascii-diagram">        连接建立
+           │
+           ▼
+    ┌─────────────┐
+    │   未加密     │ ← 刚建连，所有包明文
+    │  (Plaintext) │
+    └──────┬──────┘
+           │ SMP 配对 → 算出 LTK
+           │ LL_ENC_REQ/RSP → 派生 SessionKey
+           │ LL_START_ENC_REQ/RSP
+           ▼
+    ┌─────────────┐
+    │   已加密     │ ← 此后所有 Data PDU 加密
+    │  (Encrypted) │
+    └──────┬──────┘
+           │ LL_PAUSE_ENC_REQ/RSP  ← 唯一"暂停"入口
+           ▼
+    ┌─────────────┐
+    │    暂停      │ ← 明文状态，仅用于密钥更新
+    │  (Paused)    │    暂停期间不能发 GATT 数据
+    └──────┬──────┘
+           │ LL_START_ENC_REQ/RSP  ← 必须恢复
+           ▼
+    ┌─────────────┐
+    │   已加密     │ ← 用新密钥
+    │  (Encrypted) │
+    └─────────────┘
+
+    退出加密的唯一方式：断开连接（LL_TERMINATE_IND）</pre>
+
+  <blockquote class="callout"><strong>加密是单向门</strong>——进去了就出不来，除非断连或者暂停换钥匙。暂停也只能"暂停→恢复"，不能"暂停→就这样明文跑下去"。</blockquote>
+
 </section>
 
 <section id="sec-ref" class="main-section">
@@ -1969,7 +2085,7 @@ SKDm/SKDs 每次连接都是全新随机数
 
   <h2 class="section-title">附录：典型完整报文序列</h2>
 
-  <p class="section-text">以 OPPO Enco Air2 耳机为例，首次连接 + SC Numeric Comparison + ATT 写 CCCD 的完整报文序列：</p>
+  <p class="section-text">以蓝牙耳机为例，首次连接 + SC Numeric Comparison + ATT 写 CCCD 的完整报文序列：</p>
 
   <div data-component="timeline"></div>
 
@@ -2106,7 +2222,15 @@ SKDm/SKDs 每次连接都是全新随机数
         { id: "ch9-3", label: "9.3 Session Key 派生", anchor: "sec-enc-sessionkey" },
         { id: "ch9-4", label: "9.4 加密范围", anchor: "sec-enc-range" },
         { id: "ch9-5", label: "9.5 绑定设备重连", anchor: "sec-enc-reconnect" },
-        { id: "ch9-6", label: "9.6 异常情况", anchor: "sec-enc-errors" }
+        { id: "ch9-6", label: "9.6 异常情况", anchor: "sec-enc-errors" },
+        { id: "ch9-7", label: "9.7 加密生命周期", anchor: "sec-enc-lifecycle",
+          children: [
+            { id: "ch9-7a", label: "9.7a 什么场景需要加密？", anchor: "sec-enc-lifecycle" },
+            { id: "ch9-7b", label: "9.7b 所有数据都加密吗？", anchor: "sec-enc-lifecycle" },
+            { id: "ch9-7c", label: "9.7c 有停止加密的命令吗？", anchor: "sec-enc-lifecycle" },
+            { id: "ch9-7d", label: "9.7d 加密生命周期状态机", anchor: "sec-enc-lifecycle" }
+          ]
+        }
       ]
     },
     { id: "ch10", label: "十、综合速查表", anchor: "sec-ref", type: "chapter" },

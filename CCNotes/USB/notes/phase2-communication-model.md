@@ -1046,3 +1046,315 @@ USB 的设计本来就没打算让 127 个设备同时活跃：
 ### 结论
 
 **127 是地址空间的上限，不是并发能力的承诺。** ADDR 7 bit 给你 127 个 IP 地址——但不保证 127 个设备同时满速通信。USB 靠的是"多数设备多数时间不说话"假设，而不是"每帧问候所有设备一遍"的设计。真需要 127 个等时设备并发流数据，USB 不是该用的总线。
+
+---
+
+## 补充问答七：接口 (Interface) 与端点 (Endpoint) 的归属关系
+
+> 学了端点、学了管道、学了接口描述符，但它们之间是谁拥有谁？端点能被多个接口共用吗？
+
+### 核心规则四条
+
+**规则 1：端点有主——每个非 EP0 端点只属于一个 Interface**
+
+```
+Configuration 1
+├── Interface 0 (Video Control)
+│   └── EP 0x83 (IN, Interrupt)      ← 只属于 IF=0
+│
+├── Interface 1 (Video Streaming)
+│   └── EP 0x81 (IN, Bulk)           ← 只属于 IF=1
+│
+└── IF=1 的代码不能往 EP 0x83 发数据，IF=0 的代码也不能往 EP 0x81 发数据。
+```
+
+**规则 2：EP0 是共用的——设备级资源，不属于任何一个 Interface**
+
+所有 Interface 的控制传输都走 EP0。发 XU 命令时 bmRequestType 选 Interface，wIndex 指定 Interface 号——但数据物理上从同一个 EP0 流过。类比：EP0 是小区的唯一大门，Interface 是门牌号。
+
+**规则 3：同一个 Interface 的不同 Alternate Setting 可以复用端点号**
+
+```
+Interface 1 (VS):
+  Alternate 0:  EP 0x81 (Bulk)        ← 取流时激活
+  Alternate 2:  EP 0x81 (Isochronous)  ← 也可以声明相同 EndpointID
+  Alternate 3:  EP 0x81 (Isochronous)  ← 因为同时只有一个 Alt 生效
+```
+
+同一个 EndpointID(0x81) 在同一个 Interface 的不同 Alternate Setting 下可以被重新定义为不同的传输类型。因为同时只有一个 Alternate 处于激活状态，不会冲突。
+
+**规则 4：两个不同的 Interface 不能声明同一个 EndpointID**
+
+IF=0 已经用了 EndpointID=3（即 EP 0x83），IF=1 就不能再声明一个 EP 0x83。USB 规范禁止此行为——每个端点地址在一个 Configuration 内必须唯一。
+
+### 真实设备数据验证
+
+以 HIK 2bdf:0101（你的热成像摄像头）为例：
+
+```
+USB View 报告:
+  Used Endpoints: 3              ← EP0 + EP 0x83 + EP 0x81
+  Number of open Pipes: 2        ← 用户态看到 2 个数据管道
+  Pipe[0]: EP3  IN  Interrupt    ← 属于 IF=0 (VC)
+  Pipe[1]: EP1  IN  Bulk         ← 属于 IF=1 (VS)
+```
+
+lsusb -v 描述符树：
+
+```
+Interface Descriptor: 0 (VC)
+  bNumEndpoints: 1
+  Endpoint Descriptor:
+    bEndpointAddress: 0x83 (EP3, IN)
+    bmAttributes: 0x03 (Interrupt)
+
+Interface Descriptor: 1 (VS), Alternate 0
+  bNumEndpoints: 1
+  Endpoint Descriptor:
+    bEndpointAddress: 0x81 (EP1, IN)
+    bmAttributes: 0x02 (Bulk)
+
+Interface Descriptor: 1 (VS), Alternate 1~8
+  bNumEndpoints: 0               ← 等时模式复用 EP81，不重复声明
+```
+
+### 描述符树中的接口-端点层级
+
+```
+Device Descriptor
+ └── Configuration Descriptor
+      ├── Interface Descriptor (IF=0, VC)
+      │    ├── VC Header Descriptor
+      │    ├── Input Terminal Descriptor
+      │    ├── Processing Unit Descriptor
+      │    ├── Extension Unit Descriptor          ← XU 在这里
+      │    ├── Output Terminal Descriptor
+      │    └── Endpoint Descriptor (EP 0x83, IN, Interrupt)
+      │
+      └── Interface Descriptor (IF=1, VS, Alternate 0)
+           ├── VS Input Header Descriptor
+           │    bEndpointAddress: 0x81            ← 指向数据端点
+           ├── Format Descriptor ×3
+           ├── Frame Descriptor ×N
+           └── Endpoint Descriptor (EP 0x81, IN, Bulk)
+```
+
+> 注意：VS Input Header 里的 `bEndpointAddress=0x81` 只是一个"指针"，告诉 Host "数据会从 EP 0x81 过来"。真正的端点属性（类型、最大包大小）在看 Alternate Setting 内的 Endpoint Descriptor。
+
+### libusb 中的体现
+
+```c
+// 通过 Interface 发控制命令 — 走 EP0
+libusb_claim_interface(devh, 0);          // claim Video Control 接口
+libusb_control_transfer(devh, ...);       // 走 EP0，wIndex=(XU_ID<<8)|0
+
+// 通过 Endpoint 读数据 — 走具体端点
+libusb_claim_interface(devh, 1);          // claim Video Streaming 接口
+libusb_bulk_transfer(devh, 0x81, ...);    // 走 EP 0x81，不需要接口号
+```
+
+**claim 接口 → 获得接口下所有端点的使用权。** 传输时直接用端点地址——不需要重复指定接口号，因为端点地址已经是全局唯一的。
+
+### MQTT 类比
+
+```
+MQTT Broker
+├── Topic: /camera/control    → Interface 0 (Video Control)
+│   └── 控制消息 QoS1          → EP0 (消息管道，可靠)
+│
+├── Topic: /camera/stream     → Interface 1 (Video Streaming)
+│   └── PUBLISH 视频帧 QoS0   → EP 0x81 (批量管道，高吞吐)
+│
+└── Topic 和 TCP 连接的关系：
+    两个 Topic 共享同一个 TCP 连接（就像两个 Interface 共享 EP0）
+    但 video/stream 的大数据走单独的 QoS 通道（就像 EP 0x81 独立于 EP0）
+```
+
+---
+
+## 补充问答八：EP0 的 64 字节 vs Bus Hound 的 512 字节——为什么对不上？
+
+> 2.2 中说 HS 下 EP0 最大包只有 64 字节，但我跟 UVC 设备交互时 Bus Hound 抓包一包 512 字节——到底是什么？
+
+### 两种可能，分开分析
+
+**可能一（最常见）：你看到的是 VS 端点，不是 EP0**
+
+你的热成像摄像头（2bdf:0101）：
+
+```
+VC Interface (bInterfaceNumber=0)
+  └─ EP0 (控制端点)              ← XU 命令、枚举走这里，HS=固定 64B
+
+VS Interface (bInterfaceNumber=1)
+  └─ Bulk IN Endpoint (0x81)     ← 视频数据走这里，HS=max 512B
+```
+
+**HS 批量端点的最大包确实是 512 字节**，ISOC 端点最大 1024 字节。这些和 EP0 完全不在一个数量级。取流时 `libusb_bulk_transfer` 走 VS 批量端点——Bus Hound 显示的 512 字节数据是这个端点的，不是 EP0。
+
+| 端点类型 | HS 最大包 | 你在哪看到 |
+|----------|:--------:|-----------|
+| EP0（控制） | **64（固定）** | XU 命令、枚举回答 |
+| Bulk Endpoint | **512** | 取流视频数据 |
+| ISOC Endpoint | **1024** | 等时视频流 |
+
+**可能二：如果确实是 EP0 控制传输——Bus Hound 把多个 64B 包"合并"显示了**
+
+控制传输的 DATA 阶段如果有 512 字节数据量（wLength=512），USB 总线上的真实情况是：
+
+```
+SETUP 事务 → DATA 阶段 × 8 个事务 → STATUS 事务
+                │
+                ├── IN Token → DATA0(64B) → Host 回 ACK
+                ├── IN Token → DATA1(64B) → Host 回 ACK
+                ├── IN Token → DATA0(64B) → Host 回 ACK
+                ├── ...重复 8 次...
+                └── 512 ÷ 64 = 8 个总线事务
+```
+
+但是 **Bus Hound 工作在内核 URB 层**（USB Request Block，驱动向 Host 控制器提交请求的上层），它看到的不是总线事务，而是驱动层的一次完整请求。所以 Bus Hound 显示：
+
+```
+Bus Hound 看到的：              USB 总线真实发生的：
+┌──────────────────────┐      ┌────────────────────────────┐
+│ CTL   8 bytes        │ ←──→ │ SETUP Token + DATA0(8B)    │  1 个事务
+│ IN    512 bytes      │ ←──→ │ IN Token + DATA0(64B) +ACK │  事务 1
+│                      │      │ IN Token + DATA1(64B) +ACK │  事务 2
+│                      │      │ ... (DATA0/DATA1 交替) ... │  事务 3~7
+│                      │      │ IN Token + DATA1(64B) +ACK │  事务 8
+│                      │      │ OUT Token + DATA1(0B) ←STATUS│ 另一个事务
+└──────────────────────┘      └────────────────────────────┘
+```
+
+**Bus Hound 的一行 `IN 512` = 总线上 8 + 1 = 9 个事务！**
+
+STATUS 阶段 Bus Hound 也不显示（驱动层已合并处理）。
+
+### 核心认知
+
+1. **Bus Hound 是软件层抓包**——工作在 URB 层，不是 USB 总线层。它显示的是"驱动向 Host 控制器提交了一次请求，拿到/发送了这么多字节"，不暴露底层包拆分细节。
+
+2. **类比**：Bus Hound = 快递公司的运单系统，记录"这一单总共 512 件货"。USB 协议分析仪（硬件）能看到"第 1 车装 64 件 → 第 2 车装 64 件 → …"。
+
+3. **EP0 是固定 64B（HS），这一点没变。** 如果你需要确认 512 字节到底是哪个端点，看 Bus Hound 抓包的行里标注的端点地址：
+   - 地址 = 0x00（或没写端点号）→ EP0，512 是合并显示
+   - 地址 = 0x81/0x82… → 非 EP0 端点，512 是真实单包大小
+
+4. **这也解释了前面 HANDOFF §六 的第 27 条**：Bus Hound 显示控制传输为两行（CTL + IN/OUT），不显示 STATUS 阶段。这里是同一个局限的延伸——连 DATA 阶段的包拆分也给合并了。
+
+---
+
+## 补充问答九：Alternate Setting 到底是什么？为什么 USB 需要它？
+
+> 2.3 中提到 Alternate Setting——同一个 Interface 出现多个描述符、bAlternateSetting 不同。这个设计到底解决什么问题？
+
+### 一句话定义
+
+**Alternate Setting 允许同一个 Interface 在不同时刻以不同的"配置档"运行——切换端点数量、传输类型、带宽分配，但不改变这个 Interface 的功能类别。**
+
+### 最熟悉的例子：你的热成像摄像头
+
+```
+Interface 1 (Video Streaming, bInterfaceClass=0x0E Video)
+│
+├── Alternate Setting 0  ← 默认状态，"零带宽"
+│   bNumEndpoints: 0       （没有数据端点）
+│   用途：关流/待机
+│
+├── Alternate Setting 1  ← 等时传输，160x120
+│   bNumEndpoints: 1
+│   Endpoint: EP 0x81, Isochronous, 256B
+│
+├── Alternate Setting 2  ← 等时传输，320x240
+│   Endpoint: EP 0x81, Isochronous, 512B
+│
+├── ...Alternate 3~7...  ← 其他分辨率/帧率组合
+│
+└── Alternate Setting 8  ← 批量传输
+    Endpoint: EP 0x81, Bulk, 512B       ← 你取流用的这个！
+```
+
+所有 Alternate 0~8 都属于 Interface 1，功能都是"传视频"。但 **Alt 0 时关流省带宽**，**Alt 8 时开 Bulk 管道传数据**——同一个接口，完全不同端点配置。
+
+### 类比：同一扇门的不同开法
+
+```
+Alternate Setting  ≈  同一扇门的"开合模式"切换
+
+Alt 0：门关着 — 不传数据，不占带宽
+Alt 1：门开着，一次过 256B — ISOC 低分辨率
+Alt 8：门开着，一次过 512B — Bulk 高吞吐
+```
+
+门还是那扇门（IF=1，Video Streaming），但**开法不同**。切换时调用 `SET_INTERFACE` 标准请求，设备当场切换——USB 总线不断开，描述符不用重读。
+
+### 和"换 Configuration"的区别
+
+| | Alternate Setting | Configuration |
+|---|---|---|
+| 切换范围 | 一个 Interface 内部 | 整个设备 |
+| 切换方式 | **SET_INTERFACE** | Set_Configuration |
+| 其他 Interface 受影响？ | **不影响** | 全部重置 |
+| 典型用途 | 开关流、换分辨率 | 切换工作模式（如 CDC+UVC 复合设备二选一） |
+| 切换速度 | 快（局部调整） | 慢（全局重构） |
+
+### 为什么 USB 要设计 Alternate Setting？
+
+核心原因是 **带宽管理**。
+
+USB 总线带宽是共享的。等时传输预约的带宽，即使你不用也占着——别的设备不能抢。如果摄像头在关流状态下还占着等时带宽，就是纯粹的浪费。
+
+**Alternate Setting 0 的妙处**：
+- `bNumEndpoints = 0`，没申请任何数据端点
+- Host 一看：这个 Alt 不占带宽
+- 关流时切到 Alt 0 → 释放等时带宽 → 其他设备可以用
+
+这是 **UVC 规范强制要求**的——每个 VS Interface 的 Alt 0 必须是零带宽。
+
+### 在代码里的体现
+
+```c
+// 取流时的实际流程：
+// 1. 默认状态：Alt 0（关流）
+// 2. Probe Commit 协商好分辨率/帧率
+// 3. SET_INTERFACE 切到 Alt 8（激活 Bulk 端点）  ← 就是这里！
+libusb_control_transfer(devh,
+    0x01,           // bmRequestType = Standard, OUT, Interface
+    0x0B,           // bRequest = SET_INTERFACE
+    0x08,           // wValue = Alternate Setting 8
+    0x01,           // wIndex = Interface 1 (VS)
+    NULL, 0, 5000);
+
+// 4. 现在可以 bulk transfer 了
+libusb_bulk_transfer(devh, 0x81, buf, size, &transferred, 5000);
+```
+
+**SET_INTERFACE 的 wIndex 只填 Interface 号（不拼 Unit ID！）**——它是 Standard 请求（bmRequestType=0x01），不是 Class 请求（0x21/0xA1）。这和 XU 命令的 wIndex 填法完全不同。
+
+### 描述符中的体现
+
+`lsusb -v` 输出中，同一个 `bInterfaceNumber` 会出现多次，每次 `bAlternateSetting` 递增：
+
+```
+Interface Descriptor:              ← IF=1, Alt=0
+  bInterfaceNumber: 1
+  bAlternateSetting: 0
+  bNumEndpoints: 0                  ← 零带宽
+
+Interface Descriptor:              ← IF=1, Alt=1
+  bInterfaceNumber: 1               ← 还是同一个 Interface
+  bAlternateSetting: 1              ← 不同的档位
+  bNumEndpoints: 1
+  Endpoint Descriptor: EP 0x81, Bulk, 512B
+```
+
+**bInterfaceNumber 相同 → 同一个 Interface。bAlternateSetting 不同 → 不同档位。**
+
+### 关键认知
+
+1. **Alternate Setting 不是新 Interface**——它是同一个 Interface 的不同配置档，bInterfaceNumber 不变
+2. **同时只有一个 Alternate 生效**——切 Alt 8 后 Alt 0 自动失效，设备自动完成切换
+3. **不同 Alternate 可以复用端点号**——Alt 1~8 都声明 EP 0x81，但同一时刻只有一个激活（这是补充问答七的规则 3）
+4. **Alt 0 = 零带宽是 UVC 强制的**——这是 USB 带宽管理的核心机制：不用就释放，不占茅坑
+5. **SET_INTERFACE 是 Standard 请求**——wIndex 不拼 Unit ID，wValue 直接填 Alternate 号
+6. **和 Configuration 切换的区别**：Alt 切换是局部微调，Config 切换是全局重构
