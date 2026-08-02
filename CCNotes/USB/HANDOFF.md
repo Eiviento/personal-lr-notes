@@ -1,8 +1,9 @@
 # HANDOFF — USB 协议学习会话交接文档
 
-> 更新时间：2026-08-02（第六会话）
+> 更新时间：2026-08-02（第七会话）
 > 主线学习进度：32/67 知识点（48%）— 暂停在 Phase 4 入口
-> 本会话重点：Ubuntu 实战——从 lsusb 到第一条 XU 命令 + 接口/端点归属关系 + 标准 UVC 取流流程
+> 本会话重点：usb-notes.html 全面翻新——单文件拆 3 文件，暗色 IDE 风格，可访问性补全
+> **⚠️ 工作分支: `redesign/usb-notes-3file`（未合并到 main）**
 
 ---
 
@@ -16,9 +17,11 @@
 
 ### 副线任务：笔记 Web 可视化
 
-把学习笔记做成**单文件离线 HTML 页面**，零外部依赖，双击打开。现有：
-- `usb-notes.html` — Phase 1-3 理论知识可视化，含交互式包结构图、描述符 byte-map、帧时间线
-- `descriptor-viewer.html` — 三台真实海康设备的描述符实战对比
+把学习笔记做成**离线 HTML 页面**，零外部依赖，双击打开。已从单文件翻新为 3 文件架构：
+- `usb-notes.html` — Phase 1-3 理论可视化（纯 HTML 结构，2,239 行）
+- `usb-notes.css` — 10 层分层样式（1,153 行，暗色默认 IDE 风格）
+- `usb-notes.js` — 4 模块脚本（885 行，数据/渲染/交互/初始化）
+- `descriptor-viewer.html` — 三台真实海康设备的描述符实战对比（未翻新，仍为单文件）
 
 ---
 
@@ -40,9 +43,41 @@
 
 控制传输 SETUP/DATA/STATUS 三阶段模型深层追问 → UVC XU CS_ID+SubFunc 二级命名空间协议设计。
 
-### 第六会话（本次）：Ubuntu 实战——从零打通 XU 通信
+### 第六会话：Ubuntu 实战——从零打通 XU 通信
 
 用户在 Ubuntu 虚拟机上用热成像摄像头（HIK 2bdf:0101），从 `lsusb` 查描述符到写代码跑通第一条 XU 命令，中间踩坑 → 建立了一套完整的新设备上手方法论。
+
+### 第七会话（本次）：usb-notes.html 全面翻新
+
+将 `usb-notes.html` 从单文件 3,266 行全面翻新为 3 文件架构，使用 Subagent-Driven Development 流程执行。
+
+**翻新动机**：用户要求优化前端页面，包括视觉设计（技术文档/IDE 风）、数据可视化、导航体验、代码质量、可访问性五个维度。经 brainstorming → spec → plan → implement 完整流程。
+
+**本次会话产出：**
+
+| 类型 | 文件 | 变更 |
+|------|------|------|
+| HTML | `usb-notes.html` | **重写**：单文件 3,266 行 → 纯结构 2,239 行。去掉 `<style>`/`<script>`，4 空格统一缩进，38/38 卡片完整迁移 |
+| CSS | `usb-notes.css` | **新建**：1,153 行，10 层分层（变量→重置→排版→布局→组件→可视化→工具→响应式→减少动画→打印） |
+| JS | `usb-notes.js` | **新建**：885 行，4 模块（Data→Renderers→Interaction→Init） |
+| 备份 | `usb-notes-old.html` | **保留**：翻新前单文件完整备份 |
+| 文档 | `docs/superpowers/specs/2026-08-02-usb-notes-redesign.md` | **新建**：设计规格 |
+| 文档 | `docs/superpowers/plans/2026-08-02-usb-notes-redesign.md` | **新建**：实现计划（8 个 Task） |
+
+**翻新要点：**
+- 🎨 视觉：双色板体系（文档色板 + USB 语义色），暗色默认 IDE 风格，4px 间距网格，五级字号
+- 📊 可视化：包图 tooltip 多行重设计、byte-map hover 发光、时间线胶囊形+左侧色条、Bus Hound CSS 行号
+- 🧭 导航：260px 侧边栏 + 实时搜索过滤 + 48% 进度条 + rAF 节流滚动监听 + 回到顶部按钮
+- ⚡ 代码质量：CSS 10 层分层、JS 4 模块、`<head>` 防闪白同步脚本阻断、meta 标签补全
+- ♿ 可访问性：跳过链接、全部 ARIA 属性、`:focus-visible` 统一 focus 样式、`prefers-reduced-motion`、打印样式、移动端汉堡菜单 overlay
+- 📱 响应式：≤1023px 单断点，侧边栏 → 顶部 sticky 导航条 + overlay
+
+**翻新过程中发现并修复的 Bug：**
+1. `txnDetail` 详情面板原放在 `<main>` 最底部（距时间线 700+ 行），点击展开屏幕外不可见 → 移至时间线正下方内嵌
+2. 旧文件 kp-2-19 折叠区 HTML 结构断裂，Phase 3 卡片被错误嵌套其中 → 从 git 历史恢复完整结构
+3. 坑 6 代码示例中 `</article>` 未转义 → 浏览器提前关闭卡片，坑 7/8 掉到卡片外 → 转义为 `&lt;/article&gt;`
+4. 缺少旧 CSS 变量 `--svg-line`/`--svg-text`/`--svg-fill` 导致 SVG 图渲染异常 → 补入 CSS Layer 1
+5. 移动端 overlay 为静态 HTML 副本 → JS `NavOverlay.open()` 改为 clone `.sidebar`
 
 **本次会话产出：**
 
@@ -113,7 +148,30 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 当用户说"继续"时，从这里开始。
 
-### 副线：UVC XU 实战开发已完成基础验证
+### 副线：usb-notes.html 翻新已完成基础，待合并
+
+**⚠️ 翻新工作在分支 `redesign/usb-notes-3file` 上，未合并到 main。**
+
+合并前需用户在浏览器中验证：
+- 双击 `usb-notes.html` → 确认侧边栏搜索、主题切换、滚动监听、包图渲染、时间线点击展开均正常
+- 缩窄浏览器窗口到 <1024px → 确认移动端汉堡菜单 overlay 正常
+- 确认 `descriptor-viewer.html`（单文件旧版）不受影响
+
+验证通过后合并：
+```bash
+git checkout main
+git merge redesign/usb-notes-3file
+git branch -d redesign/usb-notes-3file
+```
+
+合并后可删除备份文件 `usb-notes-old.html`。
+
+### 未来可能的前端优化
+
+- `descriptor-viewer.html` 同样做 3 文件翻新
+- 时间线详情面板加键盘 Escape 关闭的 focus 自动移回
+- 移动端 overlay 克隆的搜索框目前是装饰（未绑定 JS），需要让克隆的搜索也能工作
+- `color-mix()` 在极旧浏览器（<Chrome 111, <Safari 16.2）不支持，可视需要加 fallback
 
 - `xu_minimal_get.c` 成功读到协议版本 `"2.0"`
 - `xu_interactive.c` 可以交互式探索任意 CS_ID/SubFunc
@@ -169,7 +227,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 16. **描述符 byte-map 用 `.desc-byte-map` + `.dcell` + `.dc-bg-*` 类。**
 17. **新增的 `.txn-annot-*` CSS 类**：用于在 Bus Hound 抓包下方标注 USB 总线事务。
 
-### Ubuntu 实战踩坑（★ 本次新增）
+### Ubuntu 实战踩坑（★ 第六会话）
 
 18. **`lsusb -v` 必须加 `sudo`。** 不加只能看到基本设备信息，"Couldn't open device"意味着深层描述符树（Extension Unit 等）读不到。
 19. **VID/PID 不要假设。** 即使是同厂商不同型号，PID 也可能不同。永远从 `lsusb` 确认。
@@ -180,6 +238,15 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 24. **GET_LEN 返回 0 是合法的，不一定是错误。** 可能是该 SubFunc 号不存在、无参数、或是触发型命令。先换已知 CS_ID（如 0x04）确认通道正常。
 25. **libusb_control_transfer 是一次完整控制传输，不是单个事务。** 对应 Bus Hound 里的一行 CTL + 一行 IN/OUT = USB 总线上的 2~3 个事务。
 26. **wIndex 填法取决于你在操作 VC 还是 VS。** VC XU 命令：`wIndex = (XU_ID<<8) | VC_IF`；VS 命令（Probe/Commit）：`wIndex = VS_IF`（没有 Unit ID！）；SET_INTERFACE：`bmRequestType=0x01(Standard)`，`wValue=altsetting`，`wIndex=VS_IF`。
+
+### HTML 翻新踩坑（★ 第七会话新增）
+
+27. **`<pre><code>` 里的 HTML 标签仍需转义！** 浏览器在 `<pre>` 内**仍然解析 HTML 标签**，`<pre>` 只保留空格/换行。代码示例中出现 `</article>` 会把外层卡片提前关闭。永远写成 `&lt;/article&gt;`。旧文件就有这个 bug，只是因为浏览器容错没暴露。
+28. **详情面板必须放在触发元素附近。** `txnDetail` 面板放在页面底部 → 点击时间线块后 `display:block` 生效但面板在屏幕外，用户感知为"点不动"。详情面板紧贴触发元素下方（内嵌在同级 DOM 中）。
+29. **移动端 overlay 要用 JS clone 侧边栏，不要写静态副本。** 静态副本不会同步搜索框、进度条、active 状态。`NavOverlay.open()` 应 `cloneNode(true)` 把 `.sidebar` 完整复制进 overlay。
+30. **旧 CSS 变量迁移要全量覆盖。** 翻新时新增的 CSS 变量体系可能漏掉旧页面使用的变量（如 SVG 图的 `--svg-line`、占位区的 `.placeholder`）。翻新后用浏览器 DevTools "Styles 面板"检查所有未解析的 `var(--xxx)`。
+31. **子代理（subagent）不提交代码。** 用 Subagent-Driven Development 时，每个 implementer agent 只创建/修改文件但不 `git commit`。调度者（controller）必须在每个 task 完成后手动 commit，否则所有改动堆在工作区无法分离。
+32. **`task-brief` 脚本输出路径 = git repo root，不是当前子目录。** brief 文件写入 `.superpowers/sdd/` 下（git root），给 agent 的文件路径要指向正确位置。
 
 ### 关于协议知识（继承）
 
@@ -199,22 +266,26 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 ## 七、新会话启动步骤
 
 1. **读这份交接文档** — `Read HANDOFF.md`
-2. **读学习计划** — `Read usb-protocol-learning-plan.md`
-3. **读笔记目录** — `Glob notes/*.md`
-4. **确定用户意图：**
+2. **检查 git 分支** — `git branch`。如果仍在 `redesign/usb-notes-3file` 分支上，说明翻新还未合并。确认是否继续翻新工作还是切回 `main`。
+3. **读学习计划** — `Read usb-protocol-learning-plan.md`
+4. **读笔记目录** — `Glob notes/*.md`
+5. **确定用户意图：**
    - 如果用户说"继续" → 从 Phase 4 的 4.1（枚举完整时间线）开始讲，一次一个知识点
+   - 如果用户要看理论学习/控制传输详解 → 告诉用户双击 `usb-notes.html`（3 文件架构，CSS 和 JS 在外部文件）
    - 如果用户要看描述符实战 → 告诉用户双击 `descriptor-viewer.html`
-   - 如果用户要看理论学习/控制传输详解 → 告诉用户双击 `usb-notes.html`，侧边栏可导航
    - 如果用户要看 **新设备上手方法** → `notes/xu-new-device-setup-guide.md`（8 章实操指南）
    - 如果用户要看 UVC XU 协议设计 → `notes/uvc-xu-extension-protocol-design.md` + `code/uvc_xu_subfunc_framework.c`
-   - 如果用户要调试 XU 通信 → `code/xu_interactive.c`（交互式工具，预置设备列表，每步展示 SETUP 包）
-   - 如果用户要看最小示例 → `code/xu_minimal_get.c`（直接读 CS_ID=0x04）
+   - 如果用户要调试 XU 通信 → `code/xu_interactive.c`
+   - 如果用户要看最小示例 → `code/xu_minimal_get.c`
    - 如果用户要看海康 TM76 完整代码 → `code/HIKVISION_TM76_libusb_3.c`
    - 如果用户问 Bus Hound 抓包 → 指向 `usb-notes.html` 2.10 的 SETUP 8 字节折叠区和 2.20 的带注释抓包
    - 如果用户问 Interface vs Endpoint → 指向 `usb-notes.html` 2.3a
    - 如果用户问标准 UVC 取流 → `notes/xu-new-device-setup-guide.md` 第八章
-5. **如果用户不确定到哪了：**
-   > "Phase 1-3 已完成（32/67，48%），暂停在 Phase 4 入口。上次会话在 Ubuntu 上跑通了第一条 XU 命令（CS_ID=0x04 读协议版本），写了一个交互式调试工具，还整理了 Interface-Endpoint 归属关系和标准 UVC 取流流程。`notes/xu-new-device-setup-guide.md` 是完整的新设备上手手册。准备好了说继续。"
+   - 如果用户想继续前端翻新 → `descriptor-viewer.html` 还没翻新，或者合并 `redesign/usb-notes-3file` 分支
+   - 如果用户说提交/pr/合并 → 先确认在哪个分支，验证通过后合并到 main
+   - 如果用户要编辑 HTML → `usb-notes.html` 现在只是纯结构（4 空格缩进），CSS 改 `usb-notes.css`，JS 改 `usb-notes.js`
+6. **如果用户不确定到哪了：**
+   > "Phase 1-3 已完成（32/67，48%），暂停在 Phase 4 入口。上上次会话在 Ubuntu 跑通了第一条 XU 命令。上次会话做了 usb-notes.html 全面翻新——单文件拆成 HTML/CSS/JS 三文件，暗色 IDE 风格，补了搜索框/进度条/移动端适配/可访问性。翻新在 `redesign/usb-notes-3file` 分支上，还没合并到 main。准备好了说继续。"
 
 ---
 
@@ -271,14 +342,28 @@ grep -n "EXTENSION_UNIT\|bUnitID\|bInterfaceNumber" /tmp/cam.txt
 
 # 运行
 sudo ./xu_interactive
-
-# 检查缩进（编辑 HTML 前）
-sed -n 'Np' usb-notes.html | cat -A    # ^I=Tab, 空格=空格
 ```
+
+### 前端文件速查（★ 翻新后）
+
+| 文件 | 行数 | 做什么 |
+|------|------|--------|
+| `usb-notes.html` | 2,239 | 纯 HTML 结构，4 空格缩进，不含 `<style>`/`<script>` |
+| `usb-notes.css` | 1,153 | 全部样式，10 层分层（Layer 1 变量, Layer 5 组件, Layer 6 可视化…） |
+| `usb-notes.js` | 885 | 全部脚本，4 模块（DATA → RENDERERS → INTERACTION → INIT） |
+| `usb-notes-old.html` | 3,266 | 翻新前单文件备份 |
+
+**编辑前端时**：
+- 改样式 → `usb-notes.css`，找到对应 Layer
+- 改行为 → `usb-notes.js`，找到对应 manager
+- 改内容 → `usb-notes.html`，现在是纯结构，不再有缩进混用问题
+- CSS 变量全在 Layer 1（`:root` 暗色 / `.light` 亮色）
+- 不要直接在 HTML 里加 `<style>` 或 `<script>`
 
 ### descriptor-viewer.html 关键架构
 
-- 与 usb-notes.html 共享 35 变量 CSS 体系
+- **未翻新**，仍为单文件（`<style>` + `<script>` 内嵌），2 空格缩进
+- 与 usb-notes.html 共享 35 变量 CSS 体系（翻新后 CSS 变量独立，不再共享）
 - 三栏对比表 `.cmp-table`：`.row-diff` 黄色差异高亮, `.row-missing` 灰色斜体
 - 侧边栏 280px Grid 布局
 
