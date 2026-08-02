@@ -189,3 +189,927 @@ body {
     padding: var(--space-6) var(--space-8) 80px;
     max-width: 960px;
 }
+
+/* ===================================
+   5. Components — UI 组件
+   =================================== */
+
+/* 5.1 Sidebar */
+
+.sidebar h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+    color: var(--text-heading);
+}
+
+.sidebar details {
+    margin-bottom: var(--space-2);
+}
+
+.sidebar details > summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: var(--space-1) 0;
+    color: var(--text-heading);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sidebar details > summary::-webkit-details-marker { display: none; }
+
+.sidebar details > summary::before {
+    content: "\25B8";
+    font-size: 10px;
+    transition: transform 0.15s ease;
+    display: inline-block;
+    width: 12px;
+    color: var(--text-muted);
+}
+
+.sidebar details[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.sidebar .sub-item {
+    display: block;
+    padding: var(--space-1) 0 var(--space-1) 24px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid transparent;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.sidebar .sub-item:hover {
+    color: var(--accent);
+    background: var(--accent-dim);
+}
+
+.sidebar .sub-item.active {
+    color: var(--accent);
+    background: var(--accent-dim);
+    border-left-color: var(--accent);
+}
+
+/* Phase 状态标记 */
+.sidebar .badge {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+.sidebar .phase-done { color: var(--color-frame); }
+.sidebar .phase-current { color: var(--color-data); }
+.sidebar .phase-pending { color: var(--text-muted); }
+
+/* 5.2 Card */
+
+.phase-header {
+    margin: var(--space-8) 0 var(--space-4);
+    padding-bottom: var(--space-2);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-5) var(--space-6);
+    margin-bottom: var(--space-5);
+    box-shadow: var(--shadow);
+}
+
+/* 卡片无 hover 上浮（IDE 风格克制） */
+.card h3 {
+    font-size: var(--fs-h3);
+    margin-bottom: var(--space-3);
+}
+
+.card h4 {
+    margin: var(--space-4) 0 var(--space-2);
+}
+
+/* 5.3 Table */
+
+.card table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--space-3) 0;
+    font-size: 14px;
+}
+
+.card table th,
+.card table td {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--card-border);
+    text-align: left;
+}
+
+.card table th {
+    background: var(--code-bg);
+    font-weight: 600;
+    color: var(--text-heading);
+}
+
+.card table tr:nth-child(even) td {
+    background: var(--table-stripe);
+}
+
+/* 5.4 Code & Pre 已在 Typography 层定义，此处只加组件级覆盖 */
+
+.card pre {
+    background: var(--code-bg);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    margin: var(--space-3) 0;
+    border: 1px solid var(--card-border);
+}
+
+/* 5.5 Folds（可折叠详情区） */
+
+.txn-fold {
+    margin: var(--space-4) 0;
+}
+
+.txn-fold > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--code-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.txn-fold > summary:hover {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+}
+
+.txn-fold > summary::-webkit-details-marker { display: none; }
+
+.txn-fold > summary::before {
+    content: "\25B8";
+    font-size: 12px;
+    transition: transform 0.15s ease;
+    display: inline-block;
+    color: var(--accent);
+}
+
+.txn-fold[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.txn-fold[open] > summary {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-color: var(--accent);
+}
+
+.txn-fold .fold-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-heading);
+}
+
+.txn-fold .fold-hint {
+    font-size: var(--fs-caption);
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+.txn-fold .fold-content {
+    padding: var(--space-5) var(--space-4);
+    border: 1px solid var(--card-border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    background: var(--card-bg);
+}
+
+.txn-fold .fold-content h4 { margin: var(--space-4) 0 var(--space-2); }
+.txn-fold .fold-content h4:first-child { margin-top: 0; }
+
+/* 5.6 Theme Toggle */
+
+.theme-bar {
+    position: fixed;
+    bottom: var(--space-5);
+    right: var(--space-5);
+    z-index: 30;
+}
+
+.theme-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    cursor: pointer;
+    font-size: 20px;
+    box-shadow: var(--shadow);
+    transition: background 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-heading);
+}
+
+.theme-btn:hover {
+    background: var(--accent-dim);
+}
+
+/* 5.7 Search Box */
+
+.search-wrap {
+    margin-bottom: var(--space-4);
+}
+
+.search-input {
+    width: 100%;
+    padding: var(--space-1) var(--space-2);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    color: var(--text);
+    background: var(--code-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.search-input:focus {
+    border-color: var(--accent);
+}
+
+/* 5.8 Progress Bar */
+
+.progress-wrap {
+    margin-top: var(--space-4);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--card-border);
+}
+
+.progress-bar {
+    height: 4px;
+    background: var(--accent);
+    border-radius: var(--radius-full);
+    transition: width 0.3s ease;
+}
+
+.progress-label {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--fs-caption);
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* 5.9 Skip Link */
+
+.skip-link {
+    position: fixed;
+    top: -100%;
+    left: var(--space-2);
+    z-index: 999;
+    padding: var(--space-2) var(--space-4);
+    background: var(--accent);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: var(--space-2);
+}
+
+/* 5.10 Scroll-to-Top */
+
+.scroll-top {
+    position: fixed;
+    bottom: 72px;
+    right: var(--space-5);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    cursor: pointer;
+    font-size: 18px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.scroll-top.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.scroll-top:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+}
+
+/* ===================================
+   6. Visualizations — 数据可视化
+   =================================== */
+
+/* 6.1 Packet Diagram */
+
+.packet-diagram-wrapper {
+    overflow-x: auto;
+    padding-bottom: var(--space-1);
+    margin: var(--space-4) 0;
+}
+
+.packet-title {
+    font-weight: 600;
+    color: var(--text-heading);
+    margin: var(--space-4) 0 var(--space-2);
+}
+
+.packet-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    font-size: var(--fs-caption);
+    color: var(--text-muted);
+    margin-bottom: var(--space-2);
+}
+
+.packet-legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.packet-legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.packet-diagram {
+    display: flex;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    min-width: fit-content;
+}
+
+.packet-diagram .field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    padding: var(--space-1) var(--space-1);
+    position: relative;
+    cursor: default;
+    transition: filter 0.15s ease;
+    border-right: 1px solid rgba(0, 0, 0, 0.2);
+    min-width: 0;
+}
+
+.packet-diagram .field:last-child { border-right: none; }
+
+.packet-diagram .field:hover {
+    filter: brightness(1.15);
+}
+
+.packet-diagram .field .fname {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.packet-diagram .field .fbits {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+}
+
+.packet-diagram .field .fval {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    margin-top: 1px;
+}
+
+.packet-diagram .field .tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #212529;
+    color: #f8f9fa;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-caption);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    z-index: 20;
+    pointer-events: none;
+    max-width: 280px;
+    white-space: normal;
+    line-height: 1.5;
+}
+
+.packet-diagram .field:hover .tooltip {
+    display: block;
+    animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 字段颜色类 — 语义色背景 + 白色文字 */
+.color-sync-pid { background: var(--color-sync-pid); }
+.color-addr     { background: var(--color-addr); }
+.color-data     { background: var(--color-data); }
+.color-crc      { background: var(--color-crc); }
+.color-eop      { background: var(--color-eop); }
+.color-frame    { background: var(--color-frame); }
+
+/* 6.2 Descriptor Byte Map */
+
+.desc-byte-map {
+    display: flex;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin: var(--space-3) 0;
+    border: 1px solid var(--card-border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+}
+
+.desc-byte-map .dcell {
+    flex-shrink: 0;
+    min-width: 32px;
+    padding: var(--space-1) 2px;
+    text-align: center;
+    cursor: default;
+    transition: filter 0.15s ease, box-shadow 0.15s ease;
+    border-right: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.desc-byte-map .dcell:last-child { border-right: none; }
+
+.desc-byte-map .dcell:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 0 6px currentColor;
+}
+
+.dcell .doff {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.dcell .dval {
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.dcell .dlabel {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.8);
+    white-space: nowrap;
+}
+
+.dc-bg-bglen   { background: var(--color-sync-pid); }
+.dc-bg-bgtype  { background: var(--color-crc); }
+.dc-bg-bcd     { background: var(--color-frame); }
+.dc-bg-class   { background: var(--color-eop); }
+.dc-bg-ep0     { background: var(--color-addr); }
+.dc-bg-vidpid  { background: var(--color-data); }
+.dc-bg-str     { background: var(--color-sync-pid); opacity: 0.7; }
+.dc-bg-config  { background: var(--color-crc); opacity: 0.7; }
+.dc-bg-iface   { background: var(--color-addr); }
+.dc-bg-ep      { background: var(--color-data); opacity: 0.8; }
+.dc-bg-attr    { background: var(--color-crc); }
+.dc-bg-power   { background: var(--color-frame); opacity: 0.7; }
+.dc-bg-ialt    { background: var(--txn-interrupt); }
+.dc-bg-nep     { background: var(--color-eop); opacity: 0.7; }
+.dc-bg-qual    { background: var(--color-sync-pid); opacity: 0.5; }
+.dc-bg-rsvd    { background: var(--text-muted); }
+
+/* bit 释义表 */
+.desc-bit-table { margin: var(--space-2) 0; }
+.desc-bit-table td:first-child {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* 6.3 Frame Timeline */
+
+.txn-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin: var(--space-3) 0 var(--space-4);
+    font-size: var(--fs-caption);
+    color: var(--text-muted);
+}
+
+.txn-legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.txn-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.txn-dot.txn-sof       { background: var(--txn-sof); }
+.txn-dot.txn-control   { background: var(--txn-control); }
+.txn-dot.txn-interrupt { background: var(--txn-interrupt); }
+.txn-dot.txn-bulk      { background: var(--txn-bulk); }
+.txn-dot.txn-isoch     { background: var(--txn-isoch); }
+.txn-dot.txn-nak       { background: var(--txn-nak); }
+
+.frame-timeline {
+    display: flex;
+    gap: 2px;
+    margin: var(--space-1) 0 var(--space-4);
+    overflow-x: auto;
+    padding-bottom: var(--space-1);
+}
+
+.txn-block {
+    flex-shrink: 0;
+    border-radius: var(--radius-full);
+    padding: var(--space-2) var(--space-3);
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    min-width: 36px;
+    position: relative;
+}
+
+.txn-block:hover { transform: translateY(-1px); }
+
+.txn-block:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* 时间线类型样式：纯色浅底 + 左侧色条 */
+.txn-block.txn-sof       { background: color-mix(in srgb, var(--txn-sof) 12%, var(--card-bg)); border-left: 3px solid var(--txn-sof); }
+.txn-block.txn-control   { background: color-mix(in srgb, var(--txn-control) 12%, var(--card-bg)); border-left: 3px solid var(--txn-control); }
+.txn-block.txn-interrupt { background: color-mix(in srgb, var(--txn-interrupt) 12%, var(--card-bg)); border-left: 3px solid var(--txn-interrupt); }
+.txn-block.txn-bulk      { background: color-mix(in srgb, var(--txn-bulk) 12%, var(--card-bg)); border-left: 3px solid var(--txn-bulk); }
+.txn-block.txn-isoch     { background: color-mix(in srgb, var(--txn-isoch) 12%, var(--card-bg)); border-left: 3px solid var(--txn-isoch); }
+.txn-block.txn-nak       { background: color-mix(in srgb, var(--txn-nak) 8%, var(--card-bg)); border: 1px dashed var(--txn-nak); border-left: 3px dashed var(--txn-nak); }
+
+.txn-block .txn-device { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.txn-block .txn-label  { font-size: 11px; font-weight: 600; color: var(--text-heading); white-space: nowrap; }
+.txn-block .txn-type   { font-size: 9px; color: var(--text-muted); white-space: nowrap; }
+.txn-block .txn-hint   { font-size: 9px; color: var(--accent); margin-top: 1px; }
+
+/* 6.4 Transaction Detail Panel */
+
+.txn-detail {
+    margin: 0 0 var(--space-5);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    background: var(--code-bg);
+    animation: fadeIn 0.15s ease-out;
+}
+
+.txn-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--card-border);
+}
+
+.txn-detail-header span {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-heading);
+}
+
+.txn-detail-close {
+    background: none;
+    border: 1px solid var(--card-border);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.txn-detail-close:hover { color: var(--text); border-color: var(--text); }
+
+.txn-packet-list { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.txn-packet-item {
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--card-border);
+}
+
+.txn-packet-item .pkt-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-heading);
+    margin-bottom: var(--space-1);
+}
+
+.txn-packet-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    align-items: center;
+    margin-top: var(--space-1);
+}
+
+.txn-packet-flow .pkt-bit {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: #fff;
+    white-space: nowrap;
+    cursor: default;
+    transition: filter 0.15s ease;
+}
+
+.txn-packet-flow .pkt-bit:hover { filter: brightness(1.2); }
+
+.txn-packet-flow .pkt-arrow {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0 2px;
+}
+
+.txn-note {
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--txn-nak) 15%, var(--card-bg));
+    font-size: 13px;
+    color: var(--txn-nak);
+    border-left: 3px solid var(--txn-nak);
+}
+
+/* 6.5 Bus Hound Annotations */
+
+.txn-annot-block {
+    margin: var(--space-2) 0 var(--space-4) 0;
+    counter-reset: bh-line;
+}
+
+.txn-annot-line {
+    font-family: var(--font-mono);
+    padding: var(--space-1) var(--space-3);
+    margin: 1px 0;
+    border-radius: var(--radius-sm);
+    position: relative;
+}
+
+.txn-annot-line::before {
+    counter-increment: bh-line;
+    content: counter(bh-line);
+    display: inline-block;
+    width: 24px;
+    margin-right: var(--space-2);
+    text-align: right;
+    color: var(--text-muted);
+    font-size: 10px;
+    user-select: none;
+}
+
+.txn-annot-bh {
+    background: var(--code-bg);
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.txn-annot-usb {
+    background: transparent;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding-left: 52px;
+    border-left: 2px dashed var(--card-border);
+    margin-left: 6px;
+    line-height: 1.6;
+}
+
+/* ===================================
+   7. Utilities — 工具类
+   =================================== */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* 全局 focus 样式 */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ===================================
+   8. Responsive — 响应式 (< 1024px)
+   =================================== */
+
+@media (max-width: 1023px) {
+    body {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    .main {
+        grid-column: 1;
+        padding: var(--space-4);
+        max-width: 100%;
+    }
+
+    /* 顶部 sticky 导航条 */
+    .mobile-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        height: 48px;
+        padding: 0 var(--space-4);
+        background: var(--surface);
+        border-bottom: 1px solid var(--card-border);
+        z-index: 50;
+    }
+
+    .mobile-nav-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-heading);
+    }
+
+    .mobile-nav-btn {
+        background: none;
+        border: 1px solid var(--card-border);
+        color: var(--text);
+        font-size: 20px;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* 侧边栏 overlay */
+    .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: none;
+    }
+
+    .sidebar-overlay.open {
+        display: block;
+    }
+
+    .sidebar-overlay-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .sidebar-overlay-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100%;
+        background: var(--surface);
+        overflow-y: auto;
+        padding: var(--space-5);
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+    }
+}
+
+@media (min-width: 1024px) {
+    .mobile-nav { display: none; }
+    .sidebar-overlay { display: none; }
+}
+
+/* ===================================
+   9. Reduced Motion — 减少动画
+   =================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+/* ===================================
+   10. Print — 打印样式
+   =================================== */
+
+@media print {
+    .sidebar,
+    .theme-bar,
+    .skip-link,
+    .scroll-top,
+    .mobile-nav,
+    .sidebar-overlay {
+        display: none !important;
+    }
+
+    body {
+        display: block;
+        background: #fff;
+        color: #000;
+    }
+
+    .main {
+        max-width: 100%;
+        padding: 0;
+        grid-column: auto;
+    }
+
+    .card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
+        background: #fff;
+    }
+
+    .packet-diagram .field {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

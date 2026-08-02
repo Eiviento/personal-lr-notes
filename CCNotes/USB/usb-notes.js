@@ -667,3 +667,200 @@ var TimelineRenderer = {
         }
     }
 };
+
+// ===== 3. INTERACTION =====
+
+var ThemeManager = {
+    STORAGE_KEY: 'usb-notes-theme',
+
+    init: function() {
+        // CSS :root 默认暗色；若 localStorage 存了 'light'，切到亮色
+        var saved = localStorage.getItem(this.STORAGE_KEY);
+        var html = document.documentElement;
+
+        if (saved === 'light') {
+            html.classList.add('light');
+            html.classList.remove('dark');
+        } else {
+            // 默认暗色（localStorage 无记录 或 存了 'dark'）
+            html.classList.add('dark');
+            html.classList.remove('light');
+        }
+
+        this._updateButton();
+        this._bind();
+    },
+
+    toggle: function() {
+        var html = document.documentElement;
+        if (html.classList.contains('dark')) {
+            html.classList.replace('dark', 'light');
+            localStorage.setItem(this.STORAGE_KEY, 'light');
+        } else {
+            html.classList.replace('light', 'dark');
+            localStorage.setItem(this.STORAGE_KEY, 'dark');
+        }
+        this._updateButton();
+    },
+
+    _updateButton: function() {
+        var btn = document.getElementById('themeToggle');
+        if (!btn) return;
+        var isDark = document.documentElement.classList.contains('dark');
+        btn.textContent = isDark ? '\u{1F319}' : '\u{2600}';  // 🌙 / ☀
+        btn.setAttribute('aria-label', isDark ? '切换到亮色模式' : '切换到暗色模式');
+    },
+
+    _bind: function() {
+        var btn = document.getElementById('themeToggle');
+        var self = this;
+        if (btn) {
+            btn.addEventListener('click', function() { self.toggle(); });
+        }
+    }
+};
+
+var ScrollSpy = {
+    ticking: false,
+
+    init: function() {
+        var self = this;
+        window.addEventListener('scroll', function() {
+            if (!self.ticking) {
+                requestAnimationFrame(function() { self._update(); self.ticking = false; });
+                self.ticking = true;
+            }
+        }, { passive: true });
+    },
+
+    _update: function() {
+        var cards = document.querySelectorAll('.card[id]');
+        var links = document.querySelectorAll('.sidebar .sub-item');
+        var current = null;
+
+        cards.forEach(function(card) {
+            var rect = card.getBoundingClientRect();
+            if (rect.top <= 150) current = card.id;
+        });
+
+        links.forEach(function(link) {
+            var href = link.getAttribute('href');
+            var isActive = href === '#' + current;
+            link.classList.toggle('active', isActive);
+
+            // 高亮所属 Phase 的 summary
+            if (isActive) {
+                var details = link.closest('details');
+                if (details) {
+                    // 取消所有 summary 高亮
+                    document.querySelectorAll('.sidebar details > summary').forEach(function(s) {
+                        s.style.fontWeight = '';
+                        s.style.color = '';
+                    });
+                    var summary = details.querySelector('summary');
+                    if (summary) {
+                        summary.style.fontWeight = '700';
+                        summary.style.color = 'var(--accent)';
+                    }
+                }
+            }
+        });
+    }
+};
+
+var SearchFilter = {
+    init: function() {
+        var input = document.getElementById('sidebarSearch');
+        if (!input) return;
+
+        var self = this;
+        input.addEventListener('input', function() {
+            self.filter(this.value);
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') { this.value = ''; self.filter(''); }
+        });
+    },
+
+    filter: function(query) {
+        var q = query.toLowerCase().trim();
+        var items = document.querySelectorAll('.sidebar .sub-item');
+        var detailsList = document.querySelectorAll('.sidebar details');
+
+        items.forEach(function(item) {
+            var text = item.textContent.toLowerCase();
+            item.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+        });
+
+        // 若 Phase 下所有子项隐藏，隐藏整个 Phase
+        detailsList.forEach(function(details) {
+            var visibleItems = details.querySelectorAll('.sub-item[style*="display: none"]');
+            var allItems = details.querySelectorAll('.sub-item');
+            if (allItems.length > 0 && visibleItems.length === allItems.length) {
+                details.style.display = 'none';
+            } else {
+                details.style.display = '';
+            }
+        });
+    }
+};
+
+var NavOverlay = {
+    init: function() {
+        var btn = document.getElementById('mobileNavBtn');
+        var overlay = document.getElementById('sidebarOverlay');
+        var backdrop = overlay ? overlay.querySelector('.sidebar-overlay-backdrop') : null;
+
+        if (!btn || !overlay) return;
+
+        var self = this;
+        btn.addEventListener('click', function() { self.open(); });
+        if (backdrop) {
+            backdrop.addEventListener('click', function() { self.close(); });
+        }
+
+        // Escape 关闭
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && overlay.classList.contains('open')) {
+                self.close();
+            }
+        });
+    },
+
+    open: function() {
+        var overlay = document.getElementById('sidebarOverlay');
+        if (overlay) overlay.classList.add('open');
+    },
+
+    close: function() {
+        var overlay = document.getElementById('sidebarOverlay');
+        if (overlay) overlay.classList.remove('open');
+    }
+};
+
+// ===== Scroll to Top =====
+function initScrollTop() {
+    var btn = document.getElementById('scrollTopBtn');
+    if (!btn) return;
+
+    window.addEventListener('scroll', function() {
+        var scrolled = window.scrollY > 400;
+        btn.classList.toggle('visible', scrolled);
+    }, { passive: true });
+
+    btn.addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+}
+
+// ===== 4. INIT =====
+document.addEventListener('DOMContentLoaded', function() {
+    ThemeManager.init();
+    ScrollSpy.init();
+    SearchFilter.init();
+    NavOverlay.init();
+    initScrollTop();
+    PacketRenderer.renderAll();
+    TimelineRenderer.renderAll();
+});
