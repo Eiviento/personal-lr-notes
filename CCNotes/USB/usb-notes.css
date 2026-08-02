@@ -1,0 +1,191 @@
+/* ===================================
+   1. Variables — 自定义属性
+   =================================== */
+
+:root {
+    /* === 文档色板（暗色默认） === */
+    --bg: #1a1b1e;
+    --surface: #1e1f24;
+    --card-bg: #25262b;
+    --card-border: #373a40;
+    --code-bg: #141517;
+    --text: #c1c6cc;
+    --text-heading: #e9ecef;
+    --text-muted: #868e96;
+    --accent: #4da6ff;
+    --accent-dim: rgba(77, 166, 255, 0.12);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --table-stripe: rgba(255, 255, 255, 0.03);
+
+    /* === 语义色（暗色，用于协议可视化） === */
+    --color-sync-pid: #8ab4f8;
+    --color-addr: #63e6be;
+    --color-data: #ffc078;
+    --color-crc: #b197fc;
+    --color-eop: #dee2e6;
+    --color-frame: #69db7c;
+    --txn-control: #b197fc;
+    --txn-interrupt: #ff8787;
+    --txn-bulk: #63e6be;
+    --txn-isoch: #69db7c;
+    --txn-sof: #dee2e6;
+    --txn-nak: #ffc078;
+
+    /* === 字体 === */
+    --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+                 "Segoe UI", "Noto Sans SC", sans-serif;
+    --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code",
+                 "Consolas", "Courier New", monospace;
+
+    /* === 字号 === */
+    --fs-h1: 28px;
+    --fs-h2: 22px;
+    --fs-h3: 17px;
+    --fs-body: 15.5px;
+    --fs-caption: 12px;
+
+    /* === 间距（4px grid） === */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
+
+    /* === 圆角 === */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 999px;
+}
+
+/* 亮色主题覆盖 */
+.light {
+    --bg: #ffffff;
+    --surface: #f6f8fa;
+    --card-bg: #ffffff;
+    --card-border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --text: #1f2328;
+    --text-heading: #0d1117;
+    --text-muted: #656d76;
+    --accent: #0969da;
+    --accent-dim: rgba(9, 105, 218, 0.08);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --table-stripe: rgba(0, 0, 0, 0.02);
+
+    --color-sync-pid: #1e90ff;
+    --color-addr: #20c997;
+    --color-data: #ffa94d;
+    --color-crc: #845ef7;
+    --color-eop: #adb5bd;
+    --color-frame: #51cf66;
+    --txn-control: #845ef7;
+    --txn-interrupt: #ff6b6b;
+    --txn-bulk: #20c997;
+    --txn-isoch: #51cf66;
+    --txn-sof: #adb5bd;
+    --txn-nak: #ffa94d;
+}
+
+/* ===================================
+   2. Reset — 重置与基础
+   =================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 20px;
+}
+
+body {
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+}
+
+/* ===================================
+   3. Typography — 字体与排版
+   =================================== */
+
+h1 { font-size: var(--fs-h1); line-height: 1.3; font-weight: 700; color: var(--text-heading); }
+h2 { font-size: var(--fs-h2); line-height: 1.35; font-weight: 600; color: var(--text-heading); }
+h3 { font-size: var(--fs-h3); line-height: 1.4; font-weight: 600; color: var(--text-heading); }
+h4 { font-size: var(--fs-body); line-height: 1.5; font-weight: 600; color: var(--text-heading); }
+
+p { margin-bottom: var(--space-3); }
+
+ul, ol { padding-left: 1.5em; margin-bottom: var(--space-3); }
+li { margin-bottom: var(--space-1); }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+}
+
+pre {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--code-bg);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    margin: var(--space-3) 0;
+    border: 1px solid var(--card-border);
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+}
+
+strong { font-weight: 600; color: var(--text-heading); }
+small { font-size: var(--fs-caption); color: var(--text-muted); }
+
+/* ===================================
+   4. Layout — 布局
+   =================================== */
+
+body {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--card-border);
+    overflow-y: auto;
+    padding: var(--space-5);
+    z-index: 10;
+}
+
+.main {
+    grid-column: 2;
+    padding: var(--space-6) var(--space-8) 80px;
+    max-width: 960px;
+}
