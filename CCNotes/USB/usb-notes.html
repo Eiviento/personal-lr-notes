@@ -1456,6 +1456,15 @@ else document.documentElement.classList.add('dark');})();
           <!-- Rendered by JS -->
         </div>
 
+        <!-- 时间线详情面板（内嵌在时间线下方） -->
+        <div class="txn-detail" id="txnDetail" style="display:none;" aria-label="事务详情">
+            <div class="txn-detail-header">
+                <span id="txnDetailTitle"></span>
+                <button class="txn-detail-close" id="txnDetailClose" type="button" aria-label="关闭详情">✕</button>
+            </div>
+            <div class="txn-packet-list" id="txnDetailBody"></div>
+        </div>
+
     </article>
 
     <!-- kp-2-19 -->
@@ -2214,14 +2223,7 @@ else document.documentElement.classList.add('dark');})();
         <h3>第八阶段 — 5 个知识点</h3>
         <p>libusb架构概览(同步/异步模型) · 设备发现与枚举 · 控制传输编程 · 批量/中断/等时传输编程 · 热插拔检测</p>
     </div>
-    <!-- 帧时间线详情面板 -->
-    <div class="txn-detail" id="txnDetail" style="display:none;" aria-label="事务详情">
-        <div class="txn-detail-header">
-            <span id="txnDetailTitle"></span>
-            <button class="txn-detail-close" id="txnDetailClose" type="button" aria-label="关闭详情">✕</button>
-        </div>
-        <div class="txn-packet-list" id="txnDetailBody"></div>
-    </div>
+    <!-- 帧时间线详情面板已移至 kp-2-18 时间线下方 -->
 
 </main>
 
