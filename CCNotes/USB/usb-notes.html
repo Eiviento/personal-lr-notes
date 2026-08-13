@@ -94,8 +94,9 @@ else document.documentElement.classList.add('dark');})();
         <a class="sub-item" href="#kp-3-11">3.11 描述符类型码全集</a>
     </details>
 
-    <details>
-        <summary><span>📡 Phase 4: 枚举过程</span><span class="badge phase-pending">0/12 ○ · 即将更新</span></summary>
+    <details open>
+        <summary><span>📡 Phase 4: 枚举过程</span><span class="badge phase-current">1/12 ▶</span></summary>
+        <a class="sub-item" href="#kp-4-1">4.1 枚举完整时间线</a>
     </details>
     <details>
         <summary><span>📡 Phase 5: 标准请求</span><span class="badge phase-pending">0/6 ○ · 即将更新</span></summary>
@@ -110,10 +111,10 @@ else document.documentElement.classList.add('dark');})();
         <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-pending">0/5 ○ · 即将更新</span></summary>
     </details>
 
-    <div class="progress-wrap" role="progressbar" aria-valuenow="48" aria-valuemin="0"
-         aria-valuemax="100" aria-label="学习进度 48%">
-        <div class="progress-bar" style="width:48%"></div>
-        <span class="progress-label">32/67 (48%)</span>
+    <div class="progress-wrap" role="progressbar" aria-valuenow="49" aria-valuemin="0"
+         aria-valuemax="100" aria-label="学习进度 49%">
+        <div class="progress-bar" style="width:49%"></div>
+        <span class="progress-label">33/67 (49%)</span>
     </div>
 </nav>
 
@@ -1075,7 +1076,7 @@ else document.documentElement.classList.add('dark');})();
           <tr><td>Standard · SET_ADDRESS(0x05)</td><td>0x00</td><td>新设备地址（0~127）</td><td><code>0x0007</code> = 地址 7</td></tr>
           <tr><td>Standard · SET_CONFIGURATION(0x09)</td><td>0x00</td><td>配置号（0=未配置, 1/2/3…=配置 ID）</td><td><code>0x0001</code> = 配置 1</td></tr>
           <tr><td>Standard · CLEAR_FEATURE(0x01)</td><td>0x00</td><td>特性选择器（0x00=ENDPOINT_HALT）</td><td><code>0x0000</code> = 清 HALT</td></tr>
-          <tr><td><strong>Class (UVC) · SET_CUR/GET_CUR/GET_LEN</strong></td><td><strong>CS_ID</strong>（控制选择器 ID）</td><td>0x00</td><td><code>0x0400</code> = CS_ID_PROTOCOL_VER</td></tr>
+          <tr><td><strong>Class (UVC) · SET_CUR/GET_CUR/GET_LEN</strong></td><td><strong>CS_ID</strong>（海康固件惯例；UVC 规范标准写法是低字节=CS）</td><td>0x00</td><td><code>0x0400</code> = CS_ID_PROTOCOL_VER</td></tr>
           <tr><td>Class (HID) · GET_REPORT</td><td>Report 类型（0x01=Input, 0x02=Output, 0x03=Feature）</td><td>Report ID</td><td><code>0x0100</code> = Input Report #0</td></tr>
           <tr><td>Class (CDC) · SET_LINE_CODING</td><td>0x00</td><td>0x00</td><td><code>0x0000</code>（参数在 DATA 阶段）</td></tr>
           <tr><td>Vendor · 任意</td><td colspan="2">厂商自定义——只有厂商 SDK 知道含义</td><td>—</td></tr>
@@ -1085,7 +1086,7 @@ else document.documentElement.classList.add('dark');})();
         <p>含义<strong>由 bmRequestType 的 D4-0（接收者）决定</strong>——不是"wIndex 有时候是接口有时候是端点"，而是 bmRequestType 先告诉设备"我要对谁说话"，wIndex 再按规则填目标编号：</p>
         <table>
           <tr><th>D4-0（接收者）</th><th>wIndex 高字节</th><th>wIndex 低字节</th><th>实例</th></tr>
-          <tr><td><code>00001</code> = Interface</td><td><strong>接口号</strong>（0~255）</td><td>0x00</td><td><code>0x0000</code> = 接口 0（VC）</td></tr>
+          <tr><td><code>00001</code> = Interface</td><td>0x00</td><td><strong>接口号</strong>（0~255）</td><td><code>0x0001</code> = 接口 1</td></tr>
           <tr><td><code>00010</code> = Endpoint</td><td>0x00</td><td><strong>端点地址</strong>（含 D7 方向位）</td><td><code>0x0081</code> = EP1 IN</td></tr>
           <tr><td><code>00000</code> = Device</td><td colspan="2">大部分情况为 <code>0x0000</code>（不针对特定子组件）</td><td>GET_DESCRIPTOR 时 wIndex=0</td></tr>
           <tr><td>UVC XU 请求（特殊）</td><td><strong>Unit ID</strong>（如 0x0A=XU）</td><td><strong>接口号</strong>（如 VC 接口 0）</td><td><code>0x0A00</code> = XU 10 + 接口 0</td></tr>
@@ -1113,7 +1114,7 @@ else document.documentElement.classList.add('dark');})();
     │                   │  │                 │  │                    │
     │ 由 D6-5 决定查    │  │ 由 D6-5 +       │  │ 由 D4-0 决定       │
     │ 哪本字典:         │  │ bRequest 决定    │  │ 解析方式:          │
-    │ Standard → 第9章  │  │ 含义            │  │ Interface → 高=IF  │
+    │ Standard → 第9章  │  │ 含义            │  │ Interface → 低=IF  │
     │ Class → 类规范    │  │                 │  │ Endpoint  → 低=EP  │
     │ Vendor → 厂商手册 │  │                 │  │ Device    → 0x0000 │
     └───────────────────┘  └─────────────────┘  └────────────────────┘
@@ -1125,7 +1126,7 @@ else document.documentElement.classList.add('dark');})();
                         │ 0 = 跳过 DATA 阶段  │
                         └────────────────────┘</code></pre>
             <h4>走一遍你的抓包</h4>
-            <pre><code>CTL  A1 85  00 04  00 0A  02 00
+            <pre><code>CTL  A1 85  04 00  00 0A  02 00
 
     Byte 0 = 0xA1
       D7=1     → IN（Host 读）
@@ -1136,11 +1137,11 @@ else document.documentElement.classList.add('dark');})();
       D6-5=Class → 查《UVC 规范》
       0x85 = GET_LEN → "告诉我参数多长"
 
-    wValue = 0x0004
+    wValue = 0x0400
       D6-5=Class + bRequest=GET_LEN → 高字节=CS_ID
       CS_ID = 0x04 = CS_ID_PROTOCOL_VER ✓
 
-    wIndex = 0x000A
+    wIndex = 0x0A00
       D4-0=Interface → 但 UVC XU 有特殊编码
       高字节 0x0A = Unit ID (XU 10)
       低字节 0x00 = 接口号 0 (VC)
@@ -1162,24 +1163,24 @@ else document.documentElement.classList.add('dark');})();
           </summary>
           <div class="fold-content">
             <h4>第一组：GET_LEN（先问"多长"）</h4>
-            <pre><code>CTL  A1 85  00 04  00 0A  02 00</code></pre>
+            <pre><code>CTL  A1 85  04 00  00 0A  02 00</code></pre>
             <table>
               <tr><th>字节</th><th>值</th><th>字段</th><th>拆解</th></tr>
               <tr><td>0</td><td><code>0xA1</code></td><td>bmRequestType</td><td>D7=1(IN) + D6-5=10(Class) + D4-0=00001(Interface) → UVC 类读请求</td></tr>
               <tr><td>1</td><td><code>0x85</code></td><td>bRequest</td><td>UVC GET_LEN —— "告诉我这个参数多长"</td></tr>
-              <tr><td>2-3</td><td><code>0x0004</code></td><td>wValue</td><td>高字节 0x04 = CS_ID_PROTOCOL_VER（协议版本）</td></tr>
-              <tr><td>4-5</td><td><code>0x000A</code></td><td>wIndex</td><td>高字节 0x0A = XU Unit 10，低字节 0x00 = VC 接口 0</td></tr>
+              <tr><td>2-3</td><td><code>0x0400</code></td><td>wValue</td><td>高字节 0x04 = CS_ID_PROTOCOL_VER（协议版本）</td></tr>
+              <tr><td>4-5</td><td><code>0x0A00</code></td><td>wIndex</td><td>高字节 0x0A = XU Unit 10，低字节 0x00 = VC 接口 0</td></tr>
               <tr><td>6-7</td><td><code>0x0002</code></td><td>wLength</td><td>请求返回 2 字节（长度字段本身是 2 字节）</td></tr>
             </table>
 
             <h4>第二组：GET_CUR（再读"数据"）</h4>
-            <pre><code>CTL  A1 81  00 04  00 0A  04 00</code></pre>
+            <pre><code>CTL  A1 81  04 00  00 0A  04 00</code></pre>
             <table>
               <tr><th>字节</th><th>值</th><th>字段</th><th>拆解</th></tr>
               <tr><td>0</td><td><code>0xA1</code></td><td>bmRequestType</td><td>同上：IN + Class + Interface</td></tr>
               <tr><td>1</td><td><code>0x81</code></td><td>bRequest</td><td>UVC GET_CUR —— "把当前值给我"</td></tr>
-              <tr><td>2-3</td><td><code>0x0004</code></td><td>wValue</td><td>同上：CS_ID=0x04</td></tr>
-              <tr><td>4-5</td><td><code>0x000A</code></td><td>wIndex</td><td>同上：XU 0x0A + IF 0</td></tr>
+              <tr><td>2-3</td><td><code>0x0400</code></td><td>wValue</td><td>同上：CS_ID=0x04</td></tr>
+              <tr><td>4-5</td><td><code>0x0A00</code></td><td>wIndex</td><td>同上：XU 0x0A + IF 0</td></tr>
               <tr><td>6-7</td><td><code>0x0004</code></td><td>wLength</td><td>请求返回 4 字节——用的就是 GET_LEN 返回的值</td></tr>
             </table>
             <p><strong>解码套路：</strong>bmRequestType 的 D7 决定"方向"，D6-5 决定"哪本字典查 bRequest"。UVC 设备先 GET_LEN(wLength=2) 问长度 → 再 GET_CUR(wLength=实际长度) 读数据。两步走保证 Host 缓冲区不溢出。</p>
@@ -1704,25 +1705,25 @@ else document.documentElement.classList.add('dark');})();
 
     	  <div class="txn-annot-block">
     	    <p><strong>第 1 步 — FUNC_SWITCH：</strong></p>
-    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  21 01  05 00  00 0A  02 00</code>  ← SETUP 包：SET_CUR, CS_ID=0x05</div>
+    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  21 01  00 05  00 0A  02 00</code>  ← SETUP 包：SET_CUR, CS_ID=0x05</div>
     	    <div class="txn-annot-line txn-annot-bh"><code>OUT  17 01</code>                                                     ← DATA 阶段：CS_ID=0x17, SubFunc=0x01</div>
-    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ 21 01 05 00 00 0A 02 00 } → Device ACK</div>
+    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ 21 01 00 05 00 0A 02 00 } → Device ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> OUT Token → DATA1{ 17 01 } → Device ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> STATUS: IN Token → DATA0(ZLP) → Host ACK &nbsp;<span style="color:var(--text-muted); opacity:0.7;">← Bus Hound 不显示</span></div>
     	  </div>
     	  <div class="txn-annot-block">
     	    <p><strong>第 2 步 — GET_LEN：</strong></p>
-    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  A1 85  00 17  00 0A  02 00</code>  ← SETUP 包：GET_LEN, CS_ID=0x17</div>
+    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  A1 85  17 00  00 0A  02 00</code>  ← SETUP 包：GET_LEN, CS_ID=0x17</div>
     	    <div class="txn-annot-line txn-annot-bh"><code>IN   04 00</code>                                                     ← DATA 阶段：param_len = 4</div>
-    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ A1 85 00 17 00 0A 02 00 } → Device ACK</div>
+    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ A1 85 17 00 00 0A 02 00 } → Device ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> IN Token → DATA1{ 04 00 } → Host ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> STATUS: OUT Token → DATA1(ZLP) → Device ACK &nbsp;<span style="color:var(--text-muted); opacity:0.7;">← Bus Hound 不显示</span></div>
     	  </div>
     	  <div class="txn-annot-block">
     	    <p><strong>第 3 步 — GET_CUR（读当前角度）：</strong></p>
-    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  A1 81  00 17  00 0A  04 00</code>  ← SETUP 包：GET_CUR, CS_ID=0x17, wLength=4</div>
+    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  A1 81  17 00  00 0A  04 00</code>  ← SETUP 包：GET_CUR, CS_ID=0x17, wLength=4</div>
     	    <div class="txn-annot-line txn-annot-bh"><code>IN   2C 01 00 00</code>                                               ← DATA 阶段：0x012C = 300 → 30.0°</div>
-    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ A1 81 00 17 00 0A 04 00 } → Device ACK</div>
+    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ A1 81 17 00 00 0A 04 00 } → Device ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> IN Token → DATA1{ 2C 01 00 00 } → Host ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> STATUS: OUT Token → DATA0(ZLP) → Device ACK &nbsp;<span style="color:var(--text-muted); opacity:0.7;">← Bus Hound 不显示</span></div>
     	  </div>
@@ -1730,17 +1731,17 @@ else document.documentElement.classList.add('dark');})();
     	  <h4>写操作实例 — 设置水平角度到 45.0°</h4>
     	  <div class="txn-annot-block">
     	    <p><strong>第 4 步 — SET_CUR：</strong></p>
-    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  21 01  17 00  00 0A  04 00</code>  ← SETUP 包：SET_CUR, CS_ID=0x17, wLength=4</div>
+    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  21 01  00 17  00 0A  04 00</code>  ← SETUP 包：SET_CUR, CS_ID=0x17, wLength=4</div>
     	    <div class="txn-annot-line txn-annot-bh"><code>OUT  C2 01 00 00</code>                                               ← DATA 阶段：0x01C2 = 450 → 45.0°</div>
-    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ 21 01 17 00 00 0A 04 00 } → Device ACK</div>
+    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ 21 01 00 17 00 0A 04 00 } → Device ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> OUT Token → DATA1{ C2 01 00 00 } → Device ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> STATUS: IN Token → DATA0(ZLP) → Host ACK &nbsp;<span style="color:var(--text-muted); opacity:0.7;">← Bus Hound 不显示</span></div>
     	  </div>
     	  <div class="txn-annot-block">
     	    <p><strong>第 5 步 — 写后校验，读错误码：</strong></p>
-    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  A1 81  00 F0  00 0A  01 00</code>  ← SETUP 包：GET_CUR, CS_ID=0xF0(ERRCODE)</div>
+    	    <div class="txn-annot-line txn-annot-bh"><code>CTL  A1 81  F0 00  00 0A  01 00</code>  ← SETUP 包：GET_CUR, CS_ID=0xF0(ERRCODE)</div>
     	    <div class="txn-annot-line txn-annot-bh"><code>IN   00</code>                                                         ← DATA 阶段：err=0x00 = 成功 ✓</div>
-    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ A1 81 00 F0 00 0A 01 00 } → Device ACK</div>
+    	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> SETUP Token → DATA0{ A1 81 F0 00 00 0A 01 00 } → Device ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> IN Token → DATA1{ 00 } → Host ACK</div>
     	    <div class="txn-annot-line txn-annot-usb"><span class="phase-label">  ↳</span> STATUS: OUT Token → DATA0(ZLP) → Device ACK &nbsp;<span style="color:var(--text-muted); opacity:0.7;">← Bus Hound 不显示</span></div>
     	  </div>
@@ -2531,11 +2532,94 @@ if (is_jpeg) {
     	  </div></details>
     </article>
 
-    <!-- ===== Phase 4 Placeholder ===== -->
-    <div class="phase-header" id="phase-4"><h2>Phase 4: USB 枚举过程 — 逐包逐事务追踪 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+    <!-- ===== Phase 4: USB 枚举过程 ===== -->
+    <div class="phase-header" id="phase-4"><h2>Phase 4: USB 枚举过程 — 逐包逐事务追踪 <span style="font-size:14px;color:var(--color-data);margin-left:8px;">1/12 ▶</span></h2></div>
+
+    <!-- kp-4-1 -->
+    <article class="card" id="kp-4-1">
+        <h3>4.1 枚举完整时间线（插入 → 检测 → 复位 → Default → Address → Configured）</h3>
+
+        <div class="info-box">
+          <strong>枚举是什么</strong>：设备插入后，Host 通过 EP0 控制传输一问一答给设备"登记造册"的过程。<br>
+          USB 标准请求的一大半工作就是枚举——GET_DESCRIPTOR(0x06)、SET_ADDRESS(0x05)、SET_CONFIGURATION(0x09) 全部登场。<br>
+          全流程只走 EP0，数据端点全程没参与——这正是 EP0 被类比为 "$SYS/ 系统主题" 的原因。
+        </div>
+
+        <h4>核心框架：设备的 6 个状态（USB 2.0 规范第 9 章）</h4>
+        <pre><code>插入
+ │
+ ▼
+[Attached 已连接] ──上电──► [Powered 已上电]
+                                │ 总线复位（SE0，≥10ms）
+                                ▼
+                          [Default 默认]   地址=0，只有 EP0 可用
+                                │ SET_ADDRESS(新地址)     ▲ Set_Address(0) 或复位打回
+                                ▼                         │
+                          [Address 已编址] 有唯一地址，仍只有 EP0
+                                │ SET_CONFIGURATION(1)    ▲ Set_Configuration(0) 打回
+                                ▼                         │
+                          [Configured 已配置] 全部端点启用 ─┘
+                                │ 总线 3ms 无活动
+                                ▼
+                          [Suspended 挂起] ──总线活动/唤醒──► 回到原状态</code></pre>
+        <table>
+          <tr><th>状态</th><th>含义</th><th>设备能干什么</th></tr>
+          <tr><td>Attached</td><td>物理插入，hub 检测到</td><td>啥也不能干，还没上电</td></tr>
+          <tr><td>Powered</td><td>已上电</td><td>还不能通信</td></tr>
+          <tr><td>Default</td><td>总线复位后</td><td><strong>只响应 EP0，且地址是公共的 0</strong></td></tr>
+          <tr><td>Address</td><td>领到唯一地址（1~127）</td><td>仍然只有 EP0 能用</td></tr>
+          <tr><td>Configured</td><td>激活了配置</td><td><strong>非 EP0 端点全部启用，接口功能可用</strong></td></tr>
+          <tr><td>Suspended</td><td>总线 3ms 没动静</td><td>省电待机</td></tr>
+        </table>
+        <p><strong>三个记忆锚点：</strong></p>
+        <ul>
+          <li><strong>Default = 无名氏</strong>：所有刚复位的设备都叫"地址 0"，像没领工牌的新员工。</li>
+          <li><strong>Address = 有名字了，但没上岗</strong>：只有 EP0 能应答。</li>
+          <li><strong>Configured = 上岗</strong>：这之后才谈得上"开流"（SET_INTERFACE）——所有 XU/取流实战都发生在 Configured 之后。</li>
+        </ul>
+
+        <h4>完整时间线（Host 视角，教科书主线 10 步）</h4>
+        <ol>
+          <li><strong>插入</strong>：hub 检测到 D+/D- 上拉电平变化 → Attached</li>
+          <li><strong>复位</strong>：Host 把总线拉低 ≥10ms（SE0）→ Default（地址=0）</li>
+          <li><strong>第 1 次 Get_Descriptor(Device)</strong>：只读前 8 字节 → 拿 bMaxPacketSize0（EP0 最大包，offset 7）</li>
+          <li><strong>Set_Address</strong>：Host 分配唯一地址（如 5）→ Address</li>
+          <li><strong>第 2 次 Get_Descriptor(Device)</strong>：读完整 18 字节 → VID/PID/版本/配置个数</li>
+          <li><strong>Get_Descriptor(Config) 头</strong>：先只读 9 字节 → 拿 wTotalLength（offset 2~3）</li>
+          <li><strong>Get_Descriptor(Config) 全链</strong>：一次读完整条链 → 全部 Interface/Endpoint 描述符</li>
+          <li><strong>Get_Descriptor(String)</strong>：厂商名/产品名/序列号（可多次、可跳过）</li>
+          <li><strong>Set_Configuration(1)</strong>：激活配置 → Configured，非 EP0 端点全部启用</li>
+          <li><strong>（总线之外）驱动加载</strong>：OS 按 VID/PID/Class 匹配驱动 → 设备就绪</li>
+        </ol>
+        <p>你在 <code>sudo lsusb -v -d 2bdf:0101</code> 里看到的整棵描述符树（Device → Configuration → 两个 Interface → Endpoint → XU 单元），就是在第 5~7 步被 Host 一段一段问出来的。</p>
+
+        <h4>三个"为什么"（理解了才算真的懂）</h4>
+        <table>
+          <tr><th>问题</th><th>答案</th><th>类比</th></tr>
+          <tr><td>Device Descriptor 为什么读两次？</td><td>第一次连"EP0 一次最多收多少字节"都不知道，规范保证前 8 字节一定能读（bMaxPacketSize0 恰好是第 8 个字节）</td><td>先问"你一次最多听几个字"，再决定长句怎么断句</td></tr>
+          <tr><td>Config 描述符为什么先读 9 字节头？</td><td>wTotalLength 写在头的 offset 2~3，Host 不知道整条链多长</td><td>快递外箱先看"内件总长"，再决定开多大的车</td></tr>
+          <tr><td>设备为什么全程不能主动说话？</td><td>USB 是 Host 中心总线，Token 只有 Host 能发；设备被 IN 令牌点到名才能回答</td><td>一场单方面发问的"审讯"</td></tr>
+        </table>
+
+        <h4>类比：新员工入职</h4>
+        <table>
+          <tr><th>枚举步骤</th><th>入职场景</th></tr>
+          <tr><td>插入（hub 检测上拉）</td><td>推门进公司，前台感应到有人</td></tr>
+          <tr><td>总线复位</td><td>安检：一切归零，从头办手续</td></tr>
+          <tr><td>读 8 字节</td><td>先自报最基础信息（"我一次最多听几个字"）</td></tr>
+          <tr><td>Set_Address</td><td>领工牌号（地址 5）</td></tr>
+          <tr><td>读 18 字节</td><td>交完整简历（VID/PID/版本...）</td></tr>
+          <tr><td>读 Config 链</td><td>交部门配置表（几个接口、每条管道）</td></tr>
+          <tr><td>读 String</td><td>补花名册（产品名、序列号）</td></tr>
+          <tr><td>Set_Configuration</td><td>门禁卡激活、工位通电</td></tr>
+          <tr><td>驱动加载</td><td>HR 系统录入完毕，正式开工</td></tr>
+        </table>
+        <p><strong>MQTT 视角</strong>：枚举 ≈ 客户端接入 broker 的握手——TCP 连上 → CONNECT 报能力 → CONNACK 确认 → 才能订阅/PUBLISH。没走完握手，什么 Topic 都别想动；没枚举完，什么端点都别想用。</p>
+    </article>
+
     <div class="placeholder">
-        <h3>第四阶段 — 12 个知识点</h3>
-        <p>插入检测→总线复位→Get_Descriptor(Device)×2→Set_Address→Get_Descriptor(Config)×2→Get_Descriptor(String)→Set_Configuration→Wireshark抓包验证</p>
+        <h3>4.2 ~ 4.12 待更新</h3>
+        <p>阶段0设备检测 · 总线复位 · Get_Descriptor(Device)×2 · Set_Address · Get_Descriptor(Config)×2 · Get_Descriptor(String) · Set_Configuration · Wireshark抓包验证 · 枚举失败排查</p>
     </div>
 
     <!-- ===== Phase 5 Placeholder ===== -->

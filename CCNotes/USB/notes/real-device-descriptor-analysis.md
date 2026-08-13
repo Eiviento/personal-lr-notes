@@ -738,8 +738,10 @@ GET_CUR : bmRequestType = 0xA1 (Device→Host, Class, Interface), bRequest = 0x8
 GET_MIN : 0x82    GET_MAX : 0x83    GET_RES : 0x84
 GET_LEN : 0x85    GET_INFO: 0x86    GET_DEF : 0x87
 
-wValue : 高字节 = Control Selector (CS)，低字节 = Unit/Terminal ID
-wIndex : 接口号（VC 接口 = 0）
+wValue : CS —— 本厂商固件惯例：CS_ID 在**高字节**、低字节=0（wValue = CS << 8）
+         ⚠ 与 UVC 规范不同：规范的标准写法是 CS 在低字节（wValue = CS），
+         海康固件是反的（第六会话真机验证，见 xu_minimal_get.c 的 `CS_ID << 8`）
+wIndex : 高字节 = Unit/Terminal ID，低字节 = 接口号（VC 接口 = 0）
 数据阶段 : 控制值（长度由描述符/GET_LEN 决定）
 ```
 
@@ -749,8 +751,8 @@ wIndex : 接口号（VC 接口 = 0）
 |---|---|---|
 | bmRequestType | 0xA1 | Device→Host，类请求，目标接口 |
 | bRequest | 0x81 | GET_CUR |
-| wValue | 0x050A | CS=5（控制 5），UnitID=0x0A（10） |
-| wIndex | 0x0000 | 接口 0（VC） |
+| wValue | 0x0500 | CS=5（控制 5，高字节，本厂商惯例） |
+| wIndex | 0x0A00 | 高字节=UnitID 0x0A（10），低字节=接口 0（VC） |
 | wLength | 控制值长度 | 由 GET_LEN 查询 |
 
 流接口的"切格式/启停流"走 VS 接口（接口 1）上的两个特殊控制：**VS_PROBE_CONTROL (CS=1)** 试探格式，**VS_COMMIT_CONTROL (CS=2)** 提交生效（Q7 里说的"流控制"就是这两个）。用 WinUSB / libusb 实现时，只需组装上面的 SETUP 包发到目标接口即可——这就是描述符之外，类机制的另一半。

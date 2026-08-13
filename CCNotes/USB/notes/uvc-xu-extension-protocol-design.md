@@ -59,19 +59,21 @@
 
 ### 读操作抓包实例（云台水平角度）
 
+> 字节序说明（2026-08-13 修正）：wValue 的 CS_ID 在**高字节**（如 CS_ID=0x05 → wValue=0x0500）。这是本设备固件的惯例，与 UVC 规范的"CS 在低字节"不同，已由第六/八会话真机代码（xu_minimal_get.c / uvc_stream_viewer.cpp 中 `CS_ID << 8`）验证。
+
 **CS_ID=0x17 (PTZ_CONTROL), SubFunc=0x01 (Pan)**
 
 ```
 第 1 步 — FUNC_SWITCH:
-CTL  21 01  05 00  00 0A  02 00     ← SET_CUR, CS_ID=0x05
+CTL  21 01  00 05  00 0A  02 00     ← SET_CUR, CS_ID=0x05（wValue=0x0500，CS 在高字节）
 OUT  17 01                          ← [CS_ID=0x17, SubFunc=0x01(Pan)]
 
 第 2 步 — GET_LEN:
-CTL  A1 85  00 17  00 0A  02 00     ← GET_LEN, CS_ID=0x17
+CTL  A1 85  17 00  00 0A  02 00     ← GET_LEN, CS_ID=0x17（wValue=0x0017）
 IN   04 00                          ← param_len = 4 字节
 
 第 3 步 — GET_CUR:
-CTL  A1 81  00 17  00 0A  04 00     ← GET_CUR, CS_ID=0x17, wLength=4
+CTL  A1 81  17 00  00 0A  04 00     ← GET_CUR, CS_ID=0x17, wLength=4
 IN   2C 01 00 00                    ← 0x012C = 300 → 30.0°
 ```
 
@@ -81,11 +83,11 @@ IN   2C 01 00 00                    ← 0x012C = 300 → 30.0°
 
 ```
 SET_CUR:
-CTL  21 01  17 00  00 0A  04 00     ← SET_CUR, CS_ID=0x17, wLength=4
+CTL  21 01  00 17  00 0A  04 00     ← SET_CUR, CS_ID=0x17（wValue=0x0017）, wLength=4
 OUT  C2 01 00 00                    ← 0x01C2 = 450 → 45.0°
 
 写后校验 — 读错误码:
-CTL  A1 81  00 F0  00 0A  01 00     ← GET_CUR, CS_ID=0xF0(ERRCODE)
+CTL  A1 81  F0 00  00 0A  01 00     ← GET_CUR, CS_ID=0xF0(ERRCODE)（wValue=0x00F0）
 IN   00                             ← err=0x00 = 成功 ✓
 ```
 

@@ -19,7 +19,7 @@
 | Phase 1 | USB 概览与总线拓扑 | 5 | ✅ 完成 |
 | Phase 2 | USB 通信模型 — 层层拆解到比特 | 16 | ✅ 完成 |
 | Phase 3 | USB 描述符体系 — 逐字节解剖 | 11 | ✅ 完成 |
-| Phase 4 | USB 枚举过程 — 逐包逐事务追踪 | 12 | ⬜ 待开始 |
+| Phase 4 | USB 枚举过程 — 逐包逐事务追踪 | 12 | ▶ 进行中 1/12 |
 | Phase 5 | 标准请求与 Setup 包深度解析 | 6 | ⬜ 待开始 |
 | Phase 6 | 设备类协议逐字节解析（HID / CDC / UVC） | 26 | ⬜ 待开始 |
 | Phase 7 | 协议分析工具与实操 | 7 | ⬜ 待开始 |
@@ -27,9 +27,9 @@
 
 ### 阅读指南
 
-- **从零开始**：按第一篇→第二篇→第三篇→第四篇→第五篇顺序阅读
+- **从零开始**：按第一篇→第二篇→第三篇→第四篇→第五篇→第六篇顺序阅读
 - **快速查阅**：跳转到附录的速查表
-- **实战优先**：如果你已经有理论基础，直接跳到第四篇（真实设备）和第五篇（XU 取流）
+- **实战优先**：如果你已经有理论基础，直接跳到第五篇（真实设备）和第六篇（XU 取流）
 - **MQTT 类比**：文中大量使用 MQTT/TCP/HTTP 做类比，帮助理解 USB 协议设计
 - **方向视角**：IN = Device→Host（Host "收进来"），OUT = Host→Device（Host "发出去"）
 
@@ -1630,11 +1630,117 @@ Device 回 "World":
 
 ---
 
-# 第四篇：真实设备描述符实战
+# 第四篇：USB 枚举过程 — 逐包逐事务追踪
+
+> Phase 4 主线。枚举（Enumeration）= 设备插入后，Host 通过 EP0 控制传输一问一答给设备"登记造册"的过程。本篇章每一节对应枚举时间线上的一个阶段，压轴（4.11）用 Wireshark/USBpcap 抓真机逐包对照。
+
+## 4.1 枚举完整时间线（插入 → 检测 → 复位 → Default → Address → Configured）
+
+### 为什么要有"枚举"这一步
+
+PCI 卡插上主板，资源地址是固定分配的（门牌号焊死）；USB 设备即插即拔，每次插入都可能是不同的口、不同的 Hub 下游。所以 USB 规定：**设备插入后不能自己说话，必须等 Host 来问，一问一答走完全套流程，设备才被"认识"**。
+
+之前的问题"USB 标准请求主要做什么用的"——答案在这里揭晓：**标准请求的一大半工作就是枚举**。GET_DESCRIPTOR(0x06)、SET_ADDRESS(0x05)、SET_CONFIGURATION(0x09) 全部登场。
+
+### 核心框架：设备的 6 个状态
+
+USB 2.0 规范第 9 章定义的设备状态机，是理解整个 Phase 4 的骨架：
+
+```
+插入
+ │
+ ▼
+[Attached 已连接] ──上电──► [Powered 已上电]
+                                │ 总线复位（SE0，≥10ms）
+                                ▼
+                          [Default 默认]   地址=0，只有 EP0 可用
+                                │ SET_ADDRESS(新地址)     ▲ Set_Address(0) 或复位打回
+                                ▼                         │
+                          [Address 已编址] 有唯一地址，仍只有 EP0
+                                │ SET_CONFIGURATION(1)    ▲ Set_Configuration(0) 打回
+                                ▼                         │
+                          [Configured 已配置] 全部端点启用 ─┘
+                                │ 总线 3ms 无活动
+                                ▼
+                          [Suspended 挂起] ──总线活动/唤醒──► 回到原状态
+```
+
+| 状态 | 含义 | 设备能干什么 |
+|------|------|-------------|
+| Attached | 物理插入，hub 检测到 | 啥也不能干，还没上电 |
+| Powered | 已上电 | 还不能通信 |
+| Default | 总线复位后 | **只响应 EP0，且地址是公共的 0** |
+| Address | 领到唯一地址（1~127） | 仍然只有 EP0 能用 |
+| Configured | 激活了配置 | **非 EP0 端点全部启用，接口功能可用** |
+| Suspended | 总线 3ms 没动静 | 省电待机 |
+
+三个记忆锚点：
+
+- **Default = 无名氏**：所有刚复位的设备都叫"地址 0"，像没领工牌的新员工。
+- **Address = 有名字了，但没上岗**：只有 EP0 能应答。
+- **Configured = 上岗**：这之后才谈得上"开流"（SET_INTERFACE）、批量/等时传输——本知识库第六篇的所有实战（XU 命令、取流）都发生在 Configured 之后。
+
+### 完整时间线（Host 视角，教科书主线 10 步）
+
+```
+① 插入           hub 检测到 D+/D- 上拉电平变化 → 状态 Attached
+② 复位           Host 把总线拉低 ≥10ms（SE0）→ 状态 Default（地址=0）
+③ 第 1 次读      GET_DESCRIPTOR(Device)，只读前 8 字节
+   → 只为拿一个字段：bMaxPacketSize0（EP0 最大包，在 offset 7）
+④ Set_Address    Host 分配唯一地址（比如 5）→ 状态 Address
+⑤ 第 2 次读      GET_DESCRIPTOR(Device)，读完整 18 字节
+   → 完整自报家门：VID/PID/版本/配置个数...
+⑥ 读 Config 头   GET_DESCRIPTOR(Config)，先只读 9 字节
+   → 只为拿 wTotalLength（整条描述符链总长，在 offset 2~3）
+⑦ 读 Config 全链 GET_DESCRIPTOR(Config)，一次读完整条链
+   → 全部 Interface/Endpoint 描述符（lsusb -v 里看到的那整棵树）
+⑧ 读 String      GET_DESCRIPTOR(String) — 厂商名/产品名/序列号
+   （可多次、可跳过，不是所有设备都有）
+⑨ Set_Config     SET_CONFIGURATION(1) → 状态 Configured，非 EP0 端点全部启用
+⑩ （总线之外）   OS 按 VID/PID/Class 匹配并加载驱动 → 设备就绪，可以开流了
+```
+
+`sudo lsusb -v -d 2bdf:0101` 里看到的整棵描述符树（Device → Configuration → 两个 Interface → Endpoint → XU 单元），就是在第 ⑤⑥⑦ 步被 Host 一段一段问出来的。
+
+一个贯穿性的事实：**枚举全流程只走 EP0 控制传输**——数据端点全程没参与。这正是 EP0 被类比为"$SYS/ 系统主题"的原因：先谈系统的事，业务管道后面才开。
+
+### 三个"为什么"（理解了才算真的懂）
+
+**1. 为什么 Device Descriptor 要读两次？**
+
+第一次读的时候，Host 连"设备 EP0 一次最多收多少字节"都不知道。规范保证任何设备的前 8 字节都能读（bMaxPacketSize0 恰好在前 8 字节的最后一个字节）。拿到这个数，第二次才敢读满 18 字节。类比：先问对方"你一次最多听我讲几个字"，再决定长句怎么断句。
+
+**2. 为什么 Config 描述符要先读 9 字节头？**
+
+Host 不知道整条配置链有多长（Interface/Endpoint 个数不定），wTotalLength 写在 Config Descriptor 头的 offset 2~3。类比：快递外箱先看"内件总长"，再决定开多大的车去装。
+
+**3. 为什么设备全程不能主动说话？**
+
+USB 是 Host 中心总线：令牌（Token）只有 Host 能发。枚举就是一场单方面发问的"审讯"——设备只有被 IN 令牌点到名，才允许回答。这呼应了第二篇学的：所有传输都是 Host 发起。
+
+### 类比：新员工入职
+
+| 枚举步骤 | 入职场景 |
+|---------|---------|
+| 插入（hub 检测上拉） | 推门进公司，前台感应到有人 |
+| 总线复位 | 安检：一切归零，从头办手续 |
+| 读 8 字节 | 先自报最基础信息（"我一次最多听几个字"） |
+| Set_Address | 领工牌号（地址 5） |
+| 读 18 字节 | 交完整简历（VID/PID/版本...） |
+| 读 Config 链 | 交部门配置表（几个接口、每个接口几条管道） |
+| 读 String | 补花名册（"USB Thermal Camera"、序列号） |
+| Set_Configuration | 门禁卡激活、工位通电 |
+| 驱动加载 | HR 系统录入完毕，正式开工 |
+
+MQTT 视角：枚举 ≈ 客户端接入 broker 的握手——TCP 连上 → CONNECT 报能力 → CONNACK 确认 → 才能订阅/PUBLISH。没走完握手，什么 Topic 都别想动；没枚举完，什么端点都别想用。
+
+---
+
+# 第五篇：真实设备描述符实战
 
 > 基于三台真实海康 USB 摄像头，从字节级拆解 USB 描述符。
 
-## 4.1 三台设备速览
+## 5.1 三台设备速览
 
 | 项目 | 设备 1 (HikCamera #1) | 设备 2 (HikCamera #2) | 设备 3 (2K USB Camera) |
 |---|---|---|---|
@@ -1646,7 +1752,7 @@ Device 回 "World":
 | 视频格式 | YUY2/MJPEG/H.264, 最高640×360@30 | 同左 | MJPG/NV12/YUY2, 最高2560×1440@30 |
 | 音频 | 无 | 无 | PCM 16kHz/16bit/单声道 |
 
-## 4.2 描述符获取流程：枚举
+## 5.2 描述符获取流程：枚举
 
 ```
  设备                       Host
@@ -1667,7 +1773,7 @@ Device 回 "World":
 2. 完整链一次性返回——配置+IAD+接口+类专用+端点，全在一个包里
 3. 字符串是懒加载——描述符里只放索引（iManufacturer=0x01），Host 需要显示时才单独请求
 
-## 4.3 Device Descriptor 关键字段
+## 5.3 Device Descriptor 关键字段
 
 ### bDeviceClass = 0xEF，为什么不直接写 0x0E (Video)？
 
@@ -1679,7 +1785,7 @@ Device 回 "World":
 
 **一句话：设备级 class 管"整台机器是不是复合的"，IAD 的 function class 才管"每个功能是什么"。**
 
-## 4.4 IAD（Interface Association Descriptor）
+## 5.4 IAD（Interface Association Descriptor）
 
 设备 1 的 IAD：
 
@@ -1692,7 +1798,7 @@ bFunctionSubClass = 0x03  ← Video Interface Collection
 
 Host 的 UVC 驱动（Windows 的 usbvideo.sys）就是看到 `bFunctionClass=0x0E, bFunctionSubClass=0x03` 才决定加载自己的。
 
-## 4.5 Interface Descriptor — VC vs VS
+## 5.5 Interface Descriptor — VC vs VS
 
 | 字段 | 接口 0 (VC) | 接口 1 (VS) |
 |------|-------------|-------------|
@@ -1702,7 +1808,7 @@ Host 的 UVC 驱动（Windows 的 usbvideo.sys）就是看到 `bFunctionClass=0x
 
 bInterfaceSubClass 是 UVC 描述符体系的第一道分叉口——Host 据此区分控制接口和流接口。
 
-## 4.6 Endpoint Descriptor
+## 5.6 Endpoint Descriptor
 
 设备 1 的两个端点：
 
@@ -1715,7 +1821,27 @@ bInterfaceSubClass 是 UVC 描述符体系的第一道分叉口——Host 据此
 
 设备 1/2 用 Bulk 传视频是因为分辨率低（最高 640×360），Bulk 的重传机制反而更省心。设备 3 做 2K@30 则推断使用等时端点。
 
-## 4.7 UVC 类专用描述符机制（0x24 / 0x25）
+### 为什么视频用 Bulk 而不是等时？（完整性 vs 实时性）
+
+"视频 = 等时"是典型，不是规定——传输类型由设备在端点描述符里声明（bmAttributes），Host 照单执行。
+
+| | 等时传输 | 批量传输 |
+|---|---|---|
+| 带宽 | **保证**（帧内预留） | 吃剩余带宽，不保证 |
+| 延迟 | **固定节拍** | 不保证（拥堵时可能延迟） |
+| 出错 | **不重传**，错了就丢 | **CRC 错了自动重传**，保证完整 |
+
+厂商的选择是"完整性 vs 实时性"的权衡：
+- **罗技摄像头（等时）**：视频会议场景，花一帧无所谓、卡顿才难受 → 实时性优先
+- **热成像（Bulk）**：低分辨率带宽需求小，测温数据错一个像素可能比慢一点更糟 → 完整性优先
+
+海康的算盘：分辨率低（120×160 / 640×360）→ 带宽完全够 → 用 Bulk 白赚"重传保证完整"，代价（延迟不保证）在慢变化画面上无所谓。同一个厂商的 2K@30 设备（设备 3）就必须上等时——那个带宽和实时性 Bulk 扛不住。
+
+规范演变：UVC 1.0/1.1 只定义等时，UVC 1.5 才把 Bulk 写进规范——业界先出现"低带宽、要完整"的设备，规范才追认。海康属于提前这么干的厂商实现。
+
+类比：等时 = 直播（按时播放，信号不好就花屏不重放）；Bulk = 文件下载（慢点可以，一个字节都不能错）。
+
+## 5.7 UVC 类专用描述符机制（0x24 / 0x25）
 
 UVC 的类专用描述符大量复用同一个 `bDescriptorType`：
 
@@ -1768,7 +1894,7 @@ bDescriptorType = 0x24 (Video Control Interface)
 | 11 | bInCollection | 0x01 | 1 个 VS 接口关联 |
 | 12 | baInterfaceNr[1] | 0x01 | VS 接口号 = 1 |
 
-## 4.8 设备 1 完整 433 字节描述符链追踪
+## 5.8 设备 1 完整 433 字节描述符链追踪
 
 ### 逐段验算
 
@@ -1808,7 +1934,7 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔
                                          合计 = 433 B = 0x01B1 ✔
 ```
 
-## 4.9 设备 1 vs 设备 2 差异分析
+## 5.9 设备 1 vs 设备 2 差异分析
 
 | 对比项 | 设备 1 | 设备 2 | 说明 |
 |---|---|---|---|
@@ -1826,7 +1952,7 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔
 
 同一字节，两种速度两种含义。
 
-## 4.10 设备 3 从 KS 数据反推描述符结构
+## 5.10 设备 3 从 KS 数据反推描述符结构
 
 设备 3 没有原始描述符 dump，但从 Windows 驱动层数据反推：
 
@@ -1862,7 +1988,7 @@ Device Descriptor          bDeviceClass = 0xEF（复合设备）
 
 ---
 
-## 第四篇 FAQ
+## 第五篇 FAQ
 
 ### Q1: 为什么 bDeviceClass 不直接写 0x0E (Video)？
 
@@ -1930,11 +2056,11 @@ STATUS: Device → STALL ← ❌ 拒绝唯一发生在这里！
 
 ---
 
-# 第五篇：UVC XU 控制与取流实战
+# 第六篇：UVC XU 控制与取流实战
 
 ---
 
-## 5.1 UVC XU 扩展协议设计
+## 6.1 UVC XU 扩展协议设计
 
 ### CS_ID + SubFunc 二级命名空间
 
@@ -1999,7 +2125,7 @@ CS_ID 在白名单内，但:
 
 ---
 
-## 5.2 新设备上手实操指南
+## 6.2 新设备上手实操指南
 
 ### 三步找到所有参数
 
@@ -2041,7 +2167,7 @@ bit 0~9 置位 → CS_ID 0x01~0x0A 存在
 
 | 字段 | UVC XU 约定 | 你的设备值 |
 |------|------------|-----------|
-| wValue 高字节 | **CS_ID**（你要操作的功能号） | 0x04 / 0x05 / 等 |
+| wValue 高字节 | **CS_ID**（你要操作的功能号）—— 海康固件惯例；UVC 规范标准写法是 CS 在低字节 | 0x04 / 0x05 / 等 |
 | wValue 低字节 | 0x00 | 0x00 |
 | wIndex 高字节 | **XU Unit ID**（lsusb 查的 bUnitID） | 0x0A |
 | wIndex 低字节 | **接口号**（Video Control 的 bInterfaceNumber） | 0x00 |
@@ -2106,7 +2232,7 @@ libusb_control_transfer(
 
 ---
 
-## 5.3 标准 UVC 取流完整流程
+## 6.3 标准 UVC 取流完整流程
 
 ### 两个 wIndex 体系对比
 
@@ -2166,9 +2292,31 @@ struct uvc_probe {
 /* SET_INTERFACE 开流:  */ bmRT = 0x01(Standard), bReq = 0x0B, wValue = alt
 ```
 
+### 开流 = SET_INTERFACE 切通道：三层视图
+
+"开流"不是 SET_INTERFACE 之外的另一个动作——UVC 把"开流"设计成了"切通道"本身。同一个动作的三个观察面：
+
+| 层 | SET_INTERFACE 是什么 | 备注 |
+|---|---|---|
+| USB 标准层 | 接口换档位——Alt Setting 0 切到 Alt 1，端点描述符换掉 | USB 核心不关心你是什么类 |
+| UVC 设备固件层 | **流的开关**——UVC 规范 4.3.1.1：设备看到 Host 选中带流端点的 Alt Setting，就开始产出视频数据 | 固件把 SET_INTERFACE 当"开始流"信号 |
+| Host 应用层 | 最后一公里——应用必须真的去读端点，数据才流起来 | bulk 与等时行为不同（见下） |
+
+**Alternate Setting 两档**：Alt 0 = 零带宽（无数据端点，"静默"状态）；Alt 1+ = 带流端点（等时/批量），管道存在、带宽被分配。切档位 = 开/关阀门。
+
+**为什么借 Standard 请求而不是 Class 请求？** 因为开流 = 带宽分配。等时端点一激活，Host 控制器必须按 bInterval 预留总线带宽（FS 最多 90%、HS 每微帧 80%）。让"流开没开"直接体现在"端点存在与否"上，USB 核心统一管带宽账本——带宽不够 SET_INTERFACE 直接失败，流自然开不起来。
+
+**最后一公里：bulk vs 等时**
+- **Bulk**：切到 Alt 1 后管道通，但没人发 IN token 就没有数据流——必须应用调 `libusb_bulk_transfer` 发起读，数据才动（本设备 2bdf:0101 属此类）
+- **等时**：Host 控制器自动按 bInterval 发 IN token，设备主动放数据——但应用不提交 transfer 接住，帧就丢
+
+`uvc_start_streaming()` 内部 = ① SET_INTERFACE 开阀门 + ② 启动读线程不停发 IN token 接数据。
+
+**类比**：SET_INTERFACE = 拧开水龙头阀门（管道接通、水压就绪）；bulk 设备的水要有人拿桶接（IN token）；等时设备是管道自带泵（控制器按节拍抽），没人摆桶就白流（丢帧）。
+
 ---
 
-## 5.4 码流类型切换实战
+## 6.4 码流类型切换实战
 
 > 本节是 `uvc_stream_viewer.cpp` 开发过程中踩坑的总结。
 
@@ -2246,7 +2394,7 @@ GUID: YUY2              期望 38400 字节         不是 38400 字节
 
 ---
 
-## 5.5 uvc_stream_viewer 完整流程
+## 6.5 uvc_stream_viewer 完整流程
 
 ```
 ① libusb 打开 → detach 内核驱动
@@ -2263,9 +2411,27 @@ GUID: YUY2              期望 38400 字节         不是 38400 字节
 g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cflags --libs opencv4)
 ```
 
+### 为什么同一份代码 bulk/等时设备都能跑（libuvc 抽象层）
+
+`uvc_start_streaming()` 内部开工流程：
+
+```
+① 自己解析设备描述符（不是你的代码去解析）
+② 看视频端点 bmAttributes：
+     ├─ 0x02 Bulk → 内部开 bulk 读循环（libusb_bulk_transfer）
+     └─ 0x05 Isoc → 内部开等时队列（alloc/fill_iso/submit）
+③ 无论哪种，内部用 UVC 载荷头（12 字节，bmHeaderInfo 的 FID/EOF 位标记帧起止）
+   把 USB 包拼装成【完整帧】
+④ 把完整帧交给你的回调：uvc_frame_t
+```
+
+**你的代码依赖的接口是"帧"，不是"包"**——回调里拿到的永远是拼好的完整一帧（`frame->data` + `frame->data_bytes`）。用哪种管道运帧是 libuvc 内部的事：2bdf:0101 走 bulk 分支，罗技自动切等时分支，回调签名和流程不变。
+
+分层抽象的意义就是"上面一层不用改"——正如调 `libusb_control_transfer` 不用管 Host 控制器是 xHCI 还是 EHCI。
+
 ---
 
-## 5.6 实战踩坑全记录（★★★★★ 最重要）
+## 6.6 实战踩坑全记录（★★★★★ 最重要）
 
 | # | 症状 | 根因 | 修复 | 重要度 |
 |---|------|------|------|--------|
@@ -2290,7 +2456,7 @@ g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cf
 
 ---
 
-## 5.7 Interface 和 Endpoint 区分
+## 6.7 Interface 和 Endpoint 区分
 
 **一句话总结：**
 - **控制传输 = 发命令**（"请把分辨率调到 640x480"），走 EP0
@@ -2305,6 +2471,208 @@ g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cf
 | 参数指定方式 | bmRequestType+wValue+wIndex | 端点地址 | 端点地址 |
 | 有 SETUP 包？ | 有（8 字节） | 无 | 无 |
 
+## 6.8 标准 UVC 控制：亮度/对比度/白平衡（PU）
+
+### 定位：标准控制住在 Processing Unit
+
+亮度、对比度、饱和度、锐度、增益、白平衡是 UVC 规范的**标准图像处理控制**，住在描述符链里的 **Processing Unit (PU)**——拓扑链 `IT → PU → XU → OT` 中的"标准窗口"。XU 是"厂商私人窗口"（语义厂商定义，CS_ID+SubFunc 二级命名空间），PU 是"标准窗口"（语义规范写死，一个字节的 Control Selector 就够了）。
+
+沿用第八会话的类比（UVC=快递公司，XU=包裹内容单）：
+- **PU 标准控制 = 快递单上的公开字段**（收件人、重量）——全国表格都一样，不用问就知道格式
+- **XU = 包裹里的私密附言**——只有收发双方约定才知道含义
+- **控制传输 = 同一辆快递车**——EP0 + Class 请求，传送机制没有任何区别
+
+### PU 的值从哪来：bUnitID 实操
+
+PU 的值 = PU 描述符里的 `bUnitID`，是设备固件在描述符中声明的，**每台设备自己定，不是规范常数**。设备 2 的真实 dump：
+
+```
+===== VC Processing Unit Descriptor (12 B) =====
+bLength=0x0C  bDescriptorType=0x24  bDescriptorSubtype=0x05 (Processing Unit)
+bUnitID = 0x05    ← PU 的值，就是它
+bSourceID = 0x01  ← 上游模块 ID（拓扑链靠它串起来）
+wMaxMultiplier = 0x4000    bmControls = 00 00（无标准控制）
+```
+
+- 原始字节里 `bUnitID` 是 PU 描述符的**第 4 个字节**（偏移 3）：`bLength, bType(0x24), bSubtype(0x05), bUnitID, ...`
+- 拿到后填 `wIndex = (5 << 8) | VC_IF = 0x0500`——与 XU 同构（XU 的 bUnitID=10 → `0x0A00`），同一个寻址机制
+- 新设备的 PU 编号可能不是 5，**每次接新设备必须重读**，不能照抄旧值
+
+```bash
+sudo lsusb -v -d 2bdf:0101 | grep -B2 -A12 "Processing Unit"
+# 找 bUnitID 字段 → 填进 wIndex 高字节
+```
+
+拓扑链 `IT → PU → XU → OT` 里每个模块都有门牌号（Unit/Terminal ID），wIndex 高字节就是控制命令的邮寄地址。
+
+### 与 XU 的寻址对照
+
+| 要素 | XU（海康设备已验证） | 标准 PU |
+|---|---|---|
+| bmRequestType | 0x21 / 0xA1 | 一样 |
+| bRequest | 0x01 / 0x81 / 0x85 | 一样，另多 4 个探测码：0x82/0x83/0x84/0x86/0x87 |
+| wValue | 本厂商惯例：CS_ID 在**高字节**（`CS_ID << 8`） | **规范规定 CS 在低字节**（亮度=0x0002），高字节=0 |
+| wIndex | `(XU_ID << 8) \| VC_IF` | 一样：`(PU_ID << 8) \| VC_IF` |
+| 前置流程 | FUNC_SWITCH → GET_LEN → GET_CUR 三阶段 | **没有前置**，直接寻址 |
+
+> ⚠️ **厂商惯例 vs 规范（重要）**：UVC 规范的标准写法是 wValue 低字节 = CS；海康热成像固件（2bdf:0101）是反的（CS 在高字节），所以 `xu_minimal_get.c` / `uvc_stream_viewer.cpp` 里都写 `(CS_ID << 8)`。接新设备先用一个已知控制试通，确定字节序再批量操作——不要假设新设备也走海康惯例。
+
+### D6-5 三层字典：Standard / Class / Vendor 谁发谁定
+
+**不是设备决定的，是"发请求的那层软件"决定的**——寄件人决定用哪张快递单。
+
+| D6-5 | 字典 | 谁来发 | 什么时候出现 | 例子 |
+|---|---|---|---|---|
+| 00 | Standard | 操作系统 USB 核心（usbcore/xHCI） | 枚举 + 基本管理 | GET_DESCRIPTOR(0x06)、SET_ADDRESS(0x05)、SET_CONFIGURATION(0x09)、SET_INTERFACE(0x0B) |
+| 01 | Class | 类驱动 / 按类规范写的应用（libusb 代码就是这层） | 正常运行期调参数 | UVC SET_CUR(0x01)、GET_CUR(0x81)、GET_LEN(0x85)、Probe/Commit |
+| 10 | Vendor | 厂商 SDK | 厂商私有功能 | 海康私有控制 |
+
+时间线：`插入 → 枚举（全 Standard）→ 正常工作（调参数走 Class）→ 厂商黑科技（Vendor）`。设备还没被"认识"（连地址都没有）时谈不上类和厂商，只有核心规范可用。
+
+两个判断技巧：
+1. **查字典**：00 → 《USB 2.0 规范第 9 章》（所有设备都必须懂，与类无关）；01 → 《类规范》（UVC 表 4-1 等，声明哪个类就懂哪本）；10 → 无公开字典，只有厂商文档
+2. **看高 nibble 速判**：`0x0_`/`0x8_` = Standard，`0x2_`/`0xA_` = Class，`0x4_`/`0xC_` = Vendor（`0x21` → Class OUT ✓，`0xA1` → Class IN ✓）
+
+**接收者和类型强相关**：Class 请求几乎总是发给 Interface——"类"以接口为单位组织，`bInterfaceClass=0x0E` 就是"接口 0 懂 UVC 字典"的合同；Standard 请求三个接收者都用；Vendor 随便。
+
+### XU：Class 信封 + Vendor 内容
+
+XU 请求本身是**标准 UVC 类请求**（D6-5=01），只有信封里的"内容"是厂商自定义的：
+
+| 层 | 归谁管 | 证据 |
+|---|---|---|
+| 信封（传输机制） | UVC 规范 | bmRequestType=0x21/0xA1，bRequest 用 SET_CUR/GET_CUR/GET_LEN/GET_INFO——与 PU 完全同一套 |
+| 地址（寻址） | UVC 规范 | wIndex=(XU_ID<<8)\|IF、wValue=控制号 1..bNumControls（规范 4.2.1 定义） |
+| 内容（控制含义） | 厂商 | 控制 1 是曝光还是降噪、数据怎么解释——只有厂商 SDK 知道 |
+
+- **GUID = 信封上的厂商署名**：XU 描述符的 `guidExtensionCode`（海康 `{A29E7641-...}`）告诉 Host 这套暗语是哪家的
+- **为什么这样设计**：信封标准化 → 通用工具（uvcvideo/usbvideo）能**不理解内容**就枚举 XU、GET_INFO 试探、读写字节块。第六会话能对海康 XU 跑通三阶段，正因为信封是标准的——要逆向的只有信的内容
+- **四种组合**：Standard=公文（格式含义全国统一）；PU=快递单公开字段；**XU=快递单备注栏（栏位标准、暗语私密）**；Vendor(D6-5=10)=连单据都是私制
+- CS_ID+SubFunc 二级命名空间是**在厂商信封里再套一层自己的协议**（学习项目设计），海康固件只认控制号 1..N
+
+### 逐字节：SET_CUR 设亮度 +20（标准写法）
+
+```
+CTL  21 01  02 00  05 00  02 00        ← 8 字节 SETUP
+OUT  14 00                             ← DATA：+20（int16 小端）
+```
+
+| 字节 | 字段 | 值 | 含义 |
+|---|---|---|---|
+| 0 | bmRequestType | 0x21 | OUT + Class + Interface（和发 XU 一模一样） |
+| 1 | bRequest | 0x01 | SET_CUR |
+| 2-3 | wValue | 0x0002 | **CS = PU_BRIGHTNESS_CONTROL = 0x02** |
+| 4-5 | wIndex | 0x0005 | 高字节 = **PU 的 bUnitID = 5**，低字节 = VC 接口号 0 |
+| 6-7 | wLength | 0x0002 | DATA 阶段 2 字节 |
+| DATA | 数据 | `14 00` | int16 小端 = +20，**0 = 默认**，负 = 变暗，正 = 变亮 |
+
+读回来是镜像：`CTL A1 81 02 00 05 00 02 00` + IN 2 字节。"换设备只改 wIndex 高字节"（第六会话结论）对 PU 同样成立：`lsusb -v` 找 Processing Unit 的 `bUnitID` 填进去。
+
+### 请求码全家桶
+
+| bRequest | 名字 | 问什么 |
+|---|---|---|
+| 0x81 | GET_CUR | 当前值 |
+| 0x01 | SET_CUR | 设值 |
+| 0x82 | GET_MIN | 最小值 |
+| 0x83 | GET_MAX | 最大值 |
+| 0x84 | GET_RES | 步进分辨率 |
+| 0x85 | GET_LEN | 数据长度（返回 2 字节） |
+| 0x86 | GET_INFO | 1 字节能力位图 |
+| 0x87 | GET_DEF | 默认值 |
+
+**GET_INFO 返回的 1 字节位图**（和 bmControls 位图一个思路）：
+
+```
+D0 = 1  支持 GET（可读）
+D1 = 1  支持 SET（可写）
+D2 = 1  当前被自动模式禁用 ← 关键！很多相机开自动曝光时亮度就是 D2=1
+D3~D7  保留
+```
+
+两层"能力声明"，呼应"不能信任描述符"：
+1. **描述符层**：PU 的 `bmControls` 位图——bit N=1 → CS(N+1) 存在（硬件有没有这个寄存器）
+2. **运行时层**：GET_INFO——此刻能不能读/写（自动模式可能临时接管）
+
+### 完整报文速查表（示例：PU_ID=5, VC_IF=0，规范字节序）
+
+> 换设备只改 wIndex 高字节（PU 的 bUnitID）；海康设备注意 wValue 要按高字节惯例改写（CS<<8）。
+
+| CS | 控制 | 数据 | GET_INFO（读能力，返 1B） | GET_CUR（读当前值） |
+|---|---|---|---|---|
+| 0x01 | 背光补偿 Backlight | u16 ×2B | `A1 86 01 00 05 00 01 00` | `A1 81 01 00 05 00 02 00` |
+| 0x02 | 亮度 Brightness | **i16 有符号** ×2B，0=默认 | `A1 86 02 00 05 00 01 00` | `A1 81 02 00 05 00 02 00` |
+| 0x03 | 对比度 Contrast | u16 ×2B，0=默认 | `A1 86 03 00 05 00 01 00` | `A1 81 03 00 05 00 02 00` |
+| 0x04 | 增益 Gain | u16 ×2B | `A1 86 04 00 05 00 01 00` | `A1 81 04 00 05 00 02 00` |
+| 0x05 | 工频抑制 PowerLineFreq | u16 ×2B（0=关, 1=50Hz, 2=60Hz） | `A1 86 05 00 05 00 01 00` | `A1 81 05 00 05 00 02 00` |
+| 0x06 | 色相 Hue | i16 有符号 ×2B | `A1 86 06 00 05 00 01 00` | `A1 81 06 00 05 00 02 00` |
+| 0x07 | 色相自动 HueAuto | u8 ×1B（0=关, 1=开） | `A1 86 07 00 05 00 01 00` | `A1 81 07 00 05 00 01 00` |
+| 0x08 | 饱和度 Saturation | u16 ×2B | `A1 86 08 00 05 00 01 00` | `A1 81 08 00 05 00 02 00` |
+| 0x09 | 锐度 Sharpness | u16 ×2B | `A1 86 09 00 05 00 01 00` | `A1 81 09 00 05 00 02 00` |
+| 0x0A | 伽马 Gamma | u16 ×2B（×100，100=γ1.0） | `A1 86 0A 00 05 00 01 00` | `A1 81 0A 00 05 00 02 00` |
+| 0x0B | 白平衡温度 WBT | u16 ×2B（单位 K，如 6500=6500K） | `A1 86 0B 00 05 00 01 00` | `A1 81 0B 00 05 00 02 00` |
+| 0x0C | 白平衡温度自动 WBTAuto | u8 ×1B（0/1） | `A1 86 0C 00 05 00 01 00` | `A1 81 0C 00 05 00 01 00` |
+| 0x0D | 白平衡分量 WBComponent | **4B**（u16 蓝 + u16 红） | `A1 86 0D 00 05 00 01 00` | `A1 81 0D 00 05 00 04 00` |
+| 0x0E | 白平衡分量自动 | u8 ×1B（0/1） | `A1 86 0E 00 05 00 01 00` | `A1 81 0E 00 05 00 01 00` |
+| 0x0F | 数字倍率 DigitalMult | u16 ×2B（1/16 定点） | `A1 86 0F 00 05 00 01 00` | `A1 81 0F 00 05 00 02 00` |
+| 0x10 | 数字倍率上限 | u16 ×2B | `A1 86 10 00 05 00 01 00` | `A1 81 10 00 05 00 02 00` |
+
+（0x11~0x14 为 UVC 1.5 新增：HueAuto 重复定义、模拟视频制式、模拟锁定状态、对比度自动——常见摄像头少见实现。）
+
+**其余报文的变换规则**（不用背，三条规则覆盖全部）：
+- **GET_MIN/GET_MAX/GET_RES/GET_DEF**：报文与 GET_CUR 完全相同，只把第 2 字节 bRequest 换成 0x82/0x83/0x84/0x87
+- **SET_CUR**：把 GET_CUR 的 `A1 81` 换成 `21 01`，DATA 阶段方向变 OUT（例：设亮度 +20 = `21 01 02 00 05 00 02 00` + OUT `14 00`）
+- **GET_LEN**：`A1 85 CS 00 05 00 02 00`，返回 2 字节数据长度
+
+### 数据格式要点（MQTT 级精度）
+
+- **亮度、色相是 int16 有符号**（0=默认，可负可正）；**对比度/增益/饱和度/锐度/伽马是 uint16 无符号**
+- **白平衡温度单位 K**；**白平衡分量 4 字节**（u16 蓝分量 + u16 红分量，两个通道各 2 字节）
+- **自动类控制（0x07/0x0C/0x0E）只有 1 字节**：0=手动模式，1=自动模式——开自动后对应手动控制通常 GET_INFO D2=1（被禁用）
+
+### 标准控制的发现五件套
+
+```
+① 描述符 bmControls bit1 = 1?        → 亮度控制存在吗
+② GET_INFO(0x02) 返回 D2=0?          → 没被自动模式禁用吗
+③ GET_MIN / GET_MAX / GET_DEF        → 值域和默认值
+④ GET_CUR                           → 当前值
+⑤ SET_CUR                           → 设新值
+```
+
+对比 XU 的三阶段（FUNC_SWITCH → GET_LEN → GET_CUR）：XU 的复杂度来自"语义未知、要厂商定义"；标准的复杂度来自"值域未知、要运行时探测"。**一个在猜协议，一个在读手册。**
+
+### libusb 完整示例（规范字节序）
+
+```c
+#define PU_ID   5       // lsusb -v 里 Processing Unit 的 bUnitID
+#define VC_IF   0       // Video Control 接口的 bInterfaceNumber
+// 注意：这是 UVC 规范写法（wValue 低字节=CS）。
+// 海康热成像固件是反的（wValue = CS << 8），先试通再定字节序。
+
+// 设亮度 +20
+unsigned char data[2] = {0x14, 0x00};              // int16 LE = +20
+libusb_control_transfer(devh,
+    0x21,                  // OUT, Class, Interface
+    0x01,                  // SET_CUR
+    0x0002,                // wValue = PU_BRIGHTNESS_CONTROL
+    (PU_ID << 8) | VC_IF,  // wIndex — 换设备只改这里
+    data, 2, 1000);
+
+// 读值域/能力/当前值
+unsigned char buf[2], info;
+libusb_control_transfer(devh, 0xA1, 0x82, 0x0002, (PU_ID<<8)|VC_IF, buf, 2, 1000);   // GET_MIN
+libusb_control_transfer(devh, 0xA1, 0x83, 0x0002, (PU_ID<<8)|VC_IF, buf, 2, 1000);   // GET_MAX
+libusb_control_transfer(devh, 0xA1, 0x86, 0x0002, (PU_ID<<8)|VC_IF, &info, 1, 1000); // GET_INFO
+libusb_control_transfer(devh, 0xA1, 0x81, 0x0002, (PU_ID<<8)|VC_IF, buf, 2, 1000);   // GET_CUR
+```
+
+### 为什么海康设备没走这条标准通道
+
+设备 1/2 的 PU `bmControls = 00 00`——标准处理控制一个都没实现，对这些 CS 发 SET_CUR 会直接 STALL（硬件拒绝）。这是产品策略：厂商把亮度/对比度/增益全塞进 XU 私有控制（第五篇 Q6 的 10 个启用 control），配合厂商 SDK 卖。标准桌面摄像头（罗技等）才会实现 PU。
+
+**但标准通道值得学**：它是 UVC 规范的"正文"，XU 是"附录"。接第三方摄像头第一步查 PU bmControls——这条是通用的，不依赖任何厂商文档。
+
 ---
 
 # 附录：快速参考手册
@@ -2316,7 +2684,7 @@ g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cf
 ```
 Byte 0: bmRequestType    0x21=OUT Class IF   0xA1=IN Class IF   0x01=Standard
 Byte 1: bRequest         0x01=SET_CUR        0x81=GET_CUR       0x85=GET_LEN
-Byte 2-3: wValue (LE)   高字节=CS_ID, 低字节=0
+Byte 2-3: wValue (LE)   高字节=CS_ID, 低字节=0   ← 海康固件惯例；UVC 规范标准写法是低字节=CS
 Byte 4-5: wIndex  (LE)  高字节=XU Unit ID, 低字节=接口号  — 换设备只改这里！
 Byte 6-7: wLength (LE)  DATA 阶段字节数
 ```
@@ -2327,6 +2695,8 @@ Byte 6-7: wLength (LE)  DATA 阶段字节数
 Bit 7:   方向 — 0=OUT(Host→Dev)  1=IN(Dev→Host)
 Bit 6-5: 字典 — 00=Standard  01=Class  10=Vendor
 Bit 4-0: 接收者 — 0=Device  1=Interface  2=Endpoint
+
+速判（看高 nibble）：0x0_/0x8_=Standard  0x2_/0xA_=Class  0x4_/0xC_=Vendor
 ```
 
 ## A.2 三种 wIndex 填法

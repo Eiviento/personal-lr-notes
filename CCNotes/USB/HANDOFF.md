@@ -1,9 +1,9 @@
 # HANDOFF — USB 协议学习会话交接文档
 
-> 更新时间：2026-08-02（第九会话）
-> 主线学习进度：32/67 知识点（48%）— 暂停在 Phase 4 入口
-> 本会话重点：**USB 协议知识库整理**——将分散在 7 个 .md 文件和 1 个 HTML 文件中的所有知识点整合为一份结构清晰的单文件 Markdown 文档
-> 上一会话（第八会话）：UVC 取流实战——libuvc + OpenCV 实时显示，XU 码流类型切换，MJPEG 描述符欺诈
+> 更新时间：2026-08-13（第十会话）
+> 主线学习进度：33/67 知识点（49%）— Phase 4 进行中（4.1 已完成）
+> 本会话重点：**Phase 4.1 枚举开讲** + UVC 标准控制问答（PU/XU/请求码全家桶）+ **wValue 字节序真机验证修正** + 知识库重编号（六篇结构）
+> 上一会话（第九会话）：USB 协议知识库整理
 > **⚠️ 工作分支: `redesign/usb-notes-3file`（未合并到 main）**
 
 ---
@@ -19,7 +19,7 @@
 ### 副线任务：笔记 Web 可视化
 
 把学习笔记做成**离线 HTML 页面**，零外部依赖，双击打开。已从单文件翻新为 3 文件架构：
-- `usb-notes.html` — Phase 1-3 理论可视化（纯 HTML 结构，2,239 行）
+- `usb-notes.html` — Phase 1-4 理论可视化（纯 HTML 结构，~2,670 行）
 - `usb-notes.css` — 10 层分层样式（1,153 行，暗色默认 IDE 风格）
 - `usb-notes.js` — 4 模块脚本（885 行，数据/渲染/交互/初始化）
 - `descriptor-viewer.html` — 三台真实海康设备的描述符实战对比（未翻新，仍为单文件）
@@ -101,13 +101,38 @@
 7. **三种 wIndex**：VC XU = `(XU_ID<<8)|VC_IF`，VS = `VS_IF`，SET_INTERFACE = Standard bmRequestType + alt_setting
 8. **bmControls 位图**：`0xFF, 0x03` = bit 0~9 置位 → CS_ID 0x01~0x0A 存在
 
-### 第九会话（本次）：USB 协议知识库整理
+### 第十会话（本次）：Phase 4.1 枚举开讲 + UVC 标准控制问答 + 字节序真机修正
 
-**本次会话任务**：用户注意到 usb-notes 中有很多分散的文件（7 个 .md + 1 个 HTML），希望把所有知识点整理成一份结构清晰、内容完整的文档。
+**本会话主线**：主线推进到 Phase 4（枚举）——讲完 4.1 枚举完整时间线（33/67，49%），已存知识库 + HTML。同时密集回答 UVC 标准控制追问，并完成一次重大勘误（wValue 字节序）。（用户明确说过"USB 标准请求用途"那节可以不存——其核心结论已并入第四篇 §4.1 引言。）
+
+**本会话产出：**
+
+| 类型 | 文件 | 变更 |
+|------|------|------|
+| 知识库 | `USB-Protocol-Knowledge-Base.md` | 新增 §6.8 标准 UVC 控制（PU）完整教程（16 条控制报文全表）；新增 §5.6 bulk-vs-等时小节、§6.5 libuvc 抽象层小节；**新增第四篇：USB 枚举过程（§4.1）**；原第四/五篇重编号为第五/六篇（4.x→5.x、5.x→6.x，交叉引用全部同步） |
+| 笔记 | `notes/uvc-xu-extension-protocol-design.md` | 修正 3 处示例抓包 wValue 字节序（CS_ID 改放高字节）+ 字节序说明（2026-08-13 修正） |
+| 笔记 | `notes/real-device-descriptor-analysis.md` | §3.6 从"推测"升级为"真机验证"：CS_ID 在 wValue 高字节（海康固件惯例，与 UVC 规范低字节写法不同） |
+| HTML | `usb-notes.html` | 修正 10 处抓包字节序 + wIndex 表 Interface 行错误（接口号在低字节）+ 决策流图；新增 Phase 4 章节 + kp-4-1 卡片；侧边栏 1/12 ▶、进度条 49% |
+| 交接 | `HANDOFF.md` | 更新（本会话） |
+
+**本会话建立的深层理解（已存 KB）：**
+
+1. **PU vs XU**：PU=标准处理单元（亮度/对比度等标准控制，bmControls 位图声明），XU=厂商扩展（Class 信封 + Vendor 内容，guidExtensionCode 是厂商签名）
+2. **bmRequestType D6-5 三层字典**：Standard=OS USB 核心（枚举/生命周期）、Class=类驱动/应用、Vendor=厂商 SDK；半字节速判 0x0_/0x8_=Standard、0x2_/0xA_=Class、0x4_/0xC_=Vendor
+3. **UVC 请求码全家桶**：SET_CUR 0x01 / GET_CUR 0x81 / GET_MIN 0x82 / GET_MAX 0x83 / GET_RES 0x84 / GET_LEN 0x85 / GET_INFO 0x86 / GET_DEF 0x87；GET_INFO 位图 D0=GET 支持、D1=SET 支持、D2=被自动模式禁用
+4. **★ wValue 字节序真机事实**：海康 2bdf:0101 固件 CS_ID 在 wValue **高字节**（`CS_ID<<8`），由 xu_minimal_get.c / uvc_stream_viewer.cpp 真机验证；UVC 规范标准写法是低字节。**工作代码 > 手绘抓包 > 推测**
+5. **开流 = SET_INTERFACE 切 Alt Setting**：Alt0=零带宽（无端点）、Alt1+=流端点；SET_INTERFACE 本身就是设备"开流"开关（UVC 规范 4.3.1.1）
+6. **视频为什么可以用 Bulk**：完整性 vs 实时性权衡；等时=保证带宽/不重传（直播），Bulk=自动重传/不保证延迟（文件下载）；UVC 1.0/1.1 只定义等时、1.5 才加入 Bulk；热成像低分辨率+测温要完整 → 选 Bulk
+7. **libuvc 抽象层**：uvc_start_streaming() 内部读描述符 → 按 bmAttributes 分叉 bulk/isoc → 用 12 字节 UVC 载荷头（FID/EOF）拼完整帧 → 回调交付 uvc_frame_t；用户代码依赖"帧"接口不依赖"包"接口
+8. **枚举全景（4.1）**：6 状态机（Attached→Powered→Default→Address→Configured/Suspended）；10 步时间线；Device Descriptor 读两次（先 8 字节拿 bMaxPacketSize0）；Config 先读 9 字节头（wTotalLength）；枚举全走 EP0
+
+### 第九会话（上一会话）：USB 协议知识库整理
+
+**本会话任务**：用户注意到 usb-notes 中有很多分散的文件（7 个 .md + 1 个 HTML），希望把所有知识点整理成一份结构清晰、内容完整的文档。
 
 经过 brainstorming → 设计确认 → 实施，完成了：
 
-**本次会话产出：**
+**本会话产出：**
 
 | 类型 | 文件 | 变更 |
 |------|------|------|
@@ -115,7 +140,7 @@
 | 设计 | `docs/superpowers/specs/2026-08-02-usb-knowledge-base-design.md` | **新建**：知识库整理设计规格 |
 | 交接 | `HANDOFF.md` | **更新**：补充第九会话记录和最新文件结构 |
 
-**文档结构（五篇 + 附录）：**
+**文档结构（六篇 + 附录，经第十会话扩充）：**
 
 | 篇章 | 内容 | 来源 |
 |------|------|------|
@@ -123,17 +148,18 @@
 | 第一篇 | Phase 1 — USB 概览与总线拓扑（5 节） | `phase1-usb-overview.md` |
 | 第二篇 | Phase 2 — 通信模型（16 节 + 4 篇补充问答） | `phase2-communication-model.md` |
 | 第三篇 | Phase 3 — 描述符体系（11 节 + 4 篇补充问答 + CDC 综合示例） | `phase3-descriptors.md` |
-| 第四篇 | 真实设备描述符实战（5 章 + 10 FAQ） | `real-device-descriptor-analysis.md` |
-| 第五篇 | UVC XU 控制与取流实战（7 节 + 7 条踩坑记录） | `uvc-xu-extension-protocol-design.md` + `xu-new-device-setup-guide.md` |
+| 第四篇 | USB 枚举过程（4.1 枚举完整时间线） | 第十会话新增（主线 Phase 4） |
+| 第五篇 | 真实设备描述符实战（5 章 + 10 FAQ） | `real-device-descriptor-analysis.md` |
+| 第六篇 | UVC XU 控制与取流实战（7 节 + 7 条踩坑记录） | `uvc-xu-extension-protocol-design.md` + `xu-new-device-setup-guide.md` |
 | 附录 | 快速参考手册（9 张速查表：SETUP、wIndex、PID、描述符、MQTT 类比等） | 全部笔记提炼 |
 
 **整理策略：**
 - **只整合不删减**：所有笔记内容全部保留，不丢失任何知识点
 - **去重归并**：SETUP 包结构在第二篇详述，后续篇章用交叉引用；wIndex 三种填法归并到第二篇，附录保留速查
-- **实战紧跟理论**：描述符理论后面直接跟真实设备分析（第四篇），传输理论后面直接跟 XU 踩坑（第五篇）
+- **实战紧跟理论**：描述符理论后面直接跟真实设备分析（第五篇），传输理论后面直接跟 XU 踩坑（第六篇）
 - **保持原始深度**：逐字节解析、HEX dump、Bus Hound 抓包、MQTT 类比全部保留
 
-### 第八会话（上一会话）：UVC 取流实战——libuvc + OpenCV + XU 码流切换
+### 第八会话：UVC 取流实战——libuvc + OpenCV + XU 码流切换
 
 **本会话主线**：在 `xu_interactive.c`（EP0 控制传输）和裸 libusb 批量取流之间补上最后一环——**用 libuvc 做标准 UVC 取流 + OpenCV 实时显示**，并解决了热成像摄像头特有的码流类型切换问题。
 
@@ -176,7 +202,7 @@
 ```
 D:\CC\personal-lr-notes\CCNotes\USB\
 ├── HANDOFF.md                                    ← 你正在看的这份交接文档
-├── USB-Protocol-Knowledge-Base.md                 ← ★ 新建：知识库整合文档（2,337 行，覆盖全部笔记）
+├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~2,810 行，六篇 + 附录，覆盖全部笔记）
 ├── usb-protocol-learning-plan.md                 ← 完整学习计划（67知识点清单）
 ├── usb-notes.html                                ← Phase 1-3 理论可视化（纯 HTML 结构）
 ├── usb-notes.css                                 ← 10 层分层样式（暗色默认 IDE 风格）
@@ -212,15 +238,13 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ## 四、当前卡在哪 + 下一步计划
 
-### 主线学习：停在 Phase 4 入口
+### 主线学习：Phase 4 进行中（4.1 已完成）
 
-**没有卡住。** Phase 1-3 已完成（32/67，48%）。
+**没有卡住。** Phase 1-3 已完成，4.1 已讲完（33/67，49%）。
 
-**下一步：Phase 4 — USB 枚举过程（12 个知识点）**
+**下一步：Phase 4.2 — 阶段 0：设备检测（D+ 上拉 FS/HS 或 D- 上拉 LS → Host 检测电平变化）**
 
-从 4.1（枚举完整时间线：插入→检测→复位→Default→Address→Configured）开始讲，一次一个知识点。
-
-当用户说"继续"时，从这里开始。
+一次一个知识点。当用户说"继续"时，从这里开始。
 
 ### 副线一：UVC 取流工具已完成基础
 
@@ -259,7 +283,7 @@ git branch -d redesign/usb-notes-3file
 
 ### 用户可能要求的下一步
 
-- **主线**：说"继续" → Phase 4.1（枚举完整时间线：插入→检测→复位→Default→Address→Configured）
+- **主线**：说"继续" → Phase 4.2（阶段 0：设备检测——D+ 上拉/ D- 上拉的电平细节）
 - **知识库**：在 `USB-Protocol-Knowledge-Base.md` 中补充后续学习内容（Phase 4+）
 - **取流工具**：加录制/截图/伪彩切换/全屏
 - **XU 探索**：`xu_interactive.c` 加 SET_CUR 暴力扫描未知 CS_ID
@@ -270,7 +294,7 @@ git branch -d redesign/usb-notes-3file
 
 ---
 
-## 五、本次会话用户建立的深层理解（关键！）
+## 五、用户已建立的深层理解（跨会话累积，关键！）
 
 以下概念用户已彻底搞懂，不要重复讲解，但可以用做类比基础：
 
@@ -279,12 +303,19 @@ git branch -d redesign/usb-notes-3file
 3. **Bus Hound 局限性**：软件层抓包（URB 层），看不到 Token/PID/CRC/STATUS 阶段
 4. **CS_ID + SubFunc 二级命名空间**：FUNC_SWITCH → GET_LEN → GET_CUR 三阶段
 5. **STALL vs 错误码两层拒绝**：STALL=硬件拒绝，错误码=语义拒绝
-6. **libusb_control_transfer = 完整控制传输**：一次调用 = 2~3 个总线事务，不是单个事务 — ★ 本次
-7. **换新设备只改 wIndex 高字节**：XU Unit ID 从 lsusb -v 的 bUnitID 获取，其他 7 字节照抄 — ★ 本次
-8. **Interface ≠ Endpoint**：Interface=功能分类（控制传输用），Endpoint=数据管道（批量传输用），EP0 共用 — ★ 本次
-9. **端点归属**：非 EP0 端点只属于一个 Interface，Alternate Setting 可复用端点号 — ★ 本次
-10. **三种 wIndex 填法**：VC XU(带 Unit ID)、VS(只有接口号)、SET_INTERFACE(Standard bmRT+alt) — ★ 本次
-11. **bmControls 位图**：小端字节序，bit N=1 → CS_ID(N+1) 存在 — ★ 本次
+6. **libusb_control_transfer = 完整控制传输**：一次调用 = 2~3 个总线事务，不是单个事务 — ★ 第六会话
+7. **换新设备只改 wIndex 高字节**：XU Unit ID 从 lsusb -v 的 bUnitID 获取，其他 7 字节照抄 — ★ 第六会话
+8. **Interface ≠ Endpoint**：Interface=功能分类（控制传输用），Endpoint=数据管道（批量传输用），EP0 共用 — ★ 第六会话
+9. **端点归属**：非 EP0 端点只属于一个 Interface，Alternate Setting 可复用端点号 — ★ 第六会话
+10. **三种 wIndex 填法**：VC XU(带 Unit ID)、VS(只有接口号)、SET_INTERFACE(Standard bmRT+alt) — ★ 第六会话
+11. **bmControls 位图**：小端字节序，bit N=1 → CS_ID(N+1) 存在 — ★ 第六会话
+12. **PU 与 XU 的分工**：PU=标准控制（Class 请求寻址，bmControls 位图声明支持哪些），XU=厂商私有（Class 信封 + Vendor 内容） — ★ 第十会话
+13. **bmRequestType D6-5 字典速判**：0x0_/0x8_=Standard（OS USB 核心，枚举/生命周期），0x2_/0xA_=Class（类驱动/应用），0x4_/0xC_=Vendor（厂商 SDK） — ★ 第十会话
+14. **wValue 字节序（海康惯例）**：CS_ID 在高字节（`CS_ID<<8`）；UVC 规范标准是低字节；真机工作代码是唯一真相 — ★ 第十会话
+15. **开流 = SET_INTERFACE 切通道**：Alt0 零带宽 / Alt1+ 流端点，SET_INTERFACE 就是设备的"开流"开关 — ★ 第十会话
+16. **视频 Bulk vs 等时**：完整性 vs 实时性权衡；UVC 1.5 才定义 Bulk；热成像选 Bulk 的理由 — ★ 第十会话
+17. **libuvc 抽象层**：描述符→分叉 bulk/isoc→12 字节载荷头（FID/EOF）拼帧→回调交付 uvc_frame_t；依赖"帧"接口不依赖"包"接口 — ★ 第十会话
+18. **枚举全景**：6 状态机、10 步时间线、Device Descriptor 读两次的原因、Config 先读 9 字节头的原因、枚举全走 EP0 — ★ 第十会话
 
 ---
 
@@ -358,36 +389,44 @@ git branch -d redesign/usb-notes-3file
 42. **网络需要代理（127.0.0.1:7890）。**
 43. **Ubuntu 虚拟机**（`fdl@fdl-virtual-machine`），工作目录 `~/桌面/hikusb/`。
 
+### 知识库结构与协议事实（★ 第十会话新增）
+
+44. **★★★ 知识库篇章编号已重排（2026-08-13）！** 现在是六篇：第四篇=USB 枚举过程（新），第五篇=真实设备描述符实战（原第四篇，4.x→5.x），第六篇=UVC XU 控制与取流实战（原第五篇，5.x→6.x）。KB 与 HANDOFF 的交叉引用已全部同步，**不要再写旧编号**——"第五篇 §5.4 码流切换"现在应写"第六篇 §6.4"。
+45. **★★★ wValue 字节序（海康惯例 vs UVC 规范）**：2bdf:0101 固件把 CS_ID 放在 wValue **高字节**（`CS_ID << 8`，如 CS_ID=0x05 → wValue=0x0500）；UVC 规范标准写法是低字节。已由真机代码验证：`code/xu_minimal_get.c`（`uint16_t wValue = (TARGET_CS_ID << 8)`）、`code/uvc_stream_viewer.cpp`（`0x0500 /* CS_ID=0x05 */`）。**工作代码 > 手绘抓包 > 推测**——本会话曾差点按手绘抓包把对的改错，改文档前先核对真机代码。
+46. **wIndex 的 Interface 接收者**：接口号在 wIndex **低字节**（0x0001=接口 1）；只有 XU 命令的高字节才是 Unit ID。usb-notes.html 的 wIndex 表和决策流图曾写反，本会话已修正。
+47. **枚举主线骨架（4.2~4.10 逐包讲解会反复用到）**：Device Descriptor 读两次（第一次只读 8 字节拿 bMaxPacketSize0）；Config 先读 9 字节头拿 wTotalLength；SET_ADDRESS 之前设备共用地址 0；枚举全走 EP0。
+48. **本会话全部改动未提交。** 工作区有 5 个文件未 commit（HANDOFF / 知识库 / 两个 notes / usb-notes.html），在 `redesign/usb-notes-3file` 分支上。
+
 ---
 
 ## 七、新会话启动步骤
 
 1. **读这份交接文档** — `Read HANDOFF.md`
 2. **检查 git 分支** — `git branch`。如果仍在 `redesign/usb-notes-3file` 分支上，说明翻新还未合并。确认是否继续翻新工作还是切回 `main`。
-3. **读知识库** — `Read USB-Protocol-Knowledge-Base.md`（★ 第九会话新建：2,337 行，覆盖全部笔记内容的完整知识库，读它就能获得所有上下文）
-4. **读学习计划** — `Read usb-protocol-learning-plan.md`（如需了解后续 35 个未完成的知识点）
+3. **读知识库** — `Read USB-Protocol-Knowledge-Base.md`（★ 第九会话新建、第十会话扩充：~2,810 行，六篇 + 附录，读它就能获得所有上下文）
+4. **读学习计划** — `Read usb-protocol-learning-plan.md`（如需了解后续 34 个未完成的知识点）
 5. **确定用户意图：**
-   - 如果用户说"继续" → 从 Phase 4 的 4.1（枚举完整时间线）开始讲，一次一个知识点
+   - 如果用户说"继续" → 从 Phase 4 的 4.2（阶段 0：设备检测）开始讲，一次一个知识点
    - 如果用户要复习/查阅某主题 → `USB-Protocol-Knowledge-Base.md`（单文件，含 9 张速查表）
    - 如果用户要看理论学习可视化 → 双击 `usb-notes.html`（3 文件架构）
    - 如果用户要看描述符实战 → 双击 `descriptor-viewer.html`
    - 如果用户要看 **摄像头取流+显示** → `code/uvc_stream_viewer.cpp`（libuvc+OpenCV，完整 7 步流程）
    - 如果用户要调 XU → `code/xu_interactive.c`（支持 GET_LEN 后选 GET_CUR 或 SET_CUR）
-   - 如果用户要看 **码流类型切换原理** → `USB-Protocol-Knowledge-Base.md` 第五篇 §5.4
-   - 如果用户要看新设备上手方法 → `USB-Protocol-Knowledge-Base.md` 第五篇 §5.2
+   - 如果用户要看 **码流类型切换原理** → `USB-Protocol-Knowledge-Base.md` 第六篇 §6.4
+   - 如果用户要看新设备上手方法 → `USB-Protocol-Knowledge-Base.md` 第六篇 §6.2
    - 如果用户要看 UVC XU 协议设计 → `notes/uvc-xu-extension-protocol-design.md`
    - 如果用户要看最小读 XU 示例 → `code/xu_minimal_get.c`
    - 如果用户要看海康 TM76 完整代码（裸 libusb 取流） → `code/HIKVISION_TM76_libusb_3.c`
-   - 如果用户问 Bus Hound 抓包 → `USB-Protocol-Knowledge-Base.md` 第四篇 FAQ Q8
+   - 如果用户问 Bus Hound 抓包 → `USB-Protocol-Knowledge-Base.md` 第五篇 FAQ Q8
    - 如果用户问 Interface vs Endpoint → `USB-Protocol-Knowledge-Base.md` §2.3a
-   - 如果用户问 **标准 UVC 取流流程** → `USB-Protocol-Knowledge-Base.md` §5.3
-   - 如果用户问 **XU 和 UVC 的先后顺序** → `USB-Protocol-Knowledge-Base.md` §5.4（★★★ 必读）
+   - 如果用户问 **标准 UVC 取流流程** → `USB-Protocol-Knowledge-Base.md` §6.3
+   - 如果用户问 **XU 和 UVC 的先后顺序** → `USB-Protocol-Knowledge-Base.md` §6.4（★★★ 必读）
    - 如果用户想继续前端翻新 → `descriptor-viewer.html` 还没翻新，或合并 `redesign/usb-notes-3file` 分支
    - 如果用户说提交/pr/合并 → 先确认在哪个分支，验证后合并到 main
    - 如果用户要编辑知识库 → 直接编辑 `USB-Protocol-Knowledge-Base.md`（4 空格缩进）
    - 如果用户要编辑 HTML → 改内容 `usb-notes.html`，改样式 `usb-notes.css`，改行为 `usb-notes.js`
 6. **如果用户不确定到哪了：**
-   > "Phase 1-3 已完成（32/67，48%），暂停在 Phase 4 入口。上次会话（第九会话）做了 USB 协议知识库整理——把 7 个 .md 文件 + 1 个 HTML 的全部知识点整合为一份 `USB-Protocol-Knowledge-Base.md`（2,337 行）。上一会话（第八会话）做了 UVC 取流实战——libuvc + OpenCV 实时显示，XU 码流类型切换，解决了 MJPEG 描述符欺诈。翻新在 `redesign/usb-notes-3file` 分支上，还没合并到 main。准备好了说继续。"
+   > "Phase 1-3 已完成 + 4.1 已讲（33/67，49%）。上次会话（第十会话）开讲 Phase 4.1 枚举时间线，并完成 UVC 标准控制问答（PU/XU/请求码全家桶）、wValue 字节序真机验证修正、知识库重编号（第四篇=枚举、第五篇=真实设备、第六篇=XU）。翻新在 `redesign/usb-notes-3file` 分支上，还没合并到 main。准备好了说继续（4.2 阶段 0：设备检测）。"
 7. **★ 最重要的几条规则（新会话开始务必重申）：**
    - **XU 必须在 `uvc_open` 之前发**，否则报 LIBUSB_ERROR_IO
    - **`libusb_control_transfer` 有 8 个参数**：bmRT + bReq + wVal + wIdx + data + wLen + timeout（极易漏 bRequest！）
@@ -405,7 +444,7 @@ git branch -d redesign/usb-notes-3file
 ```
 Byte 0: bmRequestType    0x21=OUT Class IF   0xA1=IN Class IF   0x01=Standard
 Byte 1: bRequest         0x01=SET_CUR        0x81=GET_CUR       0x85=GET_LEN
-Byte 2-3: wValue (LE)   高字节=CS_ID, 低字节=0
+Byte 2-3: wValue (LE)   高字节=CS_ID, 低字节=0   ← 海康固件惯例；UVC 规范标准写法是低字节=CS
 Byte 4-5: wIndex  (LE)  高字节=XU Unit ID, 低字节=接口号  — 换设备只改这里！
 Byte 6-7: wLength (LE)  DATA 阶段字节数
 ```
@@ -457,7 +496,7 @@ sudo ./xu_interactive
 
 | 文件 | 行数 | 做什么 |
 |------|------|--------|
-| `usb-notes.html` | ~2,500 | 纯 HTML 结构，4 空格缩进，不含 `<style>`/`<script>`。新增 kp-2-21（码流切换） |
+| `usb-notes.html` | ~2,670 | 纯 HTML 结构，4 空格缩进，不含 `<style>`/`<script>`。含 kp-2-21（码流切换）、kp-4-1（枚举） |
 | `usb-notes.css` | 1,153 | 全部样式，10 层分层（Layer 1 变量, Layer 5 组件, Layer 6 可视化…） |
 | `usb-notes.js` | 885 | 全部脚本，4 模块（DATA → RENDERERS → INTERACTION → INIT） |
 | `usb-notes-old.html` | 3,266 | 翻新前单文件备份 |
