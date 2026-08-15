@@ -1,10 +1,9 @@
 # HANDOFF — USB 协议学习会话交接文档
 
-> 更新时间：2026-08-13（第十会话）
-> 主线学习进度：33/67 知识点（49%）— Phase 4 进行中（4.1 已完成）
-> 本会话重点：**Phase 4.1 枚举开讲** + UVC 标准控制问答（PU/XU/请求码全家桶）+ **wValue 字节序真机验证修正** + 知识库重编号（六篇结构）
-> 上一会话（第九会话）：USB 协议知识库整理
-> **⚠️ 工作分支: `redesign/usb-notes-3file`（未合并到 main）**
+> 更新时间：2026-08-15（第十一会话）
+> 主线学习进度：44/67 知识点（66%）— Phase 4 完成，下一阶段 Phase 5
+> 本会话重点：**Phase 4 收官（4.2~4.12 连讲）** + TM5X 大数据交互流程（§6.9）+ 真机抓包分析（2bdf:028a）+ HID/CDC 类概念问答 + HTML 补全 Phase 4 卡片
+> 上一会话（第十会话）：Phase 4.1 枚举开讲 + UVC 标准控制问答 + wValue 字节序真机修正
 
 ---
 
@@ -101,7 +100,32 @@
 7. **三种 wIndex**：VC XU = `(XU_ID<<8)|VC_IF`，VS = `VS_IF`，SET_INTERFACE = Standard bmRequestType + alt_setting
 8. **bmControls 位图**：`0xFF, 0x03` = bit 0~9 置位 → CS_ID 0x01~0x0A 存在
 
-### 第十会话（本次）：Phase 4.1 枚举开讲 + UVC 标准控制问答 + 字节序真机修正
+### 第十一会话（本次）：Phase 4 收官 + TM5X 大数据流程 + 真机抓包分析
+
+**本会话主线**：Phase 4 从 4.2 一路讲到 4.12，枚举篇收官（44/67，66%）。副线：解析 TM5X 开发指南的大数据交互流程（新增 §6.9）、用 Python 解析 USBPcap 抓包并逐包对照枚举教学（新增 §4.11a，三处真机勘误）、HID/CDC 类概念问答（第三篇补充问答五/六）。另：翻新分支清理（全部合并回 main，此后只在 main 开发）。
+
+**本会话产出：**
+
+| 类型 | 文件 | 变更 |
+|------|------|------|
+| 知识库 | `USB-Protocol-Knowledge-Base.md` | **第四篇补齐 §4.2~§4.12**（枚举 10 步逐包 + 抓包实战 + 真机分析 + 失败排查，Phase 4 完成 12/12）；第六篇新增 **§6.9 TM5X 大数据交互流程**（64/512/65535 三层上限、分包协议、两层确认机制）；第三篇新增 **补充问答五/六**（HID/CDC 类家族、USB 虚拟串口机制） |
+| HTML | `usb-notes.html` | **Phase 4 占位符替换为 12 张真卡片**（kp-4-2 ~ kp-4-12 + kp-4-11a 真机实战）；侧边栏 12/12 ✓；进度条 66%（3,152 行） |
+| 抓包 | `capture.pcapng` | 用户真机抓包：174,032 包 / 225.7s / 6 台设备（含 TM5X 2bdf:028a 完整枚举） |
+| 抓包 | `capture-tm5x-2bdf028a.pcapng` | **从全量抓包切出的 TM5X 单设备抓包**（206 包，KB §4.11a 引用） |
+| 交接 | `HANDOFF.md` | 更新（本会话） |
+
+**本会话建立的深层理解（已存 KB）：**
+
+1. **设备检测是零字节信息**：电阻位置（D+/D-）宣告速度、电平边沿宣告存在——USB 第一个"信息编码"是硬件位置
+2. **SE0 持续时间就是语义**：EOP≈167ns vs 复位≥10ms——不引入新电平，用"按多久"区分（设备响应门槛 2.5μs，双重余量）
+3. **8 字节保底铁律**：bMaxPacketSize0 恰在 offset 7（前 8 字节最后一个），8 = 所有设备最小 EP0——规范破解"鸡生蛋"的唯一解法
+4. **SET_ADDRESS 换牌时序**：STATUS 用旧地址签收，完成后才切新地址（2ms 内须响应）——固件写错 = 永远枚举不成功（"设定地址失败"）
+5. **三层上限模型**：64（总线事务）/ 512（海康协议帧）/ 65535（wLength 字段）各管一层——"65535 是 USB 给的字段上限，512 是机芯给的胃容量"
+6. **枚举失败 = 卡点定位**：症状（报错文案/抓包断点）→ 10 步中的某一步 → 故障层；Windows 43=描述符层、设定地址失败=地址层、28=驱动层
+7. **真机三勘误**：现代 Windows 一次读 18 字节（不做 8 字节探测）、String 用"先读 4B 头"两步读、SET_ADDRESS 在设备级抓包不可见（hub 层）
+8. **TM5X (2bdf:028a) 是三合一复合设备**：UVC（VS 等时，非 Bulk）+ CDC 串口 + 厂商 HID（1023B Report）——SDK 三大目标的合体标本
+
+### 第十会话：Phase 4.1 枚举开讲 + UVC 标准控制问答 + 字节序真机修正
 
 **本会话主线**：主线推进到 Phase 4（枚举）——讲完 4.1 枚举完整时间线（33/67，49%），已存知识库 + HTML。同时密集回答 UVC 标准控制追问，并完成一次重大勘误（wValue 字节序）。（用户明确说过"USB 标准请求用途"那节可以不存——其核心结论已并入第四篇 §4.1 引言。）
 
@@ -202,9 +226,9 @@
 ```
 D:\CC\personal-lr-notes\CCNotes\USB\
 ├── HANDOFF.md                                    ← 你正在看的这份交接文档
-├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~2,810 行，六篇 + 附录，覆盖全部笔记）
+├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~3,970 行，六篇 + 附录，Phase 4 已补齐）
 ├── usb-protocol-learning-plan.md                 ← 完整学习计划（67知识点清单）
-├── usb-notes.html                                ← Phase 1-3 理论可视化（纯 HTML 结构）
+├── usb-notes.html                                ← Phase 1-4 理论可视化（3,152 行，含 kp-4-1 ~ kp-4-12 + kp-4-11a）
 ├── usb-notes.css                                 ← 10 层分层样式（暗色默认 IDE 风格）
 ├── usb-notes.js                                  ← 4 模块脚本（数据/渲染/交互/初始化）
 ├── usb-notes-old.html                            ← 旧版备份（翻新前单文件版本）
@@ -212,6 +236,8 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 ├── usb设备1的描述符.txt                            ← 设备1 原始 dump
 ├── usb设备2的描述符.txt                            ← 设备2 原始 dump
 ├── usb设备3的描述符.txt                            ← 设备3 原始 dump（无 Extension Unit）
+├── capture.pcapng                                ← 全量真机抓包（174K 包，6 设备）
+├── capture-tm5x-2bdf028a.pcapng                  ← ★ TM5X 单设备抓包（206 包，KB §4.11a 引用）
 ├── docs/superpowers/
 │   ├── specs/
 │   │   ├── 2026-08-02-usb-notes-redesign.md      ← 前端翻新设计规格
@@ -238,11 +264,11 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ## 四、当前卡在哪 + 下一步计划
 
-### 主线学习：Phase 4 进行中（4.1 已完成）
+### 主线学习：Phase 4 完成，下一阶段 Phase 5
 
-**没有卡住。** Phase 1-3 已完成，4.1 已讲完（33/67，49%）。
+**没有卡住。** Phase 1-4 全部完成（44/67，66%）。
 
-**下一步：Phase 4.2 — 阶段 0：设备检测（D+ 上拉 FS/HS 或 D- 上拉 LS → Host 检测电平变化）**
+**下一步：Phase 5.1 — SETUP 包 8 字节逐位。** 注意：用户已在第五/第十会话和整个 Phase 4 深度掌握 SETUP 结构（三把钥匙、XU 实战、枚举逐包），Phase 5 节奏可快，重点放在没系统讲过的 **5.3 GET_STATUS 响应解析、5.4 Feature Selector 全集**。
 
 一次一个知识点。当用户说"继续"时，从这里开始。
 
@@ -258,21 +284,11 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 - F 键全屏切换（代码骨架已留，未实现）
 - 多设备支持（当前只取第一台或指定 VID:PID）
 
-### 副线二：usb-notes.html 翻新已完成基础，待合并
+### 副线二：usb-notes.html 翻新已完成（已合并到 main）
 
-**⚠️ 翻新工作在分支 `redesign/usb-notes-3file` 上，未合并到 main。**
+翻新分支 `redesign/usb-notes-3file` 已合并回 main，本地分支已删除。**后续所有开发直接在主分支上进行，不再使用功能分支。**
 
-**合并前需用户在浏览器中验证：**
-- 双击 `usb-notes.html` → 确认侧边栏搜索、主题切换、滚动监听、包图渲染、时间线点击展开、新增的 kp-2-21 卡片均正常
-- 缩窄浏览器窗口到 <1024px → 确认移动端汉堡菜单 overlay 正常
-
-验证通过后合并：
-```bash
-git checkout main
-git merge redesign/usb-notes-3file
-git branch -d redesign/usb-notes-3file
-```
-合并后可删除备份文件 `usb-notes-old.html`。
+备份文件 `usb-notes-old.html` 已无引用，可随时删除。
 
 ### 未来可能的前端优化
 
@@ -288,7 +304,7 @@ git branch -d redesign/usb-notes-3file
 - **取流工具**：加录制/截图/伪彩切换/全屏
 - **XU 探索**：`xu_interactive.c` 加 SET_CUR 暴力扫描未知 CS_ID
 - **裸 libusb 取流**：把 TM76 的 `uvc_read_one_frame()` 逻辑改写为面向 2bdf:0101
-- **前端翻新**：合并 `redesign/usb-notes-3file` 分支，或翻新 `descriptor-viewer.html`
+- **前端翻新**：翻新 `descriptor-viewer.html`
 - **编辑 HTML**：改内容→`usb-notes.html`，改样式→`usb-notes.css`，改行为→`usb-notes.js`（3 文件架构，4 空格缩进）
 - **查阅知识库**：需要系统复习某个主题时，直接读 `USB-Protocol-Knowledge-Base.md`（单文件，结构清晰，含 9 张速查表）
 
@@ -316,6 +332,12 @@ git branch -d redesign/usb-notes-3file
 16. **视频 Bulk vs 等时**：完整性 vs 实时性权衡；UVC 1.5 才定义 Bulk；热成像选 Bulk 的理由 — ★ 第十会话
 17. **libuvc 抽象层**：描述符→分叉 bulk/isoc→12 字节载荷头（FID/EOF）拼帧→回调交付 uvc_frame_t；依赖"帧"接口不依赖"包"接口 — ★ 第十会话
 18. **枚举全景**：6 状态机、10 步时间线、Device Descriptor 读两次的原因、Config 先读 9 字节头的原因、枚举全走 EP0 — ★ 第十会话
+19. **零字节速度宣告**：D+ 上拉=FS/HS、D- 上拉=LS；检测阶段只分 LS/非 LS，HS 身份等 Chirp；SE0 持续时间就是语义（EOP≈167ns vs 复位≥10ms） — ★ 第十一会话
+20. **8 字节保底 + 短包规则**：bMaxPacketSize0 卡在 offset 7，破解"鸡生蛋"；短包=传输结束，枚举多次兜底 — ★ 第十一会话
+21. **STATUS 签完才换牌**：Set_Address 的新地址在 STATUS 完成后生效（2ms 内须响应）——写错就是"设定地址失败" — ★ 第十一会话
+22. **三层上限 64/512/65535**：总线事务 / 海康协议帧 / wLength 字段，各管一层；TM5X 大数据走"每帧一个 SETUP"的分包链（§6.9） — ★ 第十一会话
+23. **枚举失败卡点定位法**：症状→10 步中的某一步→故障层；Windows 43=描述符层、设定地址失败=地址层、28=驱动层 — ★ 第十一会话
+24. **TM5X 2bdf:028a 三合一**（UVC 等时 + CDC 串口 + HID）；真机三勘误（Windows 一次读 18、String 两步读、SET_ADDRESS 设备级抓包不可见） — ★ 第十一会话
 
 ---
 
@@ -395,14 +417,13 @@ git branch -d redesign/usb-notes-3file
 45. **★★★ wValue 字节序（海康惯例 vs UVC 规范）**：2bdf:0101 固件把 CS_ID 放在 wValue **高字节**（`CS_ID << 8`，如 CS_ID=0x05 → wValue=0x0500）；UVC 规范标准写法是低字节。已由真机代码验证：`code/xu_minimal_get.c`（`uint16_t wValue = (TARGET_CS_ID << 8)`）、`code/uvc_stream_viewer.cpp`（`0x0500 /* CS_ID=0x05 */`）。**工作代码 > 手绘抓包 > 推测**——本会话曾差点按手绘抓包把对的改错，改文档前先核对真机代码。
 46. **wIndex 的 Interface 接收者**：接口号在 wIndex **低字节**（0x0001=接口 1）；只有 XU 命令的高字节才是 Unit ID。usb-notes.html 的 wIndex 表和决策流图曾写反，本会话已修正。
 47. **枚举主线骨架（4.2~4.10 逐包讲解会反复用到）**：Device Descriptor 读两次（第一次只读 8 字节拿 bMaxPacketSize0）；Config 先读 9 字节头拿 wTotalLength；SET_ADDRESS 之前设备共用地址 0；枚举全走 EP0。
-48. **本会话全部改动未提交。** 工作区有 5 个文件未 commit（HANDOFF / 知识库 / 两个 notes / usb-notes.html），在 `redesign/usb-notes-3file` 分支上。
 
 ---
 
 ## 七、新会话启动步骤
 
 1. **读这份交接文档** — `Read HANDOFF.md`
-2. **检查 git 分支** — `git branch`。如果仍在 `redesign/usb-notes-3file` 分支上，说明翻新还未合并。确认是否继续翻新工作还是切回 `main`。
+2. **确认在 main 分支** — `git branch`。翻新分支已合并删除，后续全部工作在 main 上进行。
 3. **读知识库** — `Read USB-Protocol-Knowledge-Base.md`（★ 第九会话新建、第十会话扩充：~2,810 行，六篇 + 附录，读它就能获得所有上下文）
 4. **读学习计划** — `Read usb-protocol-learning-plan.md`（如需了解后续 34 个未完成的知识点）
 5. **确定用户意图：**
@@ -421,12 +442,12 @@ git branch -d redesign/usb-notes-3file
    - 如果用户问 Interface vs Endpoint → `USB-Protocol-Knowledge-Base.md` §2.3a
    - 如果用户问 **标准 UVC 取流流程** → `USB-Protocol-Knowledge-Base.md` §6.3
    - 如果用户问 **XU 和 UVC 的先后顺序** → `USB-Protocol-Knowledge-Base.md` §6.4（★★★ 必读）
-   - 如果用户想继续前端翻新 → `descriptor-viewer.html` 还没翻新，或合并 `redesign/usb-notes-3file` 分支
-   - 如果用户说提交/pr/合并 → 先确认在哪个分支，验证后合并到 main
+   - 如果用户想继续前端翻新 → `descriptor-viewer.html` 还没翻新
+   - 如果用户说提交/推送 → 直接在 main 分支上操作（不再使用功能分支）
    - 如果用户要编辑知识库 → 直接编辑 `USB-Protocol-Knowledge-Base.md`（4 空格缩进）
    - 如果用户要编辑 HTML → 改内容 `usb-notes.html`，改样式 `usb-notes.css`，改行为 `usb-notes.js`
 6. **如果用户不确定到哪了：**
-   > "Phase 1-3 已完成 + 4.1 已讲（33/67，49%）。上次会话（第十会话）开讲 Phase 4.1 枚举时间线，并完成 UVC 标准控制问答（PU/XU/请求码全家桶）、wValue 字节序真机验证修正、知识库重编号（第四篇=枚举、第五篇=真实设备、第六篇=XU）。翻新在 `redesign/usb-notes-3file` 分支上，还没合并到 main。准备好了说继续（4.2 阶段 0：设备检测）。"
+   > "Phase 1-4 全部完成（44/67，66%）。上次会话（第十一会话）把 Phase 4 从 4.2 讲到 4.12 收官，并完成 TM5X 大数据流程整理（§6.9）、真机抓包逐包分析（§4.11a，三处真机勘误）、HID/CDC 类概念问答、HTML 补全 Phase 4 卡片。准备好了说继续（Phase 5.1 SETUP 包逐位）。"
 7. **★ 最重要的几条规则（新会话开始务必重申）：**
    - **XU 必须在 `uvc_open` 之前发**，否则报 LIBUSB_ERROR_IO
    - **`libusb_control_transfer` 有 8 个参数**：bmRT + bReq + wVal + wIdx + data + wLen + timeout（极易漏 bRequest！）
@@ -456,6 +477,16 @@ Byte 6-7: wLength (LE)  DATA 阶段字节数
 | VC XU 命令 | `(XU_ID<<8) \| VC_IF` | 0x21/0xA1 (Class) |
 | VS Probe/Commit | `VS_IF` | 0x21/0xA1 (Class) |
 | SET_INTERFACE 开流 | `VS_IF` | 0x01 (Standard), bReq=0x0B |
+
+### 枚举失败速查（Windows 报错 → 卡点）
+
+| 报错文案 | 代码 | 卡在哪一步 |
+|---------|:---:|-----------|
+| 设备描述符请求失败 | 43 | 描述符层（bMaxPacketSize0 错 / CRC 错） |
+| 设定地址失败 | — | 地址层（STATUS 后不响应新地址） |
+| 未安装驱动程序 | 28 | 驱动层（VID:PID 无匹配） |
+| 设备无法启动 | 10 | 驱动加载崩溃 |
+| 端口上的电涌 | — | 电气层（供电过流） |
 
 ### 控制传输核心
 
