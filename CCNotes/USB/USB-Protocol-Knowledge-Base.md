@@ -3733,6 +3733,20 @@ Interface(VS): bInterfaceClass=0x0E, bInterfaceSubClass=0x02 (Video Streaming)
 
 **★ 真机勘误（2026-08-16）**：2bdf:0101 是**批量视频设备**，其 VS 接口**只有 Alt 0**——批量流端点（EP 0x81, wMaxPacketSize=512）直接挂在 Alt 0 上，没有零带宽 Alt。"Alt0 零带宽 / Alt1+ 流端点"是**等时设备的带宽闸门**（等时带宽静态预留，需要零带宽档位省带宽）；**批量不预留带宽，零带宽 Alt 无意义**。该机 VC 接口还实现了中断状态端点（EP 0x83，16B，bInterval=8）。写代码时不要硬编码 Alt 号——自动发现第一个带端点的 Alt（见 code/examples/04_claim_alt_setting.c 与 08_uvc_open_stream.c）。
 
+**★ TM5X（2bdf:028a）七接口布局（2026-08-16 真机，示例 03 实测）**——"三合一"实为**四合一**：
+
+```
+Interface 0  UVC VC    EP 0x81 中断 16B           ← 视频控制（状态通知端点）
+Interface 1  UVC VS    Alt0 零带宽 / Alt1 等时 EP 0x88 (5120B)  ← ★ 等时设备的经典结构！
+Interface 2  音频控制   Alt0 零带宽                 ← 意外发现：2K 摄像头带麦克风
+Interface 3  音频流     Alt1 等时 EP 0x82 (384B)
+Interface 4  CDC 控制  EP 0x84 中断 10B            ← 串口控制
+Interface 5  CDC 数据  EP 0x83 IN + 0x01 OUT 批量  ← 串口数据
+Interface 6  HID       EP 0x85 IN 中断 1024B       ← 厂商 HID（1023B 报表 ✓）
+```
+
+**两台真机的教科书对照**：TM5X 是等时设备，就有经典"Alt0 零带宽 / Alt1 流端点"结构（EP 0x88，wMaxPacketSize=5120 = 带宽配额）；0101 是批量设备，只有 Alt0——"零带宽 Alt 是等时设备的带宽闸门"理论在两台真机上左右钉死。
+
 ## 6.16 UVC VC Descriptor 链完整布局
 
 ```
@@ -3816,6 +3830,8 @@ Interface (VC)
 **你的设备实证（第八篇 §8.8）**：2bdf:0101 的 PU `bmControls = 00 00`——**一个标准控制都没实现**，亮度/对比度/增益全塞进 XU 私有控制，配合厂商 SDK 卖。标准桌面摄像头才会实现 PU。所以"UVC 标准控制"在专业设备上经常是空壳——实际控制全走 XU。
 
 **★ 两台真机对照（2026-08-16，示例 06 实测）**：TM5X（2bdf:028a）的 PU `bmControls = 0x13df`——**标准控制齐全**（Brightness/Contrast/Hue/Saturation/Sharpness/Gamma/WB/背光/增益/抗工频全置位，PU_ID=2），同一份代码在 028a 上返回真实亮度并 SET_CUR 成功、在 0101 上 STALL（PU_ID=5）——"空壳 vs 齐全"的活体对照。**★ 勘误**：示例 06 初版 wIndex 漏了 PU_ID 高字节（PU 寻址与 XU 同构：`wIndex=(PU_ID<<8)|VC_IF`，第八篇 §8.8 早有此惯例），导致两台设备都 STALL、一度误判为"都是空壳"——**STALL 也可能只是寻址错，先查 bmControls 再下结论**。
+
+**★ 追加发现（2026-08-16，排查中）**：028a 的 `SET_CUR(Brightness=50)` **ACK 成功但写后读回仍是 4**（"表面成功"）——已加 GET_MIN/GET_MAX 范围探针 + 100ms 延时排除三个嫌疑（值域越界 / 固件异步应用 / 停机不应用），待真机结果；若三者全排除 = 深挖三的第三种撒谎形态（STATUS ACK 但内容未应用）。排查方法论：**"写成功但读不回"先怀疑时序/值域/状态依赖，最后才轮到"设备撒谎"这个最重的结论**。
 
 ## 6.21 UVC VS Descriptor 链完整布局
 
@@ -5255,6 +5271,16 @@ libusb_attach_kernel_driver(handle, IF)   → 原司机重新上岗（/dev/video
 
 **★ 真机勘误（2026-08-16）**：控制传输不需要 claim，**但需要请司机下车**——uvcvideo 绑定在接口上时，用户态对**接口寻址**的类请求（0xA1/0x21 + wIndex=接口号）被拒，本机表现为 `LIBUSB_ERROR_IO`（不是 PIPE/BUSY）。第六会话以来的所有成功 XU 代码（`code/tools/xu_minimal_get.c` 等）都先 detach 了，所以从没撞上；示例 05/06/07/09 初版漏了这一步，真机验证时全体报 IO。规则升级：**发类请求前先 detach 司机，用完 attach 回去**（code/examples/05~09 已修）。
 
+**★ detach/claim 完整决策规则（示例集真机验证后总结）**：
+
+| 操作 | 例子 | detach？ | claim？ |
+|------|------|:---:|:---:|
+| 设备级操作（不碰接口） | 枚举/热插拔/读缓存描述符/lsusb | ❌ | ❌ |
+| 接口寻址控制传输（EP0） | XU / PU 亮度 / Probe / GET_STATUS | ✅（司机在岗会拒） | ❌（EP0 不属于任何接口） |
+| 数据端点操作 | bulk/interrupt/isoc 收发、切 Alt | ✅ | ✅（车权登记，缺了报 BUSY） |
+
+**判断口诀**：司机在岗时动接口就会被拒（detach）；要碰数据端点就得登记车权（claim）。两个条件独立判断，各自决定 detach 和 claim 的去留。数据流场景 detach 和 claim 总成对出现（detach→claim），但纯控制场景只有 detach（05/06/07/09）。
+
 **★ 进程退出没 release 会怎样**：claim **不会永久锁死**——登记挂在进程的 usbfs 文件描述符上，进程退出（任何死法）内核自动关闭 fd → 自动释放所有 claim、取消未完成 URB。**但 detach 的副作用不会自动恢复**——uvcvideo 保持解绑，/dev/video0 一直消失（这就是第八会话调试期总得重插摄像头的原因）。恢复三招：
 
 ```
@@ -5591,6 +5617,24 @@ init → 注册热插拔回调(带 ENUMERATE)
 ```
 
 **方案 A（自底向上）走到终点**：从 D+ 上拉电阻的电平（4.2）一路学到热插拔回调——协议理论、类协议、平台机制、编程接口全部打通。SDK 三目标弹药齐备：UVC 走 libuvc/XU、CDC 走 SET_LINE_CODING + 批量、HID 走中断报表 + 六类请求，热插拔骨架做地基。
+
+---
+
+## 9.6 示例集真机验证记录（2026-08-16）
+
+13 份示例（code/examples/）在 2bdf:0101 与 2bdf:028a 上全量真机验证，**七大发现**（均已修复或记录在案）：
+
+| # | 症状 | 根因 | 修复/结论 |
+|---|------|------|----------|
+| 1 | 04 切 Alt 报 NOT_FOUND | 硬编码 Alt1——0101 是批量设备，VS 只有 Alt0 | 自动发现第一个带端点的 Alt（§6.15 勘误） |
+| 2 | 05/06/07/09 类请求报 IO（真实 XU_ID 也失败） | uvcvideo 绑定时，接口寻址类请求被拒 | 发类请求前 detach 司机（§9.2 三档决策表） |
+| 3 | 07 的 SET_CUR 打印误导 | OUT 传输设备不回写缓冲，打印的是请求回显 | 标注"请求"+发送结果（§6.25 勘误） |
+| 4 | 08 开流收 0 字节 | 只 SET_INTERFACE 不够——本机固件把 Probe/Commit 当管线武装命令 | 补 GET_DEF→Probe→Commit 后 1 秒收 33,361 字节（§6.25 勘误） |
+| 5 | 10 编译/运行四连坑 | ① OpenCV 是 C++ 但写成 .c 配 gcc；② void* 下标（第八会话踩坑 7 复发）；③ 信箱存 BGR 主线程又当 JPEG 解码（静默无画面）；④ uvc_get_stream_ctrl 协商失败（踩坑 38 复发：VS_COLORFORMAT + Probe 不可靠） | 改名 .cpp 用 g++；转指针；主线程直接渲染成品 BGR；两轮协商回退（遍历原始格式描述符） |
+| 6 | 06 两台设备都 STALL | wIndex 漏了 PU_ID 高字节——PU 寻址与 XU 同构（第八篇 §8.8 早有惯例） | 参数化 PU_ID；028a (PU_ID=2) 成功读写亮度、0101 (PU_ID=5) 真空壳 STALL——§6.20 活体对照 |
+| 7 | 028a SET_CUR ACK 但读回不变 | 排查中：值域/异步应用/停机不应用三嫌疑待排除 | 已加范围探针 + 100ms 延时（§6.20 追加发现） |
+
+**这一轮验证的价值**：把 13 份示例从"纸面正确"变成"真机通过"——七次失败全部是宝贵的设备行为样本，每条都已落进知识库对应章节。排查方法论沉淀：**STALL 也可能只是寻址错（先查 bmControls 再下结论）；"写成功但读不回"先怀疑时序/值域/状态依赖，最后才轮到"设备撒谎"**。
 
 ---
 

@@ -3834,6 +3834,7 @@ libusb_control_transfer(devh, 0x21, 0x20, 0, if_num, line_coding, 7, 1000);</cod
 Interface(VS): bInterfaceClass=0x0E, bInterfaceSubClass=0x02 (Video Streaming)
     Alt0 零带宽（无端点）→ Alt1+ 流端点 → SET_INTERFACE 切 Alt 就是开流开关</code></pre>
         <p>你的 2bdf:0101：VC 接口号 0、VS 接口号 1（第十会话：VC_IF_NUM 永远从 lsusb -v 确认，同厂商不同型号都不同）。</p>
+        <p><strong>★ 两台真机对照（2026-08-16）</strong>：TM5X（2bdf:028a）是<b>七接口四合一</b>——UVC（VC/VS 等时 Alt0零带宽+Alt1流端点 EP 0x88, 5120B）+ <b>音频</b>（接口 2/3，2K 摄像头带麦克风）+ CDC（接口 4/5）+ HID（接口 6, 1024B）。0101 是批量设备只有 Alt0（无零带宽 Alt），TM5X 是等时设备就有经典零带宽结构——"零带宽 Alt 是等时设备的带宽闸门"在两台真机上左右钉死。</p>
     </article>
 
     <!-- kp-6-13 -->
@@ -3911,6 +3912,7 @@ Interface(VS): bInterfaceClass=0x0E, bInterfaceSubClass=0x02 (Video Streaming)
           <tr><td>11-13</td><td>Hue/WB Temp/WB Comp Auto</td><td></td><td></td></tr>
         </table>
         <p><strong>你的设备实证</strong>：2bdf:0101 的 PU <code>bmControls = 00 00</code>——一个标准控制都没实现，亮度/对比度/增益全塞进 XU 私有控制，配合厂商 SDK 卖。"UVC 标准控制"在专业设备上经常是空壳——实际控制全走 XU。</p>
+        <p><strong>★ 两台活体对照（2026-08-16 真机）</strong>：TM5X（2bdf:028a）的 PU <code>bmControls = 0x13df</code>——标准控制齐全，同一份代码 028a 上真实读写亮度、0101 上 STALL。PU 寻址与 XU 同构：<code>wIndex = (PU_ID &lt;&lt; 8) | VC_IF</code>（PU_ID 查 lsusb 的 bUnitID，028a=2、0101=5）。★ 勘误：漏 PU_ID 高字节会让两台设备都 STALL——<strong>STALL 也可能只是寻址错，先查 bmControls 再下结论</strong>。</p>
     </article>
 
     <!-- kp-6-15 -->

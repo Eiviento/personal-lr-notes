@@ -114,6 +114,7 @@
 | 代码 | `code/examples/` | **★ 新增 13 份最小可运行示例 + README**（01 枚举 ~ 13 综合骨架；统一头注释五要素；每份独立编译 `gcc -lusb-1.0`，10 加 `-luvc`+opencv 且用 g++（.cpp）、13 加 `-pthread`）；hotplug_demo.c 迁移为 02_hotplug_detect.c |
 | HTML | `usb-sdk-examples.html` | **★ 新建**：13 份示例讲解页（单文件零依赖，暗色 IDE 风格，内嵌完整代码 + 逐段「代码↔协议」讲解 + 搜索/复制交互） |
 | 文档 | `docs/superpowers/specs/2026-08-16-usb-sdk-examples-design.md` + `plans/2026-08-16-usb-sdk-examples.md` | **新建**：SDK 示例集设计规格与实现计划（SDD 流程执行，17 任务全部通过） |
+| 验证 | 13 份示例真机全量验证（2bdf:0101 + 2bdf:028a） | **七大发现全部修复/记录**：① 04 硬编码 Alt1（批量设备只有 Alt0）；② 05/06/07/09 司机绑定拒类请求（IO）；③ 07 SET_CUR 打印是请求回显；④ 08 只 SET_INTERFACE 收 0 字节（Probe/Commit 是管线武装命令，修复后 33KB/s）；⑤ 10 四连坑（.c→.cpp / void* 下标复发 / 双解码静默无画面 / 协商回退）；⑥ 06 漏 PU_ID 高字节（PU 寻址与 XU 同构）；⑦ 028a SET_CUR "表面成功"（ACK 未应用，排查中）。已落盘 KB §9.6 验证记录 + §6.15/6.20/9.2 勘误 |
 | 交接 | `HANDOFF.md` | 更新（本会话） |
 
 **本会话建立的深层理解（已存 KB 第五篇）：**
@@ -152,6 +153,9 @@
 23. **★ 信箱模式（三线程协调）**：内部拼帧回调与用户回调同一线程，合并成"收帧的人"；两方 + 一个只能放一帧的信箱；规则一条——信箱满就丢新帧不等待；主线程慢=慢动作不崩（可控丢帧），回调慢=设备/总线被动丢（不可控）；食堂窗口类比；队列吸收抖动不创造产能
 24. **三种传输的 libusb 形态**：endpoint 参数 = bEndpointAddress 原样；transferred 输出参数（短包终止）；PIPE=Halted → libusb_clear_halt（5.3 闭环兑现）；等时 = iso_packet_descriptor 包数组 + set_iso_packet_lengths（wMaxPacketSize 变参数）；resubmit 模式 = 自动续订接收机
 25. **★ 热插拔（主线终点）**：4.2 的"电平宣告存在"经内核 netlink → libusb 事件 → 事件泵 → 回调，闭环到应用层；回调靠事件泵驱动、ENUMERATE 回放现有设备、LEFT 时设备已死只做收尾；examples/02_hotplug_detect.c 已真机验证——**全主线收官，下一步 SDK 动工**
+26. **★ PU 寻址与 XU 同构**（示例 06 真机勘误）：wIndex = `(PU_ID<<8)|VC_IF`（PU_ID 查 lsusb 的 bUnitID，028a=2、0101=5）；漏高字节 = 两台设备全 STALL——**STALL 也可能只是寻址错，先查 bmControls 再下结论**；两台 PU 对照：028a 齐全（0x13df，亮度真实读写）、0101 空壳（00 00）
+27. **★ detach/claim 三档决策**（示例集验证后总结）：设备级操作→都不要；接口寻址控制传输（XU/PU/Probe）→只要 detach 不要 claim；数据端点操作（收发/切 Alt）→两个都要（detach→claim）。判断口诀：司机在岗动接口就被拒；碰数据端点就得登记车权。两个条件独立
+28. **★ 示例集验证轮七大发现 + 排查方法论**：见 KB §9.6 验证记录表；两条方法论——"STALL 先怀疑寻址再下结论"、"写成功读不回先排除时序/值域/状态依赖，最后才轮到设备撒谎"；028a 的 SET_CUR 表面成功（ACK 未应用）尚在排查（范围探针+100ms 延时已加，待用户跑）
 
 ### 第十一会话：Phase 4 收官 + TM5X 大数据流程 + 真机抓包分析
 
@@ -326,6 +330,8 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 **协议理论学习全部结束。** Phase 1-8 完成（Phase 7 跳过暂缓，真机抓包已在 4.11/4.11a 完成）。第十二会话最后实测验证了 examples/02_hotplug_detect.c（Ubuntu VM 上 ENUMERATE 刷屏 + 插拔实时打印，用户确认验证成功）。
 
+**当前状态（2026-08-16 晚）**：13 份示例真机验证进行中——**01~10 已全部通过**（七大发现已修复并落盘，见 KB §9.6 验证记录）；**待验证**：11 CDC / 12 HID / 13 骨架（均需 TM5X 2bdf:028a，接口自动发现已就绪）；**排查中**：06 亮度在 028a 上的"表面成功"（SET_CUR ACK 但读回不变，范围探针 + 100ms 延时已加，下一步取流中 SET 验证）。
+
 **下一步（项目层面，不再是"讲知识点"）**：用户最初的目标——**构建 USB SDK（UVC 摄像头 + CDC 串口 + HID 设备）**。弹药已齐备：
 
 | SDK 模块 | 理论弹药 | 代码基础 |
@@ -494,6 +500,14 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 45. **★★★ wValue 字节序（海康惯例 vs UVC 规范）**：2bdf:0101 固件把 CS_ID 放在 wValue **高字节**（`CS_ID << 8`，如 CS_ID=0x05 → wValue=0x0500）；UVC 规范标准写法是低字节。已由真机代码验证：`code/tools/xu_minimal_get.c`（`uint16_t wValue = (TARGET_CS_ID << 8)`）、`code/tools/uvc_stream_viewer.cpp`（`0x0500 /* CS_ID=0x05 */`）。**工作代码 > 手绘抓包 > 推测**——本会话曾差点按手绘抓包把对的改错，改文档前先核对真机代码。
 46. **wIndex 的 Interface 接收者**：接口号在 wIndex **低字节**（0x0001=接口 1）；只有 XU 命令的高字节才是 Unit ID。usb-notes.html 的 wIndex 表和决策流图曾写反，本会话已修正。
 47. **枚举主线骨架（4.2~4.10 逐包讲解会反复用到）**：Device Descriptor 读两次（第一次只读 8 字节拿 bMaxPacketSize0）；Config 先读 9 字节头拿 wTotalLength；SET_ADDRESS 之前设备共用地址 0；枚举全走 EP0。
+
+### 示例集真机验证轮（★ 2026-08-16 新增）
+
+48. **★★ 司机绑定拒接口寻址类请求**：uvcvideo 在岗时，XU/PU/Probe 等接口寻址控制传输被拒（本机报 LIBUSB_ERROR_IO 而非 PIPE/BUSY）。发类请求前必须 detach（用完 attach）。控制传输不需要 claim 但需要 detach——第六会话的老工具早有"Linux 必须"注释。
+49. **★★ 批量设备 VS 可能只有 Alt0**（2bdf:0101）："Alt0 零带宽/Alt1 流端点"是等时设备的带宽闸门，批量不预留带宽就没有零带宽 Alt。代码自动发现 Alt，别硬编码（示例 04/08 已改）。TM5X 是等时设备，经典结构齐全。
+50. **★★ PU 寻址与 XU 同构**：wIndex = (PU_ID<<8)|VC_IF。漏 PU_ID 高字节 = STALL，极易误判"设备不支持"。**STALL 先怀疑寻址，查 bmControls 再下结论**。
+51. **★★ OpenCV 示例必须 .cpp + g++**；`uvc_frame_t::data` 是 void* 先转指针再下标（第八会话踩坑 7 复发）；信箱模式回调存"成品 BGR"，主线程直接渲染——别把 BGR 当 JPEG 二次解码（静默无画面，最难查）。
+52. **"写成功但读不回"排查顺序**：时序（等 100ms 再读）→ 值域（GET_MIN/MAX）→ 状态依赖（取流中再试）→ 最后才是"设备表面成功撒谎"（028a 亮度案例，排查中）。
 
 ---
 
