@@ -50,6 +50,48 @@ static void frame_cb(uvc_frame_t *frame, void *ptr)
     pthread_mutex_unlock(&mbox_mutex);
 }
 
+/* ★ 真机勘误（第八会话踩坑 38）：本设备 VS 链含 VS_COLORFORMAT 描述符、
+ * Probe 协商不可靠——直接调 uvc_get_stream_ctrl_format_size 会失败。
+ * 解法与 code/tools/uvc_stream_viewer.cpp 相同：先试常见参数组合，
+ * 再回退遍历原始格式描述符链，fps 传 0 表示"无所谓"。 */
+static int negotiate(uvc_device_handle_t *devh, uvc_stream_ctrl_t *ctrl_out)
+{
+    struct trial { enum uvc_frame_format fmt; int w, h, fps; } trials[] = {
+        { UVC_FRAME_FORMAT_YUYV,   0,   0,  0 },
+        { UVC_FRAME_FORMAT_MJPEG,  0,   0,  0 },
+        { UVC_FRAME_FORMAT_YUYV,   120, 160, 30 },
+        { UVC_FRAME_FORMAT_MJPEG,  120, 160, 30 },
+        { UVC_FRAME_FORMAT_UNCOMPRESSED, 0, 0, 0 },
+    };
+    for (size_t i = 0; i < sizeof(trials) / sizeof(trials[0]); i++) {
+        if (uvc_get_stream_ctrl_format_size(devh, ctrl_out,
+                trials[i].fmt, trials[i].w, trials[i].h, trials[i].fps)
+                == UVC_SUCCESS)
+            return 0;
+    }
+
+    /* 回退：遍历原始格式描述符链 */
+    const uvc_format_desc_t *fmt_list = uvc_get_format_descs(devh);
+    if (!fmt_list) return -1;
+    for (const uvc_format_desc_t *fmt = fmt_list; fmt; fmt = fmt->next) {
+        enum uvc_frame_format ffmt =
+            (fmt->bDescriptorSubtype == UVC_VS_FORMAT_MJPEG)
+                ? UVC_FRAME_FORMAT_MJPEG : UVC_FRAME_FORMAT_YUYV;
+        for (const uvc_frame_desc_t *frm = fmt->frame_descs; frm; frm = frm->next) {
+            int w = frm->wWidth, h = frm->wHeight;
+            int fps = (frm->dwDefaultFrameInterval > 0)
+                ? (int)(10000000UL / frm->dwDefaultFrameInterval) : 15;
+            if (uvc_get_stream_ctrl_format_size(devh, ctrl_out, ffmt, w, h, fps)
+                    == UVC_SUCCESS)
+                return 0;
+            if (uvc_get_stream_ctrl_format_size(devh, ctrl_out, ffmt, w, h, 0)
+                    == UVC_SUCCESS)
+                return 0;
+        }
+    }
+    return -1;
+}
+
 int main(int argc, char **argv)
 {
     uvc_context_t *ctx; uvc_device_t *dev; uvc_device_handle_t *devh;
@@ -63,9 +105,9 @@ int main(int argc, char **argv)
     if (uvc_init(&ctx, NULL) < 0) { fprintf(stderr, "uvc_init 失败\n"); return 1; }
     if (uvc_find_device(ctx, &dev, vid, pid, NULL) < 0) { fprintf(stderr, "找不到设备\n"); return 1; }
     if (uvc_open(dev, &devh) < 0) { fprintf(stderr, "uvc_open 失败\n"); return 1; }
-    /* 标准取流流程: Probe/Commit 协商 + SET_INTERFACE 开流由 libuvc 代劳 */
-    if (uvc_get_stream_ctrl_format_size(devh, &ctrl, UVC_FRAME_FORMAT_ANY,
-                                        120, 160, 30) < 0) {
+    /* 标准取流流程由 libuvc 代劳（Probe/Commit 武装 + SET_INTERFACE 开闸）。
+     * ★ 本设备协商不可靠，需两轮协商（见 negotiate，第八会话踩坑 38） */
+    if (negotiate(devh, &ctrl) < 0) {
         fprintf(stderr, "协商失败\n"); return 1;
     }
     if (uvc_start_streaming(devh, &ctrl, frame_cb, NULL, 0) < 0) {
