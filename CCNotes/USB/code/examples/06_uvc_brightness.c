@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <libusb-1.0/libusb.h>
 
 #define CS_BRIGHTNESS  0x01   /* PU 控制选择子（§6.20 位图表） */
@@ -66,6 +67,14 @@ int main(int argc, char **argv)
         int brightness = val[0] | (val[1] << 8);
         printf("当前亮度 = %d（小端 %02x %02x）\n", brightness, val[0], val[1]);
 
+        /* 探针：读亮度支持的合法范围（GET_MIN/GET_MAX，第十会话请求码） */
+        unsigned char lo[2] = {0}, hi[2] = {0};
+        if (libusb_control_transfer(devh, 0xA1, 0x82, CS_BRIGHTNESS << 8,
+                                    (pu_id << 8) | vc_if, lo, 2, 1000) >= 0 &&
+            libusb_control_transfer(devh, 0xA1, 0x83, CS_BRIGHTNESS << 8,
+                                    (pu_id << 8) | vc_if, hi, 2, 1000) >= 0)
+            printf("亮度合法范围: %d ~ %d\n", lo[0] | (lo[1] << 8), hi[0] | (hi[1] << 8));
+
         /* 设亮度：带第 5 参数 = 自定义值；不带 = 原样写回当前值。
          * 小端打包：低位字节在前（线上顺序 32 00 = 50） */
         int target = (argc == 6) ? atoi(argv[5]) : brightness;
@@ -75,7 +84,9 @@ int main(int argc, char **argv)
         printf("SET_CUR(Brightness=%d): %s\n", target,
                r < 0 ? libusb_error_name(r) : "成功");
 
-        /* 写后立即读回验证（§5.3 闭环思路：改完先读回来确认） */
+        /* 写后读回验证（§5.3 闭环思路：改完先读回来确认）。
+         * 等 100ms：排除固件异步应用导致的"读回太快"假阴性 */
+        usleep(100000);
         unsigned char back[2] = {0};
         r = libusb_control_transfer(devh, 0xA1, 0x81, CS_BRIGHTNESS << 8,
                                     (pu_id << 8) | vc_if, back, 2, 1000);
