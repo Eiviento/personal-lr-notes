@@ -143,18 +143,20 @@ else document.documentElement.classList.add('dark');})();
         <summary><span>📡 Phase 7: 协议分析工具</span><span class="badge phase-pending">⏭ 跳过</span></summary>
     </details>
     <details open>
-        <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-pending">3/5 ◐</span></summary>
+        <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-done">5/5 ✓</span></summary>
         <a class="sub-item" href="#kp-8-1">8.1 libusb 架构概览</a>
         <a class="sub-item" href="#kp-8-2">8.2 设备发现与枚举</a>
         <a class="sub-item" href="#kp-8-2a">⟐ Linux 设备模型（open/claim/两扇门）</a>
         <a class="sub-item" href="#kp-8-3">8.3 控制传输编程</a>
         <a class="sub-item" href="#kp-8-3a">⟐ Windows ↔ Linux 对照</a>
+        <a class="sub-item" href="#kp-8-4">8.4 三种传输编程</a>
+        <a class="sub-item" href="#kp-8-5">8.5 热插拔检测 🎉</a>
     </details>
 
-    <div class="progress-wrap" role="progressbar" aria-valuenow="90" aria-valuemin="0"
-         aria-valuemax="100" aria-label="学习进度 90%">
-        <div class="progress-bar" style="width:90%"></div>
-        <span class="progress-label">79/88 (90%)</span>
+    <div class="progress-wrap" role="progressbar" aria-valuenow="92" aria-valuemin="0"
+         aria-valuemax="100" aria-label="学习进度 92%">
+        <div class="progress-bar" style="width:92%"></div>
+        <span class="progress-label">81/88 (92%)</span>
     </div>
 </nav>
 
@@ -4015,8 +4017,8 @@ Interface (VS, Alt1, 流端点)
     </div>
 
     <!-- ===== Phase 8: libusb 编程衔接 ===== -->
-    <div class="phase-header" id="phase-8"><h2>Phase 8: libusb 编程衔接 <span style="font-size:14px;color:var(--color-frame);margin-left:8px;">3/5 ✓ · 8.4/8.5 待学</span></h2></div>
-    <p class="phase-note">方案 A 自底向上的最后一段：把前八篇的协议知识翻译成 C 函数。每个 libusb 概念都能在协议里找到原型——学习模式是"对照"。★ = 重点标记（第十二会话用户要求详述）。</p>
+    <div class="phase-header" id="phase-8"><h2>Phase 8: libusb 编程衔接 <span style="font-size:14px;color:var(--color-frame);margin-left:8px;">5/5 ✓ · 全主线完成 🎉</span></h2></div>
+    <p class="phase-note">方案 A 自底向上的最后一段：把前八篇的协议知识翻译成 C 函数。每个 libusb 概念都能在协议里找到原型——学习模式是"对照"。★ = 重点标记。hotplug_demo.c 已真机验证。</p>
 
     <!-- kp-8-1 -->
     <article class="card" id="kp-8-1">
@@ -4338,6 +4340,137 @@ Windows（装驱动时接管）: 第一次插入 → 按 INF 档案绑 usbvideo.
                      用户态程序无运行时 detach（没权限卸载系统驱动）
                      换司机只能走"人事流程"（装驱动）</code></pre>
         <p><strong>代码跨平台</strong>：同一份 libusb 代码，Linux 上那四行接管代码（active → detach → claim / release → attach）在 Windows 后端下自动变成空操作——libusb 已吞掉平台差异。<strong>类比</strong>：Linux 司机是临时工（每跑一次换一次班），Windows 司机是正式编制（入职定岗，换岗走人事流程）。Zadig 干的是"给人换岗"，不是"打电话叫他下车"。</p>
+    </article>
+
+    <!-- kp-8-4 -->
+    <article class="card" id="kp-8-4">
+        <h3>8.4 批量/中断/等时传输编程</h3>
+
+        <h4>三种传输在 libusb 里的对应</h4>
+        <table>
+          <tr><th>协议传输</th><th>同步 API</th><th>异步函数</th><th>你的实战锚点</th></tr>
+          <tr><td>批量（2.12）</td><td>libusb_bulk_transfer</td><td>libusb_fill_bulk_transfer</td><td>libuvc 内部用异步 bulk 收 MJPEG 帧</td></tr>
+          <tr><td>中断（2.11）</td><td>libusb_interrupt_transfer</td><td>libusb_fill_interrupt_transfer</td><td>TM5X 的 HID 1023B 报表就该走它</td></tr>
+          <tr><td>等时（2.13）</td><td>libusb_isochronous_transfer（几乎不用）</td><td>libusb_fill_iso_transfer</td><td>TM5X 的 UVC VS 等时流</td></tr>
+        </table>
+
+        <h4>共性签名（以 bulk 为例）</h4>
+        <pre><code>int libusb_bulk_transfer(libusb_device_handle *devh,
+                         unsigned char endpoint,   // ★ 端点地址原样：0x81 = IN EP1
+                         unsigned char *data,      //    （5.6 的 wIndex 填法同款）
+                         int length,
+                         int *transferred,         // 输出：实际传了多少字节
+                         unsigned int timeout);    // 毫秒</code></pre>
+        <ol>
+          <li><strong>endpoint 参数就是 bEndpointAddress</strong>：0x81（IN EP1）、0x02（OUT EP2），D7 方向 + D3-0 端点号——协议里的端点地址原封不动变成函数参数。</li>
+          <li><strong>transferred 输出参数</strong>：传输"完成"不是"传完 length 字节"——<strong>短包就结束</strong>（2.8 短包终止规则），要看 *transferred 才知道实际收了多少。</li>
+        </ol>
+
+        <h4>返回语义差异（协议差异的 C 版）</h4>
+        <table>
+          <tr><th>场景</th><th>返回</th><th>协议原型</th></tr>
+          <tr><td>成功收到数据</td><td>≥ 0（*transferred = 实际字节）</td><td>短包终止或恰好 length</td></tr>
+          <tr><td>设备忙</td><td>LIBUSB_ERROR_TIMEOUT</td><td>设备连续 NAK（2.9）</td></tr>
+          <tr><td><strong>端点 Halted</strong></td><td><strong>LIBUSB_ERROR_PIPE</strong></td><td>数据端点 STALL（5.3 的粘性 Halt！）</td></tr>
+        </table>
+        <p><strong>这里兑现 5.3 的闭环</strong>：批量返回 PIPE → 端点 Halted → GET_STATUS 确认 → <strong>libusb_clear_halt(handle, endpoint)</strong>（CLEAR_FEATURE(ENDPOINT_HALT) 的封装）→ 重试。</p>
+
+        <h4>等时的特殊：包数组</h4>
+        <pre><code>struct libusb_iso_packet_descriptor pkts[N];  // N 个微帧的包描述
+transfer = libusb_alloc_transfer(N);
+libusb_fill_iso_transfer(transfer, devh, 0x81, buf, total_len, N, cb, NULL, 0);
+libusb_set_iso_packet_lengths(transfer, 3072);  // 每包 3072 字节</code></pre>
+        <p><strong>wMaxPacketSize（第六篇的"带宽配额/水管粗细"）在这里变成 libusb_set_iso_packet_lengths 的参数</strong>——每个包描述符独立汇报状态和实际长度，因为等时包没有统一成败（丢包不重传）。</p>
+
+        <h4>异步完整展开 + resubmit 模式</h4>
+        <pre><code>// ① 分配  ② 填充（绑定方向/端点/缓冲/回调）
+struct libusb_transfer *t = libusb_alloc_transfer(0);
+libusb_fill_bulk_transfer(t, devh, EP, buf, len, transfer_cb, user_data, timeout);
+// ③ 提交（立刻返回）  ④ 事件泵
+libusb_submit_transfer(t);
+while (running) libusb_handle_events(ctx);
+// ⑤ 回调里：检查 status → ★ resubmit 自己 → 无限循环收数据（libuvc 帧循环的写法）</code></pre>
+        <p><strong>resubmit 模式 = 一台自动续订的接收机</strong>：回调里把同一个 transfer 再 submit 一次，形成"永远有一个传输在路上"的流水线。</p>
+
+        <h4>选型速查</h4>
+        <pre><code>发命令/读状态     → control_transfer（EP0，不需要 claim）
+收 HID 报表       → interrupt_transfer（bInterval 周期轮询）
+串口收发          → bulk_transfer（完整性优先）
+视频流            → 异步 bulk/isoc + resubmit（libuvc 已替你干）</code></pre>
+
+        <h4>★★ 三线程协调（信箱模式简版）</h4>
+        <div class="info-box">
+          内部拼帧回调与你的回调在<strong>同一根线程</strong>上（一个干完紧接着叫另一个），合并成一方"<strong>收帧的人</strong>"。整个程序只有两方 + 一个信箱。
+        </div>
+        <pre><code>收帧的人（事件线程）          信箱（共享缓冲+标志位）          主线程
+  每 33ms 收到一帧 ───────▶   [ 最多放 1 帧 ]   ───────▶   有空就去取走、显示</code></pre>
+        <p><strong>协调规则只有一条</strong>：收帧的人来了——信箱空着就放进去，还有帧就<strong>丢掉新来的这帧（不等待！）</strong>；主线程——有帧就取走、清空、去显示。你 uvc_stream_viewer 里那几行 mutex + frame_ready 就是"这个信箱"。</p>
+        <p><strong>两个"来不及"的后果</strong>：</p>
+        <ul>
+          <li><strong>主线程来不及</strong>（渲染慢）：收帧的人见信箱满着就把新帧扔了继续干活——画面从 30fps 变 20fps，<strong>慢动作但不崩、不堵、画面完整</strong>。代价只是"少吃了几盘菜"。</li>
+          <li><strong>回调来不及</strong>（收帧的人自己慢）：USB 数据在门口排队，队满设备开始自己丢数据——<strong>损失不可控</strong>。原则：宁可主动丢几帧，也不能让收帧的人被堵住。</li>
+        </ul>
+        <p><strong>食堂窗口类比</strong>：厨房（总线）→ 打菜师傅（收帧的人）→ 取餐口（信箱，只能放一盘）→ 你（主线程）。师傅每 33 秒端一盘菜到取餐口；你还没取走，新菜就把旧的换掉——你永远拿到最新的。师傅绝不站在取餐口等——他一等，厨房就堵了。</p>
+        <p>（升级方向一句话：<strong>队列吸收抖动、不创造产能</strong>——长期处理率 &lt; 帧率，队列多深最终都会满。）</p>
+    </article>
+
+    <!-- kp-8-5 -->
+    <article class="card" id="kp-8-5">
+        <h3>8.5 热插拔检测（Phase 8 收官 🎉）</h3>
+
+        <div class="info-box">
+          8.2 的伏笔兑现：<strong>设备列表是动态的（内核维护花名册），热插拔 API 把这个"动态"变成回调</strong>——设备插入/拔出 → 内核更新花名册 → libusb 监听到 → 调用你注册的回调。code/hotplug_demo.c 已真机验证。
+        </div>
+
+        <h4>最小可跑 demo（真机验证过）</h4>
+        <pre><code>static int hotplug_cb(libusb_context *ctx, libusb_device *dev,
+                      libusb_hotplug_event event, void *user_data) {
+    if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED) {
+        struct libusb_device_descriptor desc;
+        if (libusb_get_device_descriptor(dev, &amp;desc) == 0)
+            printf("+ 设备插入: %04x:%04x  (bus %d, address %d)\n", ...);
+    } else if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT) {
+        printf("- 设备拔出\n");   /* 设备已离线，读不到任何信息 */
+    }
+    return 0;
+}
+/* 注册 */
+libusb_hotplug_register_callback(ctx,
+    LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
+    LIBUSB_HOTPLUG_ENUMERATE,          /* 启动时已插着的也报一遍 */
+    vid, pid, LIBUSB_HOTPLUG_MATCH_ANY,
+    hotplug_cb, NULL, &amp;handle);
+while (1) libusb_handle_events(ctx);   /* 事件泵：回调在这里被触发 */</code></pre>
+        <p>编译 <code>gcc -o hotplug_demo hotplug_demo.c -lusb-1.0</code>；<code>sudo ./hotplug_demo</code> 监听全部 / <code>sudo ./hotplug_demo 2bdf 0101</code> 只监听海康。</p>
+
+        <h4>三个必须知道的细节</h4>
+        <ol>
+          <li><strong>回调也靠事件泵驱动</strong>：热插拔事件走 netlink 通道——不调 handle_events，回调永远不会来。事件泵三合一：传输完成、热插拔、都靠它。</li>
+          <li><strong>LIBUSB_HOTPLUG_ENUMERATE</strong>：带上它，注册瞬间把现有设备"回放"一遍——SDK 启动即知现状（不带只能等下一次插拔）。</li>
+          <li><strong>LEFT 回调里设备已死</strong>：拔出事件的回调到达时设备已在总线外——只做应用层收尾（close、清状态），发任何 USB 操作都会失败。</li>
+        </ol>
+
+        <h4>四问速答（做什么/解决什么/如何做/为什么）</h4>
+        <table>
+          <tr><th>问</th><th>答</th></tr>
+          <tr><td>做什么</td><td>让程序自动知道设备插入/拔出——设备一插自动被叫醒干活，一拔自动收尾。不靠人看、不靠轮询。</td></tr>
+          <tr><td>解决什么</td><td>没有它只有两个笨办法：启动查一次（之后全瞎）或每秒轮询（慢、费 CPU）。真实痛点：工业监控 7×24，线松了/换设备程序必须自己恢复。</td></tr>
+          <tr><td>如何做</td><td>信息从硬件一路往上：D+/D- 电平变化（★ 4.2 第一课）→ 内核枚举 → netlink 广播 → libusb 翻译成事件 → 事件泵 → 匹配 VID:PID → 回调。</td></tr>
+          <tr><td>为什么</td><td>① USB 天生是热插拔总线（4.2 插拔检测就是基因）；② SDK 的职责是把"设备在哪"藏起来：ARRIVED 自动连接、LEFT 自动收尾，业务方无感。</td></tr>
+        </table>
+
+        <h4>全 Phase 8 汇成 SDK 骨架</h4>
+        <pre><code>init → 注册热插拔回调(带 ENUMERATE)
+     → 事件泵循环:
+        ARRIVED: open → claim → set_interface_alt_setting(开流) → 启动取流(异步 resubmit)
+        LEFT:    收尾清理
+        帧回调:  信箱模式交主线程渲染</code></pre>
+
+        <h4>Phase 8 收官 + 全主线收官 🎉</h4>
+        <pre><code>8.1 架构 ✅  8.2 设备发现 ✅  8.3 控制传输 ✅  8.4 三种传输 ✅  8.5 热插拔 ✅
+进度 81/88（92%）—— Phase 7 跳过暂缓，★ 主线全部学完 ★</code></pre>
+        <p><strong>方案 A（自底向上）走到终点</strong>：从 D+ 上拉电阻的电平（4.2）一路学到热插拔回调——协议理论、类协议、平台机制、编程接口全部打通。SDK 三目标弹药齐备：UVC 走 libuvc/XU、CDC 走 SET_LINE_CODING + 批量、HID 走中断报表 + 六类请求，热插拔骨架做地基。<strong>下一步：SDK 动工。</strong></p>
+        <p><strong>MQTT 类比</strong>：热插拔回调 = broker 的 client connected / disconnected 事件——写 MQTT 时监听客户端上下线，写 USB SDK 时监听设备上下线，同一个模式。</p>
     </article>
     <!-- 帧时间线详情面板已移至 kp-2-18 时间线下方 -->
 

@@ -1,8 +1,8 @@
 # HANDOFF — USB 协议学习会话交接文档
 
 > 更新时间：2026-08-16（第十二会话）
-> 主线学习进度：79/88 知识点（90%）— Phase 8 进行中（8.1~8.3 完成），下一阶段 8.4 三种传输编程
-> 本会话重点：**Phase 5 连讲收官（5.1~5.6）** + **Phase 6 全篇（6.1~6.26，应用层裁剪版）** + **Phase 8 开讲（8.1~8.3 + Linux/Windows 平台深挖）** + SETUP 三类语义修正 + 知识库两次篇章重排 + Phase 7 跳过决策 + 知识总计修正（67→88）
+> 主线学习进度：81/88 知识点（92%）— ★ 全主线完成（Phase 7 跳过暂缓），下一步 SDK 动工
+> 本会话重点：**Phase 5 连讲收官** + **Phase 6 全篇（应用层裁剪版）** + **Phase 8 全篇（8.1~8.5 + 平台深挖 + hotplug 真机验证）** + SETUP 三类语义修正 + 知识库两次篇章重排 + Phase 7 跳过决策 + 知识总计修正（67→88）
 > 上一会话（第十一会话）：Phase 4 收官（4.2~4.12）+ TM5X 大数据流程 + 真机抓包分析
 
 ---
@@ -146,6 +146,9 @@
 20. **open ≠ 开流（四层动作）**：软件层 open（零流量）→ 内核层 detach/claim（内核记账）→ 协议层 set_configuration/set_interface_alt_setting（SET_INTERFACE 代码版）→ 数据层 transfer
 21. **★ claim 机制**：接口级所有权登记（零总线流量）；claim 单位是接口（EP0 不需要 claim 的完整解释）；进程退出 claim 自动释放但 detach 不自动恢复——恢复三招：attach / sysfs bind / usbreset（软件版重插）
 22. **★ Windows↔Linux**：接管时机不同（Linux 运行时换班 vs Windows 装驱动定岗，Zadig=换岗不是打电话）；Windows 三大类原生司机齐全（usbvideo/usbser/hidusb），不一定要 Zadig；错误方言不同（PIPE/BUSY ↔ HRESULT）但根因同一；libusb 代码 95% 跨平台（detach/claim 在 Windows 自动空操作）；复合设备 Zadig 按 MI_xx 接口装
+23. **★ 信箱模式（三线程协调）**：内部拼帧回调与用户回调同一线程，合并成"收帧的人"；两方 + 一个只能放一帧的信箱；规则一条——信箱满就丢新帧不等待；主线程慢=慢动作不崩（可控丢帧），回调慢=设备/总线被动丢（不可控）；食堂窗口类比；队列吸收抖动不创造产能
+24. **三种传输的 libusb 形态**：endpoint 参数 = bEndpointAddress 原样；transferred 输出参数（短包终止）；PIPE=Halted → libusb_clear_halt（5.3 闭环兑现）；等时 = iso_packet_descriptor 包数组 + set_iso_packet_lengths（wMaxPacketSize 变参数）；resubmit 模式 = 自动续订接收机
+25. **★ 热插拔（主线终点）**：4.2 的"电平宣告存在"经内核 netlink → libusb 事件 → 事件泵 → 回调，闭环到应用层；回调靠事件泵驱动、ENUMERATE 回放现有设备、LEFT 时设备已死只做收尾；hotplug_demo.c 已真机验证——**全主线收官，下一步 SDK 动工**
 
 ### 第十一会话：Phase 4 收官 + TM5X 大数据流程 + 真机抓包分析
 
@@ -224,7 +227,7 @@
 | 第六篇 | 设备类协议逐字节解析（6.1~6.26：HID 7 + CDC 7 + UVC 12，应用层裁剪版） | 第十二会话新增（主线 Phase 6，全部完成） |
 | 第七篇 | 真实设备描述符实战（7 章 + 10 FAQ） | `real-device-descriptor-analysis.md` |
 | 第八篇 | UVC XU 控制与取流实战（9 节 + 7 条踩坑记录） | `uvc-xu-extension-protocol-design.md` + `xu-new-device-setup-guide.md` |
-| 第九篇 | libusb 编程衔接（9.1~9.3 + 五个深挖：libuvc 关系/两层回调/★帧回调规则/★open-claim/★Windows 对照） | 第十二会话新增（主线 Phase 8，进行中） |
+| 第九篇 | libusb 编程衔接（9.1~9.5 全篇 + 深挖：libuvc 关系/两层回调/★帧回调规则/★open-claim/★Windows 对照/★信箱模式/★热插拔） | 第十二会话新增（主线 Phase 8，全部完成） |
 | 附录 | 快速参考手册（10 张速查表：SETUP、标准请求参数总表 A.10、wIndex、PID、描述符、MQTT 类比等） | 全部笔记提炼 |
 
 **整理策略：**
@@ -276,9 +279,9 @@
 ```
 D:\CC\personal-lr-notes\CCNotes\USB\
 ├── HANDOFF.md                                    ← 你正在看的这份交接文档
-├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~5,546 行，九篇 + 附录，Phase 8 进行中）
-├── usb-protocol-learning-plan.md                 ← 完整学习计划（88知识点清单，原"67"已修正，Phase 7 已标跳过）
-├── usb-notes.html                                ← Phase 1-8 理论可视化（4,357 行，含 kp-4-1 ~ kp-4-12 + kp-4-11a + kp-5-1 ~ kp-5-6 + kp-6-1 ~ kp-6-17 + kp-8-1 ~ kp-8-3a）
+├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~5,745 行，九篇 + 附录，★ 全主线完成）
+├── usb-protocol-learning-plan.md                 ← 完整学习计划（88知识点清单，原"67"已修正，★ 主线全部完成）
+├── usb-notes.html                                ← Phase 1-8 理论可视化（4,490 行，含 kp-4-1 ~ kp-4-12 + kp-4-11a + kp-5-1 ~ kp-5-6 + kp-6-1 ~ kp-6-17 + kp-8-1 ~ kp-8-5）
 ├── usb-notes.css                                 ← 10 层分层样式（暗色默认 IDE 风格）
 ├── usb-notes.js                                  ← 4 模块脚本（数据/渲染/交互/初始化）
 ├── usb-notes-old.html                            ← 旧版备份（翻新前单文件版本）
@@ -300,6 +303,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 │   ├── xu_minimal_get.c                          ← 最简示例（读 CS_ID=0x04）
 │   ├── xu_interactive.c                          ← 交互式 XU 调试工具（★ 支持 SET_CUR 选择）
 │   └── uvc_stream_viewer.cpp                     ← ★★★ libuvc 取流 + OpenCV 显示（第八会话核心产出）
+│   └── hotplug_demo.c                            ← ★ 热插拔最小演示（第十二会话，已真机验证）
 ├── notes/
 │   ├── phase1-usb-overview.md                    ← Phase 1
 │   ├── phase2-communication-model.md             ← Phase 2（新增接口-端点关系问答）
@@ -314,15 +318,20 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ## 四、当前卡在哪 + 下一步计划
 
-### 主线学习：Phase 8 进行中（8.1~8.3 完成），下一步 8.4
+### ★ 主线全部完成（81/88，92%），项目进入新阶段：SDK 动工
 
-**没有卡住。** Phase 1-6 全部完成，Phase 8 完成 3/5（79/88，90%）。Phase 7 已跳过暂缓。
+**协议理论学习全部结束。** Phase 1-8 完成（Phase 7 跳过暂缓，真机抓包已在 4.11/4.11a 完成）。第十二会话最后实测验证了 hotplug_demo.c（Ubuntu VM 上 ENUMERATE 刷屏 + 插拔实时打印，用户确认验证成功）。
 
-**下一步：8.4 — 批量/中断/等时传输编程**（三种传输的 API 与回调模型）。教学锚点：用户已用 libusb_interrupt_transfer（HID 报表场景）、libuvc 内部已用异步 bulk/isoc（帧回调）；8.4 讲"同步三件套"（bulk/interrupt 的 API + 返回语义）+ 异步模型的完整展开（fill_transfer 家族 + submit + handle_events 循环 + 流式 resubmit 模式）——把 libuvc 内部机制最后一层面纱揭开。之后 8.5 热插拔（注册回调 → 设备插入/拔出通知）收官，Phase 8 即完成，全主线结束。
+**下一步（项目层面，不再是"讲知识点"）**：用户最初的目标——**构建 USB SDK（UVC 摄像头 + CDC 串口 + HID 设备）**。弹药已齐备：
 
-**Phase 7（协议分析工具）已标跳过暂缓**（真机抓包已在 4.11/4.11a 完成），不要主动安排。
+| SDK 模块 | 理论弹药 | 代码基础 |
+|---------|---------|---------|
+| UVC 摄像头 | XU 控制（第八篇）+ Probe/Commit + Payload Header（第六篇） | uvc_stream_viewer.cpp / libuvc 或裸 libusb（TM76 改写） |
+| CDC 串口 | SET_LINE_CODING 7 字节 + 批量管道（第六篇） | 裸 libusb（类请求 + bulk） |
+| HID | 中断报表 + 六类请求（第六篇） | 裸 libusb（interrupt + 类请求） |
+| 地基 | 热插拔回调 + 事件泵 + 信箱模式（第九篇） | hotplug_demo.c 骨架 |
 
-一次一个知识点。当用户说"继续"时，从这里开始。
+**可能的动工方式**（用户说想做什么就做什么）：① 先写 SDK 骨架（热插拔 + 设备发现 + 统一打开接口）；② 按 UVC→CDC→HID 顺序逐个模块；③ 把 TM76 裸 libusb 拼帧逻辑改写面向 2bdf:0101。**动工前建议先 brainstorming 定 SDK 的接口设计和模块划分**（第七会话的完整流程：brainstorming → spec → plan → implement）。
 
 ### 副线一：UVC 取流工具已完成基础
 
@@ -351,7 +360,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ### 用户可能要求的下一步
 
-- **主线**：说"继续" → 8.4（批量/中断/等时传输编程——同步三件套 + 异步模型完整展开，教学锚点：HID 报表的 interrupt_transfer、libuvc 内部的异步 bulk/isoc）
+- **主线**：理论学习已全部完成。用户如果说"继续" → 进入 **SDK 动工**（先 brainstorming 定接口设计，再 spec → plan → implement）
 - **知识库**：在 `USB-Protocol-Knowledge-Base.md` 中补充后续学习内容（Phase 4+）
 - **取流工具**：加录制/截图/伪彩切换/全屏
 - **XU 探索**：`xu_interactive.c` 加 SET_CUR 暴力扫描未知 CS_ID
@@ -491,7 +500,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 3. **读知识库** — `Read USB-Protocol-Knowledge-Base.md`（★ 第九会话新建、第十二会话扩充：~4,803 行，八篇 + 附录，读它就能获得所有上下文）
 4. **读学习计划** — `Read usb-protocol-learning-plan.md`（如需了解后续 34 个未完成的知识点）
 5. **确定用户意图：**
-   - 如果用户说"继续" → 从 8.4（批量/中断/等时传输编程）开始讲，一次一个知识点
+   - 如果用户说"继续" → 进入 SDK 动工阶段（brainstorming 先行，不再按"一次一个知识点"讲课）
    - 如果用户要复习/查阅某主题 → `USB-Protocol-Knowledge-Base.md`（单文件，含 10 张速查表）
    - 如果用户要看理论学习可视化 → 双击 `usb-notes.html`（3 文件架构）
    - 如果用户要看描述符实战 → 双击 `descriptor-viewer.html`
@@ -513,7 +522,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
    - 如果用户要编辑知识库 → 直接编辑 `USB-Protocol-Knowledge-Base.md`（4 空格缩进）
    - 如果用户要编辑 HTML → 改内容 `usb-notes.html`，改样式 `usb-notes.css`，改行为 `usb-notes.js`
 6. **如果用户不确定到哪了：**
-   > "Phase 1-6 全部完成，Phase 8 进行中（8.1~8.3 完成，79/88，90%），Phase 7 已跳过暂缓。上次会话（第十二会话）完成 Phase 5 收官 + Phase 6 全篇（应用层裁剪版）+ Phase 8 开讲（8.1 架构 / 8.2 设备发现 / 8.3 控制传输，含 libuvc 关系、两层回调、★帧回调规则、★claim 机制、★Windows↔Linux 对照五大深挖）+ SETUP 三类语义修正 + 知识库两次重排（现行九篇）+ 知识总计修正 67→88。准备好了说继续（8.4 三种传输编程）。"
+   > "★ 主线全部完成（81/88，92%；Phase 7 跳过暂缓）。第十二会话完成 Phase 5 收官 + Phase 6 全篇（应用层裁剪版）+ Phase 8 全篇（含信箱模式、热插拔真机验证 hotplug_demo.c）+ 知识库两次重排（现行九篇）+ 知识总计修正 67→88。协议理论学习结束，下一步进入 SDK 动工（brainstorming 先行）。"
 7. **★ 最重要的几条规则（新会话开始务必重申）：**
    - **XU 必须在 `uvc_open` 之前发**，否则报 LIBUSB_ERROR_IO
    - **`libusb_control_transfer` 有 8 个参数**：bmRT + bReq + wVal + wIdx + data + wLen + timeout（极易漏 bRequest！）
