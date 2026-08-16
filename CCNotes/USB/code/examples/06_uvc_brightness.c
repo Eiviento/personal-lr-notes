@@ -32,6 +32,15 @@ int main(int argc, char **argv)
     libusb_init(&ctx);
     devh = libusb_open_device_with_vid_pid(ctx, vid, pid);
     if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }
+
+    /* ★ 真机勘误（2026-08-16）：uvcvideo 绑定时，接口寻址类请求被拒（报 IO）
+     * ——发类请求前先请司机下车，结束再请回来（第六会话老规矩） */
+    int if_was = 0;
+    if (libusb_kernel_driver_active(devh, vc_if) == 1) {
+        libusb_detach_kernel_driver(devh, vc_if);
+        if_was = 1;
+        printf("[准备] 已请内核司机下车（/dev/video0 消失）\n");
+    }
     libusb_claim_interface(devh, vc_if);   /* PU 控制走 EP0，其实不 claim 也行 */
 
     /* 读亮度: IN Class Interface, GET_CUR, wValue 高字节=CS_BRIGHTNESS,
@@ -57,6 +66,8 @@ int main(int argc, char **argv)
     }
 
     libusb_release_interface(devh, vc_if);
+    if (if_was) libusb_attach_kernel_driver(devh, vc_if);
+    printf("[还原] 司机复工\n");
     libusb_close(devh);
     libusb_exit(ctx);
     return 0;

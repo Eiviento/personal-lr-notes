@@ -49,6 +49,14 @@ int main(int argc, char **argv)
     libusb_init(&ctx);
     devh = libusb_open_device_with_vid_pid(ctx, vid, pid);
     if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }
+
+    /* ★ 真机勘误（2026-08-16）：uvcvideo 绑定时，接口寻址类请求被拒（报 IO）
+     * ——发类请求前先请司机下车，结束再请回来 */
+    int if_was = 0;
+    if (libusb_kernel_driver_active(devh, vs_if) == 1) {
+        libusb_detach_kernel_driver(devh, vs_if);
+        if_was = 1;
+    }
     libusb_claim_interface(devh, vs_if);
 
     /* 问范围: VS Probe 的 CS_ID=0x01，wIndex=VS 接口号（没有 Unit ID！） */
@@ -77,6 +85,8 @@ int main(int argc, char **argv)
     printf("（未发 Commit、未开流——纯协商对话到此为止）\n");
 
     libusb_release_interface(devh, vs_if);
+    if (if_was) libusb_attach_kernel_driver(devh, vs_if);
+    printf("[还原] 司机复工\n");
     libusb_close(devh);
     libusb_exit(ctx);
     return 0;

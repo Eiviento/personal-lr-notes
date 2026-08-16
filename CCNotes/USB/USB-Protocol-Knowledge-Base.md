@@ -5247,6 +5247,8 @@ libusb_attach_kernel_driver(handle, IF)   → 原司机重新上岗（/dev/video
 
 **claim 的单位是接口，不是设备**——claim 一个接口 = 接管该接口名下全部端点（§2.3a：非 EP0 端点只属于一个 Interface）。两个推论：① 一个设备多接口可被不同进程分别 claim；② **EP0 不属于任何接口**——所以第八会话认知 33 的完整解释："XU 控制传输走 EP0，不需要 claim 接口"。claim 管的是数据端点，控制传输天生不需要车权——这就是独立 libusb 句柄发 XU、与 libuvc 取流互不干扰的原因。
 
+**★ 真机勘误（2026-08-16）**：控制传输不需要 claim，**但需要请司机下车**——uvcvideo 绑定在接口上时，用户态对**接口寻址**的类请求（0xA1/0x21 + wIndex=接口号）被拒，本机表现为 `LIBUSB_ERROR_IO`（不是 PIPE/BUSY）。第六会话以来的所有成功 XU 代码（`code/tools/xu_minimal_get.c` 等）都先 detach 了，所以从没撞上；示例 05/06/07/09 初版漏了这一步，真机验证时全体报 IO。规则升级：**发类请求前先 detach 司机，用完 attach 回去**（code/examples/05~09 已修）。
+
 **★ 进程退出没 release 会怎样**：claim **不会永久锁死**——登记挂在进程的 usbfs 文件描述符上，进程退出（任何死法）内核自动关闭 fd → 自动释放所有 claim、取消未完成 URB。**但 detach 的副作用不会自动恢复**——uvcvideo 保持解绑，/dev/video0 一直消失（这就是第八会话调试期总得重插摄像头的原因）。恢复三招：
 
 ```

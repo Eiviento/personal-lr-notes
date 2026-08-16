@@ -37,24 +37,35 @@ int main(int argc, char **argv)
     devh = libusb_open_device_with_vid_pid(ctx, vid, pid);
     if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }
 
+    /* ★ 真机勘误（2026-08-16）：uvcvideo 绑定时，接口寻址类请求被拒（报 IO）
+     * ——发类请求前先请司机下车（第六会话老工具的"Linux 必须"步骤） */
+    int if_was = 0;
+    if (libusb_kernel_driver_active(devh, vc_if) == 1) {
+        libusb_detach_kernel_driver(devh, vc_if);
+        if_was = 1;
+    }
+
     /* 三阶段: GET_LEN → GET_CUR（FUNC_SWITCH 对只读 CS 可省略） */
     /* bmRequestType=0xA1(IN Class IF), wValue=CS_ID<<8（海康惯例）,
      * wIndex=(XU_ID<<8)|VC_IF —— 换设备只改 XU_ID！ */
     r = libusb_control_transfer(devh, 0xA1, 0x85, CS_PROTOCOL_VERSION << 8,
                                 (xu_id << 8) | vc_if, len, 2, 1000);
-    if (r < 0) { fprintf(stderr, "GET_LEN: %s（XU_ID 填对了吗？）\n", libusb_error_name(r)); return 1; }
+    if (r < 0) { fprintf(stderr, "GET_LEN: %s（XU_ID 填对了吗？）\n", libusb_error_name(r)); goto cleanup; }
     int len_val = len[0] | (len[1] << 8);
     printf("GET_LEN(CS=0x%02x) → 应答长度 %d 字节\n", CS_PROTOCOL_VERSION, len_val);
-    if (len_val == 0) { printf("（长度 0 = 该 CS 无参数或为触发型命令，正常）\n"); return 0; }
+    if (len_val == 0) { printf("（长度 0 = 该 CS 无参数或为触发型命令，正常）\n"); goto cleanup; }
     if (len_val > (int)sizeof(ver)) len_val = sizeof(ver);
 
     r = libusb_control_transfer(devh, 0xA1, 0x81, CS_PROTOCOL_VERSION << 8,
                                 (xu_id << 8) | vc_if, ver, len_val, 1000);
-    if (r < 0) { fprintf(stderr, "GET_CUR: %s\n", libusb_error_name(r)); return 1; }
+    if (r < 0) { fprintf(stderr, "GET_CUR: %s\n", libusb_error_name(r)); goto cleanup; }
     printf("GET_CUR → %d 字节:", r);
     for (int i = 0; i < r; i++) printf(" %02x", ver[i]);
     printf("\n");
 
+cleanup:
+    if (if_was) libusb_attach_kernel_driver(devh, vc_if);
+    printf("[还原] 司机复工\n");
     libusb_close(devh);
     libusb_exit(ctx);
     return 0;
