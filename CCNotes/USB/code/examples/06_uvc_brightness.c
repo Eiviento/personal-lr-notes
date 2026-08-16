@@ -6,8 +6,9 @@
  *          第八篇 §8.8 惯例：Unit ID 填高字节）
  * 对应知识点: KB 第八篇 §8.8（PU 教程）+ 第六篇 §6.20（bmControls 位图）
  * 编译:    gcc -o uvc_brightness 06_uvc_brightness.c -lusb-1.0
- * 运行:    sudo ./uvc_brightness 2bdf 028a 0 2
- *          （PU_ID 查法: sudo lsusb -v -d VID:PID | grep -B2 -A6 PROCESSING_UNIT）
+ * 运行:    sudo ./uvc_brightness 2bdf 028a 0 2 [亮度值]
+ *          （PU_ID 查法: sudo lsusb -v -d VID:PID | grep -B2 -A6 PROCESSING_UNIT；
+ *           不带亮度值 = 读回当前值后原样写回；带 = 设为自定义值 0~100）
  * 预期:    两台真机对照——028a (PU_ID=2, bmControls=0x13df) 返回真实亮度
  *          并可 SET_CUR；0101 (PU_ID=5, bmControls=00 00) STALL（真·空壳）
  * ★ 真机勘误（2026-08-16）：初版 wIndex 漏了 PU_ID 高字节，两台设备都
@@ -27,8 +28,8 @@ int main(int argc, char **argv)
     unsigned char val[2];
     int vid, pid, vc_if, pu_id, r;
 
-    if (argc != 5) {
-        printf("用法: %s VID PID VC_IF PU_ID\n", argv[0]);
+    if (argc != 5 && argc != 6) {
+        printf("用法: %s VID PID VC_IF PU_ID [亮度值]\n", argv[0]);
         printf("  PU_ID 查法: sudo lsusb -v -d VID:PID | grep -B2 -A6 PROCESSING_UNIT\n");
         return 1;
     }
@@ -65,10 +66,13 @@ int main(int argc, char **argv)
         int brightness = val[0] | (val[1] << 8);
         printf("当前亮度 = %d（小端 %02x %02x）\n", brightness, val[0], val[1]);
 
-        /* 设亮度 = 当前值（可改任意 0~100 试试） */
+        /* 设亮度：带第 5 参数 = 自定义值；不带 = 原样写回当前值。
+         * 小端打包：低位字节在前（线上顺序 32 00 = 50） */
+        int target = (argc == 6) ? atoi(argv[5]) : brightness;
+        unsigned char set_val[2] = { target & 0xFF, (target >> 8) & 0xFF };
         r = libusb_control_transfer(devh, 0x21, 0x01, CS_BRIGHTNESS << 8,
-                                    (pu_id << 8) | vc_if, val, 2, 1000);
-        printf("SET_CUR(Brightness=%d): %s\n", brightness,
+                                    (pu_id << 8) | vc_if, set_val, 2, 1000);
+        printf("SET_CUR(Brightness=%d): %s\n", target,
                r < 0 ? libusb_error_name(r) : "成功");
     } else {
         printf("意外: %s\n", libusb_error_name(r));
