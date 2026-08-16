@@ -74,6 +74,15 @@ int main(int argc, char **argv)
                                     (pu_id << 8) | vc_if, set_val, 2, 1000);
         printf("SET_CUR(Brightness=%d): %s\n", target,
                r < 0 ? libusb_error_name(r) : "成功");
+
+        /* 写后立即读回验证（§5.3 闭环思路：改完先读回来确认） */
+        unsigned char back[2] = {0};
+        r = libusb_control_transfer(devh, 0xA1, 0x81, CS_BRIGHTNESS << 8,
+                                    (pu_id << 8) | vc_if, back, 2, 1000);
+        if (r >= 0)
+            printf("写后读回 = %d %s\n", back[0] | (back[1] << 8),
+                   back[0] == set_val[0] && back[1] == set_val[1]
+                       ? "（与写入一致 ✓）" : "（与写入不一致——固件表面成功未应用？）");
     } else {
         printf("意外: %s\n", libusb_error_name(r));
     }
