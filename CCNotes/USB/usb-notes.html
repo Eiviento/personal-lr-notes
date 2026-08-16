@@ -142,14 +142,19 @@ else document.documentElement.classList.add('dark');})();
     <details>
         <summary><span>📡 Phase 7: 协议分析工具</span><span class="badge phase-pending">⏭ 跳过</span></summary>
     </details>
-    <details>
-        <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-pending">0/5 ○ · 即将更新</span></summary>
+    <details open>
+        <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-pending">3/5 ◐</span></summary>
+        <a class="sub-item" href="#kp-8-1">8.1 libusb 架构概览</a>
+        <a class="sub-item" href="#kp-8-2">8.2 设备发现与枚举</a>
+        <a class="sub-item" href="#kp-8-2a">⟐ Linux 设备模型（open/claim/两扇门）</a>
+        <a class="sub-item" href="#kp-8-3">8.3 控制传输编程</a>
+        <a class="sub-item" href="#kp-8-3a">⟐ Windows ↔ Linux 对照</a>
     </details>
 
-    <div class="progress-wrap" role="progressbar" aria-valuenow="86" aria-valuemin="0"
-         aria-valuemax="100" aria-label="学习进度 86%">
-        <div class="progress-bar" style="width:86%"></div>
-        <span class="progress-label">76/88 (86%)</span>
+    <div class="progress-wrap" role="progressbar" aria-valuenow="90" aria-valuemin="0"
+         aria-valuemax="100" aria-label="学习进度 90%">
+        <div class="progress-bar" style="width:90%"></div>
+        <span class="progress-label">79/88 (90%)</span>
     </div>
 </nav>
 
@@ -4009,12 +4014,331 @@ Interface (VS, Alt1, 流端点)
         <p>lsusb -v完整输出解读 · Wireshark+USBpcap安装配置 · 抓取HID/CDC/UVC枚举与数据流 · USB Tree Viewer</p>
     </div>
 
-    <!-- ===== Phase 8 Placeholder ===== -->
-    <div class="phase-header" id="phase-8"><h2>Phase 8: libusb 编程衔接 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
-    <div class="placeholder">
-        <h3>第八阶段 — 5 个知识点</h3>
-        <p>libusb架构概览(同步/异步模型) · 设备发现与枚举 · 控制传输编程 · 批量/中断/等时传输编程 · 热插拔检测</p>
-    </div>
+    <!-- ===== Phase 8: libusb 编程衔接 ===== -->
+    <div class="phase-header" id="phase-8"><h2>Phase 8: libusb 编程衔接 <span style="font-size:14px;color:var(--color-frame);margin-left:8px;">3/5 ✓ · 8.4/8.5 待学</span></h2></div>
+    <p class="phase-note">方案 A 自底向上的最后一段：把前八篇的协议知识翻译成 C 函数。每个 libusb 概念都能在协议里找到原型——学习模式是"对照"。★ = 重点标记（第十二会话用户要求详述）。</p>
+
+    <!-- kp-8-1 -->
+    <article class="card" id="kp-8-1">
+        <h3>8.1 libusb 架构概览</h3>
+
+        <div class="info-box">
+          libusb 是<strong>用户态 USB 访问库</strong>——不写驱动也能直接和设备对话。跨平台（Linux usbfs / macOS IOKit / Windows WinUSB）。<strong>前 7 个 Phase 学的是硬件层协议，libusb 只是把它翻译成 C 函数。</strong>
+        </div>
+
+        <h4>分层位置</h4>
+        <pre><code>┌─────────────────────────┐
+│ 你的 SDK（应用层）        │ ← 目标产物
+├─────────────────────────┤
+│ libuvc（UVC 类库）       │ ← uvc_stream_viewer.cpp 在这层上面
+├─────────────────────────┤
+│ libusb（通用 USB 库）    │ ← xu_minimal_get.c / xu_interactive.c 直接在这一层
+├─────────────────────────┤
+│ 内核：usbfs/WinUSB/类驱动 │ ← 枚举、调度、权限
+├─────────────────────────┤
+│ 硬件                    │ ← 前八篇协议知识全部作用于这里
+└─────────────────────────┘</code></pre>
+
+        <h4>五个核心对象</h4>
+        <table>
+          <tr><th>对象</th><th>是什么</th><th>类比</th></tr>
+          <tr><td>libusb_context</td><td>会话总控台：库的全局状态容器</td><td>公司总机</td></tr>
+          <tr><td>libusb_device</td><td><strong>未打开</strong>的设备（可枚举、查描述符）</td><td>员工花名册</td></tr>
+          <tr><td>libusb_device_handle</td><td><strong>已打开</strong>的设备（能发传输）</td><td>工位上的分机</td></tr>
+          <tr><td>描述符结构体</td><td>协议描述符的 C 版</td><td>简历副本</td></tr>
+          <tr><td>libusb_transfer</td><td>一次传输的完整描述（异步模型核心）</td><td>派工单</td></tr>
+        </table>
+        <p><strong>device vs handle 是第一个门槛</strong>：device = "知道这台设备存在"，handle = "拿到和它通话的话筒"。枚举列表拿到的都是 device；open 成功才有 handle——对应协议层 Configured 之后才能谈传输。</p>
+
+        <h4>两种模型：同步 vs 异步——你其实两种都用过了</h4>
+        <pre><code>同步模型：函数阻塞到传输完成才返回
+  libusb_control_transfer / bulk_transfer / interrupt_transfer
+  → xu_minimal_get.c、xu_interactive.c 全部是这个模型
+
+异步模型：提交后立刻返回，完成后回调通知
+  alloc_transfer + fill_* + submit_transfer + completion callback
+  → libuvc 内部就是它！uvc_stream_viewer.cpp 天天在异步模型上跑</code></pre>
+        <p>你早就领教过异步模型的脾气——第八会话踩坑 36（"帧回调跑在 libuvc 内部线程"）就是它的后果。</p>
+
+        <h4>异步骨架 + completion callback 两要点</h4>
+        <pre><code>static void transfer_cb(struct libusb_transfer *transfer)
+{
+    if (transfer->status == LIBUSB_TRANSFER_COMPLETED) {
+        // 处理 transfer->buffer
+    }
+    // 流式场景：重新 submit 自己 → 无限循环收数据（libuvc 就是这么干的）
+}
+libusb_transfer *t = libusb_alloc_transfer(0);
+libusb_fill_bulk_transfer(t, handle, EP_IN, buf, len, transfer_cb, user_data, timeout);
+libusb_submit_transfer(t);            // 提交后立刻返回
+while (running) {
+    libusb_handle_events(ctx);        // ★ 事件泵：谁的回调好了就调谁
+}</code></pre>
+        <ol>
+          <li><strong>回调跑在调用 handle_events 的那个线程里</strong>——不是你提交的线程。这就是 libuvc"神秘内部线程"的机制来源。</li>
+          <li><strong>永远先检查 transfer-&gt;status</strong>：STALL（协议层的 STALL 在这里现形！）、TIMED_OUT、NO_DEVICE……第五篇学的 STALL 拒绝到这里变成错误码。</li>
+        </ol>
+        <p><strong>类比</strong>：同步 = 打电话（拨出去阻塞，说完才挂断，一次只能打一个）；异步 = 微信 + 通知铃（发完干别的，响了再处理）。libusb 内部其实是"<strong>同步是异步的马甲</strong>"：同步函数 = submit + 死等信号量，回调里放行。</p>
+
+        <h4>★ 深挖：libusb vs libuvc 的关系</h4>
+        <p><strong>分两层看</strong>——传输层 100% 是 libusb 封装（零新接口：设备发现/打开/XU 命令/取流全是 libusb 函数，编译命令 -luvc -lusb-1.0 就是证据）；协议层 libuvc 加了一整套实打实的逻辑：</p>
+        <table>
+          <tr><th>libuvc 干的事</th><th>协议原型</th></tr>
+          <tr><td>解析 VC/VS 描述符链，建内部树</td><td>6.16~6.24</td></tr>
+          <tr><td>uvc_get_stream_ctrl_format_size 跑 Probe/Commit</td><td>6.25</td></tr>
+          <tr><td>按 bmAttributes 分叉 bulk/isoc</td><td>第十会话认知</td></tr>
+          <tr><td><strong>12 字节 Payload Header 解析 + FID/EOF 拼帧</strong></td><td>6.26</td></tr>
+          <tr><td>帧队列/引用计数/回调分发/事件线程</td><td>—</td></tr>
+        </table>
+        <p><strong>对照证据在你自己的代码库里</strong>：uvc_stream_viewer.cpp（站 libuvc，回调拿整帧）vs HIKVISION_TM76_libusb_3.c（裸 libusb，uvc_read_one_frame 手工拼帧）——<strong>两份代码的差距，就是 libuvc 的增值部分</strong>。一句话：libuvc = libusb 的传输封装 + 一个你迟早要自己写一遍的 UVC 协议引擎。</p>
+
+        <h4>★ 深挖：两层回调</h4>
+        <table>
+          <tr><th></th><th>libuvc 内部回调（你从没见过）</th><th>你的帧回调</th></tr>
+          <tr><td>触发频率</td><td><strong>每收到一个 USB 包一次</strong></td><td><strong>每拼完一帧一次</strong></td></tr>
+          <tr><td>拿到的东西</td><td>libusb_transfer：原始包（Payload Header + 一截数据）</td><td>uvc_frame_t：完整一帧</td></tr>
+          <tr><td>干的活</td><td>解析 Payload Header → FID 比对 → 拼帧 → EOF 收帧</td><td>检测 FF D8 → 解码 → 设标志位</td></tr>
+        </table>
+        <pre><code>总线: 包1 → 包2 → ... → 包N
+  │ 每包触发一次 ↓
+内部回调: 拼帧（6.26 算法 + 异步回调的合体）
+  │ 一帧齐了触发一次 ↓
+你的回调: 拿完整 uvc_frame_t 干活</code></pre>
+        <p>频率差（真机量化）：120x160 MJPEG → 内部回调 ~600 次/秒（拼图工），你的回调 30 次/秒（收货人）。<strong>同一线程的真相</strong>：你的回调在内部回调拼完一帧后当场、同一线程、同一调用栈里被调——所以回调一阻塞，事件泵就停（这就是"回调不能渲染"的真正原因）。</p>
+
+        <h4>★★★ 帧回调的规则（重点清单）</h4>
+        <pre><code>□ uvc_frame_t 只在回调期间有效 → memcpy 或 uvc_duplicate_frame，别存裸指针
+□ 回调里只做：数据转换 / 拷贝 / 设标志位 / 入队
+□ 回调里别做：渲染 / 文件 IO / 网络 / sleep / 长持锁
+□ 判断标准：回调耗时 &lt;&lt; 帧间隔（留 3~5 倍余量；你的场景 1~3ms vs 33ms = 10 倍）
+□ 跟不上 → 丢旧帧处理新帧（if (frame_ready) return;），绝不阻塞</code></pre>
+        <p>两条硬规则：① uvc_frame_t 只在回调期间有效（libuvc 复用帧缓冲，回调后碰 frame-&gt;data = 悬空）；② 不阻塞（阻塞 = 事件泵停摆 = 丢帧甚至取流中断，第八会话踩坑 1 的 SDL2 案例）。一条软规则：回调耗时 &lt;&lt; 帧间隔——出现掉帧/卡顿/延迟变大时第一个查它。</p>
+    </article>
+
+    <!-- kp-8-2 -->
+    <article class="card" id="kp-8-2">
+        <h3>8.2 设备发现与枚举</h3>
+
+        <div class="info-box">
+          <strong>核心认知：设备列表 ≠ 协议枚举。</strong>第四篇的"枚举"是设备和 Host 的<strong>入职面试</strong>（10 步对话，上电时发生一次）；libusb_get_device_list 是<strong>去人事部复印花名册</strong>——面试早在插入时由内核做完了，抄结果零总线流量。
+        </div>
+
+        <pre><code>设备插入 → 内核执行枚举 10 步（4.2~4.10）→ 内核维护花名册
+你的程序 → libusb_get_device_list → 抄花名册（零总线流量）</code></pre>
+        <p>所以 4.2~4.5（检测/复位/读 8 字节/Set_Address）对 libusb <strong>完全不可见</strong>——比"SET_ADDRESS 设备级抓包不可见"还隔着一层。</p>
+
+        <h4>代码骨架（找到 2bdf:0101）</h4>
+        <pre><code>libusb_init(&amp;ctx);
+libusb_device **devs;
+ssize_t cnt = libusb_get_device_list(ctx, &amp;devs);   // ★ 抄花名册
+for (ssize_t i = 0; i &lt; cnt; i++) {
+    libusb_device *dev = devs[i];
+    struct libusb_device_descriptor desc;
+    libusb_get_device_descriptor(dev, &amp;desc);        // §3.2 的 C 版
+    if (desc.idVendor == 0x2bdf &amp;&amp; desc.idProduct == 0x0101) {
+        printf("bus %d, address %d\n",
+               libusb_get_bus_number(dev), libusb_get_device_address(dev));
+        libusb_device_handle *handle;
+        libusb_open(dev, &amp;handle);                   // 拿通话话筒
+        libusb_close(handle);
+    }
+}
+libusb_free_device_list(devs, 1);
+libusb_exit(ctx);</code></pre>
+        <p>你已写过快捷版：xu_interactive.c 里的 <code>libusb_open_device_with_vid_pid</code> 内部就是这个循环。</p>
+
+        <h4>API ↔ 协议对照表</h4>
+        <table>
+          <tr><th>libusb 调用</th><th>协议原型</th><th>备注</th></tr>
+          <tr><td>libusb_get_device_list</td><td>内核花名册（枚举结果）</td><td>无总线流量</td></tr>
+          <tr><td>libusb_get_device_descriptor</td><td>§3.2 Device Descriptor</td><td>内核缓存副本</td></tr>
+          <tr><td>desc.idVendor / idProduct</td><td>lsusb 三件套第一步</td><td>第六会话认知</td></tr>
+          <tr><td>libusb_get_device_address</td><td>§4.5 Set_Address 领的工牌号</td><td>就是那个 0~127 地址！</td></tr>
+          <tr><td>libusb_get_config_descriptor</td><td>§4.8 完整配置链</td><td>结构体树（见下）</td></tr>
+          <tr><td>libusb_open</td><td>Configured 后的通话资格</td><td>只 open 不发任何总线请求</td></tr>
+          <tr><td>libusb_set_configuration</td><td>§4.10 Set_Configuration</td><td>★ 打开不会自动配置，要显式发</td></tr>
+        </table>
+
+        <h4>描述符结构体 = §3.1 层级树的 C 版</h4>
+        <pre><code>cfg.interface[0]                              // bInterfaceNumber=0 的接口
+   .altsetting[0]                             // Alt 0（零带宽）
+   .altsetting[1].endpoint[0]                 // Alt 1 的流端点（第五篇的数组形态！）
+       .bEndpointAddress   // 0x81 = IN EP1
+       .bmAttributes       // 传输类型（2.4/2.13）
+       .wMaxPacketSize     // 带宽配额（"水管粗细"）
+       .bInterval          // 轮询间隔（3.7）</code></pre>
+        <p>协议树上的每个节点在 C 结构体里都有一个名字——这就是"libusb 只是把协议翻译成 C 函数"的含义。</p>
+
+        <h4>三个实用细节</h4>
+        <ol>
+          <li><strong>描述符是内核缓存的</strong>：默认读缓存不产生总线流量；想强制重读用 libusb_get_descriptor（真发 GET_DESCRIPTOR，5.6 参数全会填）。</li>
+          <li><strong>打开 ≠ 配置</strong>：open 后设备未必 Configured；裸设备要 libusb_set_configuration。系统驱动已用时配置已完成，再设报 BUSY——实战常跳过直接 claim。</li>
+          <li><strong>device_address 会变</strong>：拔插可能换号——别把地址当身份证，身份证是 VID:PID + iSerialNumber。</li>
+        </ol>
+    </article>
+
+    <!-- kp-8-2a -->
+    <article class="card" id="kp-8-2a">
+        <h3>⟐ Linux 设备模型（open / claim / 两扇门）</h3>
+
+        <h4>★★ open ≠ 开流：从 init 到数据流动的四层动作</h4>
+        <pre><code>【软件层】  libusb_init / libusb_open     → 零总线流量
+            进程里创建句柄。设备完全无感。open 只是"拿话筒"，还没拨号。
+
+【内核层】  libusb_detach_kernel_driver / libusb_claim_interface → 零总线流量
+            把接口从内核驱动手里接管。内核记账，不是 USB 事务。
+
+【协议层-配置】 libusb_set_configuration(handle, 1) → 发 SET_CONFIGURATION（§4.10）
+
+【协议层-开流】 libusb_set_interface_alt_setting(handle, IF, 1) → 发 SET_INTERFACE（§5.5）
+            ★ 这才是"开启端点"！设备固件执行：旧端点失效 → 新端点激活 → toggle 归零。
+
+【数据层】  libusb_bulk_transfer / interrupt_transfer → 真正的数据流</code></pre>
+        <p>"开流"在 libusb 里有自己的函数——<strong>libusb_set_interface_alt_setting 就是 SET_INTERFACE 的代码版</strong>。你从没见过它，因为站在 libuvc 上（uvc_open 内部干 open+detach+claim；uvc_start_streaming 内部干 Probe/Commit + set_interface_alt_setting + submit）。</p>
+        <p><strong>类比</strong>：open = 走到工位拿起分机；开流 = 打内线让设备"接水管、开阀门"；transfer = 水开始流。顺序永远是 open（拿话筒）→ claim（占线）→ 开流（开水）→ transfer（接水）。</p>
+
+        <h4>★★ claim 与 detach（所有权登记，不是总线动作）</h4>
+        <p><strong>claim = 向内核登记"这个接口归我这个进程管"</strong>——一条 usbfs ioctl，零总线流量。登记后别的进程再 claim 同一接口 → <strong>LIBUSB_ERROR_BUSY</strong>（"车已经有人开了"）。</p>
+        <pre><code>设备插入 → 内核按 bInterfaceClass 派常驻司机（uvcvideo → /dev/video0）
+你的程序要直连 → 两拨人抢一辆车 → 先交接：
+
+libusb_kernel_driver_active(handle, IF)   → 先查："这接口现在有司机吗？"
+libusb_detach_kernel_driver(handle, IF)   → 有 → "请司机下车"（video0 消失）
+libusb_claim_interface(handle, IF)        → "登记：这接口归我了"
+...干活...
+libusb_release_interface(handle, IF)      → 还车登记
+libusb_attach_kernel_driver(handle, IF)   → 原司机复工（video0 复活）</code></pre>
+        <p><strong>claim 的单位是接口，不是设备</strong>——claim 一个接口 = 接管该接口名下全部端点（§2.3a）。推论：① 多接口可被不同进程分别 claim；② <strong>EP0 不属于任何接口</strong>——所以"XU 控制传输走 EP0 不需要 claim"（第八会话认知 33）的完整解释：claim 管数据端点，控制传输天生不需要车权。</p>
+
+        <h4>★★ 进程退出没 release 会怎样</h4>
+        <p><strong>claim 不会永久锁死</strong>——登记挂在进程的 usbfs fd 上，进程退出（任何死法）内核自动销号 + 取消未完成 URB。但 <strong>detach 的副作用不自动恢复</strong>——uvcvideo 保持解绑，video0 一直消失（第八会话调试期总得重插摄像头的原因）。恢复三招：</p>
+        <pre><code>① libusb_attach_kernel_driver    ← 调度台打电话叫司机回来（新进程显式调用）
+② sysfs 手动 bind：
+   sudo sh -c 'echo "2-1:1.0" &gt; /sys/bus/usb/drivers/uvcvideo/bind'
+③ usbreset / libusb_reset_device ← ★ 软件版重插：端口复位 → 重新枚举 → 驱动重绑
+                                    （4.3 的总线复位知识变成一条命令，手不用碰 USB 口）</code></pre>
+
+        <h4>两扇门（video0 vs usbfs 节点）</h4>
+        <table>
+          <tr><th></th><th>/dev/video0（前门）</th><th>/dev/bus/usb/002/003（后门）</th></tr>
+          <tr><td>门牌含义</td><td>"这是一个摄像头服务"</td><td>"总线 2 上的 003 号设备"（= lsusb 的 Bus/Device 号）</td></tr>
+          <tr><td>谁在服务</td><td>内核司机（发 URB、拼帧——uvcvideo 在内核里又实现了一遍 6.26）</td><td>你自己（raw 协议直连）</td></tr>
+          <tr><td>API</td><td>V4L2 ioctl</td><td>libusb 函数</td></tr>
+          <tr><td>司机被 detach 后</td><td><strong>门消失</strong></td><td>门还在（设备没走）</td></tr>
+        </table>
+        <p><strong>互斥</strong>：uvcvideo 在岗 → 前门开、后门 claim 报 BUSY（货梯被司机占着）；detach+claim → 前门关、后门畅通。<strong>货梯只有一部，不能同时开</strong>。前门也留了 XU 小窗（UVCIOC_CTRL_QUERY ioctl），SDK 可以双开门：取流走前门、XU 走后门——很多厂商 SDK 这么设计。</p>
+        <p><strong>出租车类比</strong>：claim = 调度台登记"这车归我开"；进程退出 = 调度台发现人没了自动销号；detach 请下车的常驻司机不会自己回来——车可租了，营运牌（video0）还摘着。</p>
+    </article>
+
+    <!-- kp-8-3 -->
+    <article class="card" id="kp-8-3">
+        <h3>8.3 控制传输编程（Phase 8 高潮）</h3>
+
+        <div class="info-box">
+          <strong>API 就是线上的包</strong>：函数签名前 7 个参数 = SETUP 包本身 + 数据指针，顺序就是线上顺序。这就是"8 参数、漏一个 bRequest 全部错位"（第八会话踩坑 4 ★★★）的完整解释。
+        </div>
+
+        <pre><code>int libusb_control_transfer(libusb_device_handle *dev_handle,
+    uint8_t  bmRequestType,    // ┐
+    uint8_t  bRequest,         // │
+    uint16_t wValue,           // ├─ 拼起来 = 总线上的 SETUP 8 字节！（1+1+2+2+2 = 8）
+    uint16_t wIndex,           // │
+    unsigned char *data,       // │ data 指 DATA 阶段缓冲
+    uint16_t wLength,          // ┘
+    unsigned int timeout);     // ← 毫秒。协议里没有"超时"，libusb 加的应用层参数</code></pre>
+
+        <h4>历史代码对照大表（Phase 1-7 的收成）</h4>
+        <table>
+          <tr><th>场景</th><th>调用</th><th>SETUP 线上字节</th><th>出处</th></tr>
+          <tr><td>读描述符</td><td><code>(devh, 0x80, 0x06, 0x0100, 0, buf, 18, 1000)</code></td><td><code>80 06 00 01 00 00 12 00</code></td><td>§4.6</td></tr>
+          <tr><td>XU GET_LEN</td><td><code>(devh, 0xA1, 0x85, 0x0400, 0x0A00, buf, 2, 1000)</code></td><td><code>A1 85 04 00 00 0A 02 00</code></td><td>第六会话</td></tr>
+          <tr><td>HID GET_REPORT</td><td><code>(devh, 0xA1, 0x01, 0x0100, if, buf, len, 1000)</code></td><td><code>A1 01 00 01 ...</code></td><td>§6.7</td></tr>
+          <tr><td>CDC SET_LINE_CODING</td><td><code>(devh, 0x21, 0x20, 0, if, data, 7, 1000)</code></td><td><code>21 20 00 00 ... 07 00</code></td><td>§6.13</td></tr>
+          <tr><td>SET_INTERFACE 开流</td><td><code>(devh, 0x01, 0x0B, 1, if, NULL, 0, 1000)</code></td><td><code>01 0B 01 00 ...</code></td><td>第十会话</td></tr>
+        </table>
+        <p><strong>字节序澄清</strong>：wValue/wIndex 传主机序逻辑值，库负责转小端——传 0x0A00（CS_ID 在逻辑高字节），线上就是 00 0A。</p>
+
+        <h4>★★ 返回值 = 协议错误的翻译表</h4>
+        <table>
+          <tr><th>返回值</th><th>协议原型</th><th>含义与排查</th></tr>
+          <tr><td>≥ 0</td><td>DATA 阶段完成</td><td>实际传输的 DATA 字节数</td></tr>
+          <tr><td><strong>LIBUSB_ERROR_PIPE</strong></td><td><strong>STATUS 回 STALL</strong></td><td>设备拒绝："拒绝唯一入口"现形 → 查你的 5 个参数（八成 wIndex 高字节错）</td></tr>
+          <tr><td>LIBUSB_ERROR_TIMEOUT</td><td>（协议无此概念）</td><td>设备一直 NAK 或没响应</td></tr>
+          <tr><td>LIBUSB_ERROR_NO_DEVICE</td><td>设备拔了</td><td>物理消失</td></tr>
+          <tr><td>LIBUSB_ERROR_IO</td><td>其他 I/O 错误</td><td>第八会话踩过：XU 在 uvc_open 之后发（查占用状态）</td></tr>
+        </table>
+
+        <h4>填参数五步 = §5.6 决策流的代码版</h4>
+        <pre><code>① 方向 IN/OUT？  → bmRequestType D7      （读=0xA1 族，写=0x21 族）
+② 哪本字典？     → D6-5                  （Standard 0x80 / Class 0xA1 / Vendor 0xC1）
+③ 发给谁？       → D4-0                  （Device / Interface / Endpoint）
+④ 什么业务？     → bRequest              （查 5.2 的请求表）
+⑤ 参数多少？     → wValue/wIndex + wLength</code></pre>
+        <p>wLength=0 + data=NULL = 无 DATA 阶段（SET_ 家族"空手写"）；timeout=0 = 无限等待（生产代码几乎不写）。</p>
+        <p><strong>快递面单类比</strong>：填 5 个参数 = 填面单；libusb = 快递公司（打包 SETUP、派送、收回执）；timeout = "几天没签收就打电话问"；PIPE = 收件人盖了"拒"章（STALL）——你拿到的不是包裹，是拒收通知。</p>
+    </article>
+
+    <!-- kp-8-3a -->
+    <article class="card" id="kp-8-3a">
+        <h3>⟐ Windows ↔ Linux 对照</h3>
+
+        <h4>两条 SDK 路线（Windows 不一定要 Zadig）</h4>
+        <table>
+          <tr><th>SDK 目标</th><th>Windows 原生司机</th><th>装驱动吗</th><th>可用 API</th></tr>
+          <tr><td>UVC 摄像头</td><td>usbvideo.sys</td><td>不需要</td><td>DirectShow / Media Foundation</td></tr>
+          <tr><td>CDC 串口</td><td>usbser.sys</td><td>不需要</td><td>COM 口 API（CreateFile("\\\\.\\COM3")）</td></tr>
+          <tr><td>HID 设备</td><td>hidusb.sys</td><td>不需要</td><td>HID API（HidD_* / ReadFile）</td></tr>
+        </table>
+        <pre><code>路线 A（纯原生，零驱动安装）: UVC→DirectShow + CDC→COM API + HID→HID API
+    好处: 用户零门槛；坏处: 三套 API，XU 要绕 IKsControl
+路线 B（libusb 统一，Zadig 一次）: 三大类全走 libusb_* 函数
+    好处: 代码与 Linux 一模一样；坏处: 每台设备 Zadig 一次 + PotPlayer 失明</code></pre>
+        <p>路线 A 没丢掉 XU：usbvideo.sys 原生支持扩展单元——<strong>IKsControl 接口发 KSPROPERTY</strong>（对应 Linux 的 UVCIOC_CTRL_QUERY）。PotPlayer/VLC/Windows 相机 App 全部走前门（PotPlayer → DirectShow → usbvideo.sys）——这就是"即插即用生态"的实体。</p>
+
+        <h4>概念映射大表</h4>
+        <table>
+          <tr><th>Linux（你熟）</th><th>Windows（对应物）</th></tr>
+          <tr><td>/dev/bus/usb/002/003（usbfs 节点）</td><td>无节点概念——libusb 直接调 WinUSB 驱动对象</td></tr>
+          <tr><td>lsusb 三件套</td><td>设备管理器 → 硬件 ID：USB\VID_2BDF&amp;PID_0101</td></tr>
+          <tr><td>lsusb -v</td><td>usbview.exe / 设备管理器详细信息</td></tr>
+          <tr><td>uvcvideo + /dev/video0</td><td>usbvideo.sys + "USB 视频设备"（无文件节点）</td></tr>
+          <tr><td>UVCIOC_CTRL_QUERY（前门 XU）</td><td>IKsControl + KSPROPERTY（前门 XU）</td></tr>
+          <tr><td>cdc_acm + /dev/ttyACM0</td><td>usbser.sys + COM3</td></tr>
+          <tr><td>termios 设波特率</td><td>SetCommState(DCB)——底层<strong>都是 SET_LINE_CODING</strong></td></tr>
+          <tr><td>usbhid + /dev/input/event*</td><td>hidusb.sys + HID API</td></tr>
+          <tr><td>detach_kernel_driver + claim</td><td><strong>不存在</strong>（WinUSB 专用司机天生归你）</td></tr>
+          <tr><td>udev 规则</td><td>Zadig / INF 文件（一次性装驱动）</td></tr>
+          <tr><td>sudo ./xu_interactive</td><td>装驱动要管理员；<strong>运行不需要</strong></td></tr>
+          <tr><td>libusb（usbfs 后端）</td><td><strong>同一个 libusb</strong>（WinUSB 后端）——代码 95% 原样可编译</td></tr>
+        </table>
+
+        <h4>错误方言对照（底层真相同一个，翻译官不同）</h4>
+        <table>
+          <tr><th>底层真相</th><th>libusb 路线报</th><th>DS + IKsControl 路线报</th></tr>
+          <tr><td>STATUS 回 STALL</td><td>LIBUSB_ERROR_PIPE</td><td>失败 HRESULT（E_FAIL 类）</td></tr>
+          <tr><td>接口被占用</td><td>LIBUSB_ERROR_BUSY</td><td>打开失败（E_ACCESSDENIED 类）</td></tr>
+          <tr><td>设备不存在/驱动没装</td><td>列表里没有</td><td>DS 枚举没有；设备管理器代码 28</td></tr>
+          <tr><td>中途拔出</td><td>LIBUSB_ERROR_NO_DEVICE</td><td>EC_DEVICE_LOST 事件</td></tr>
+        </table>
+        <p>排查武器不变：换已知 CS_ID 试通 + USBPcap 抓包看 STALL（总线层真相，两条路线通用）+ 设备管理器错误码（4.12 的 43/28 分层定位）。</p>
+
+        <h4>Zadig 要点</h4>
+        <pre><code>驱动类型三巨头: WinUSB（✅ libusb-1.0 标准后端） / libusbK（备选，等时好） / libusb-win32（❌ 老古董）
+★★ 复合设备（如 TM5X）按接口装，别按整机装:
+   List All Devices 勾上 → MI_00(UVC) MI_01(CDC) MI_02(厂商HID) 分开列
+   → 只对 MI_02 装 WinUSB = 只换一个司机；对父条目整机装 = 三接口驱动全替换
+恢复: 设备管理器 → 更新驱动 → 自动搜索；WCID 复选框要固件支持，海康没有</code></pre>
+
+        <h4>★★ 接管时机差异（流程形状一样、时机不同）</h4>
+        <pre><code>Linux（运行时接管）:  插入 → 绑 uvcvideo → 跑程序时 detach/claim → 退出 release/attach
+                     每次运行切换一遍，随时可逆（调度台一个电话的事）
+
+Windows（装驱动时接管）: 第一次插入 → 按 INF 档案绑 usbvideo.sys
+                     Zadig 换驱动（一次性）→ 从此每次插入都绑 WinUSB
+                     用户态程序无运行时 detach（没权限卸载系统驱动）
+                     换司机只能走"人事流程"（装驱动）</code></pre>
+        <p><strong>代码跨平台</strong>：同一份 libusb 代码，Linux 上那四行接管代码（active → detach → claim / release → attach）在 Windows 后端下自动变成空操作——libusb 已吞掉平台差异。<strong>类比</strong>：Linux 司机是临时工（每跑一次换一次班），Windows 司机是正式编制（入职定岗，换岗走人事流程）。Zadig 干的是"给人换岗"，不是"打电话叫他下车"。</p>
+    </article>
     <!-- 帧时间线详情面板已移至 kp-2-18 时间线下方 -->
 
 </main>

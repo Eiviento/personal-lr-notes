@@ -149,9 +149,9 @@
 
 | # | 知识点 | 要做什么 | 状态 |
 |---|--------|---------|------|
-| 8.1 | libusb 架构概览 | 同步/异步模型、context、传输 completion callback | ⬜ |
-| 8.2 | 设备发现与枚举 | libusb_get_device_list→遍历→获取描述符→跟协议阶段对应 | ⬜ |
-| 8.3 | 控制传输编程 | libusb_control_transfer — SETUP 包 8 字节与位定义完全对应 | ⬜ |
+| 8.1 | libusb 架构概览 | 同步/异步模型、context、传输 completion callback | ✅（含 libuvc 关系、两层回调、★帧回调规则深挖） |
+| 8.2 | 设备发现与枚举 | libusb_get_device_list→遍历→获取描述符→跟协议阶段对应 | ✅（含 ★open≠开流、★claim/detach、两扇门深挖） |
+| 8.3 | 控制传输编程 | libusb_control_transfer — SETUP 包 8 字节与位定义完全对应 | ✅（含 ★错误翻译表、★Windows↔Linux 对照深挖） |
 | 8.4 | 批量/中断/等时传输编程 | 三种传输的 API 与回调模型 | ⬜ |
 | 8.5 | 热插拔检测 | 注册回调→设备插入/拔出通知 | ⬜ |
 
