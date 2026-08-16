@@ -1,9 +1,14 @@
-/* hotplug_demo.c —— 最小热插拔演示：设备插入/拔出时打印消息
+/* ============================================================
+ * 02_hotplug_detect.c —— 热插拔检测（ARRIVED/LEFT 回调）
  *
- * 编译: gcc -o hotplug_demo hotplug_demo.c -lusb-1.0
- * 运行: sudo ./hotplug_demo              ← 监听所有设备（推荐先这么试）
- *       sudo ./hotplug_demo 2bdf 0101    ← 只监听海康热成像
- */
+ * 学什么:  设备插入/拔出如何变成你的回调——4.2 的"电平宣告存在"
+ *          经内核 netlink → libusb 事件 → 事件泵 → 打印，闭环到应用层
+ * 对应知识点: KB 第九篇 §9.5（热插拔检测）
+ * 编译:    gcc -o hotplug_detect 02_hotplug_detect.c -lusb-1.0
+ * 运行:    sudo ./hotplug_detect              ← 监听所有设备
+ *          sudo ./hotplug_detect 2bdf 0101    ← 只监听海康
+ * 预期:    启动瞬间 ENUMERATE 刷出全部现有设备；插拔实时打印 +/-
+ * ============================================================ */
 
 #include <stdio.h>
 #include <stdlib.h>

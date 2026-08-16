@@ -148,7 +148,7 @@
 22. **★ Windows↔Linux**：接管时机不同（Linux 运行时换班 vs Windows 装驱动定岗，Zadig=换岗不是打电话）；Windows 三大类原生司机齐全（usbvideo/usbser/hidusb），不一定要 Zadig；错误方言不同（PIPE/BUSY ↔ HRESULT）但根因同一；libusb 代码 95% 跨平台（detach/claim 在 Windows 自动空操作）；复合设备 Zadig 按 MI_xx 接口装
 23. **★ 信箱模式（三线程协调）**：内部拼帧回调与用户回调同一线程，合并成"收帧的人"；两方 + 一个只能放一帧的信箱；规则一条——信箱满就丢新帧不等待；主线程慢=慢动作不崩（可控丢帧），回调慢=设备/总线被动丢（不可控）；食堂窗口类比；队列吸收抖动不创造产能
 24. **三种传输的 libusb 形态**：endpoint 参数 = bEndpointAddress 原样；transferred 输出参数（短包终止）；PIPE=Halted → libusb_clear_halt（5.3 闭环兑现）；等时 = iso_packet_descriptor 包数组 + set_iso_packet_lengths（wMaxPacketSize 变参数）；resubmit 模式 = 自动续订接收机
-25. **★ 热插拔（主线终点）**：4.2 的"电平宣告存在"经内核 netlink → libusb 事件 → 事件泵 → 回调，闭环到应用层；回调靠事件泵驱动、ENUMERATE 回放现有设备、LEFT 时设备已死只做收尾；hotplug_demo.c 已真机验证——**全主线收官，下一步 SDK 动工**
+25. **★ 热插拔（主线终点）**：4.2 的"电平宣告存在"经内核 netlink → libusb 事件 → 事件泵 → 回调，闭环到应用层；回调靠事件泵驱动、ENUMERATE 回放现有设备、LEFT 时设备已死只做收尾；examples/02_hotplug_detect.c 已真机验证——**全主线收官，下一步 SDK 动工**
 
 ### 第十一会话：Phase 4 收官 + TM5X 大数据流程 + 真机抓包分析
 
@@ -303,7 +303,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 │   ├── xu_minimal_get.c                          ← 最简示例（读 CS_ID=0x04）
 │   ├── xu_interactive.c                          ← 交互式 XU 调试工具（★ 支持 SET_CUR 选择）
 │   └── uvc_stream_viewer.cpp                     ← ★★★ libuvc 取流 + OpenCV 显示（第八会话核心产出）
-│   └── hotplug_demo.c                            ← ★ 热插拔最小演示（第十二会话，已真机验证）
+│   └── hotplug_demo.c                            ← （已迁移至 examples/02_hotplug_detect.c）
 │   └── examples/                                 ← ★ 13 份最小可运行示例 + README（第十二会话，配 usb-sdk-examples.html）
 ├── notes/
 │   ├── phase1-usb-overview.md                    ← Phase 1
@@ -321,7 +321,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ### ★ 主线全部完成（81/88，92%），项目进入新阶段：SDK 动工
 
-**协议理论学习全部结束。** Phase 1-8 完成（Phase 7 跳过暂缓，真机抓包已在 4.11/4.11a 完成）。第十二会话最后实测验证了 hotplug_demo.c（Ubuntu VM 上 ENUMERATE 刷屏 + 插拔实时打印，用户确认验证成功）。
+**协议理论学习全部结束。** Phase 1-8 完成（Phase 7 跳过暂缓，真机抓包已在 4.11/4.11a 完成）。第十二会话最后实测验证了 examples/02_hotplug_detect.c（Ubuntu VM 上 ENUMERATE 刷屏 + 插拔实时打印，用户确认验证成功）。
 
 **下一步（项目层面，不再是"讲知识点"）**：用户最初的目标——**构建 USB SDK（UVC 摄像头 + CDC 串口 + HID 设备）**。弹药已齐备：
 
@@ -330,7 +330,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 | UVC 摄像头 | XU 控制（第八篇）+ Probe/Commit + Payload Header（第六篇） | uvc_stream_viewer.cpp / libuvc 或裸 libusb（TM76 改写） |
 | CDC 串口 | SET_LINE_CODING 7 字节 + 批量管道（第六篇） | 裸 libusb（类请求 + bulk） |
 | HID | 中断报表 + 六类请求（第六篇） | 裸 libusb（interrupt + 类请求） |
-| 地基 | 热插拔回调 + 事件泵 + 信箱模式（第九篇） | hotplug_demo.c 骨架 |
+| 地基 | 热插拔回调 + 事件泵 + 信箱模式（第九篇） | examples/02_hotplug_detect.c 骨架 |
 
 **可能的动工方式**（用户说想做什么就做什么）：① 先写 SDK 骨架（热插拔 + 设备发现 + 统一打开接口）；② 按 UVC→CDC→HID 顺序逐个模块；③ 把 TM76 裸 libusb 拼帧逻辑改写面向 2bdf:0101。**动工前建议先 brainstorming 定 SDK 的接口设计和模块划分**（第七会话的完整流程：brainstorming → spec → plan → implement）。
 
@@ -523,7 +523,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
    - 如果用户要编辑知识库 → 直接编辑 `USB-Protocol-Knowledge-Base.md`（4 空格缩进）
    - 如果用户要编辑 HTML → 改内容 `usb-notes.html`，改样式 `usb-notes.css`，改行为 `usb-notes.js`
 6. **如果用户不确定到哪了：**
-   > "★ 主线全部完成（81/88，92%；Phase 7 跳过暂缓）。第十二会话完成 Phase 5 收官 + Phase 6 全篇（应用层裁剪版）+ Phase 8 全篇（含信箱模式、热插拔真机验证 hotplug_demo.c）+ 知识库两次重排（现行九篇）+ 知识总计修正 67→88。协议理论学习结束，下一步进入 SDK 动工（brainstorming 先行）。"
+   > "★ 主线全部完成（81/88，92%；Phase 7 跳过暂缓）。第十二会话完成 Phase 5 收官 + Phase 6 全篇（应用层裁剪版）+ Phase 8 全篇（含信箱模式、热插拔真机验证 examples/02_hotplug_detect.c）+ 知识库两次重排（现行九篇）+ 知识总计修正 67→88。协议理论学习结束，下一步进入 SDK 动工（brainstorming 先行）。"
 7. **★ 最重要的几条规则（新会话开始务必重申）：**
    - **XU 必须在 `uvc_open` 之前发**，否则报 LIBUSB_ERROR_IO
    - **`libusb_control_transfer` 有 8 个参数**：bmRT + bReq + wVal + wIdx + data + wLen + timeout（极易漏 bRequest！）
