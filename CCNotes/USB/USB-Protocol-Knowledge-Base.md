@@ -1,8 +1,8 @@
 # USB 协议知识库
 
 > 整理日期：2026-08-02（2026-08-16 更新）
-> 覆盖范围：Phase 1-6（HID 篇完成）+ 真实设备描述符实战 + UVC XU 控制与取流实战
-> 学习进度：57/67 知识点（85%），Phase 6 进行中（HID 完成），下一阶段 CDC 篇
+> 覆盖范围：Phase 1-6 全部完成 + 真实设备描述符实战 + UVC XU 控制与取流实战
+> 学习进度：76/88 知识点（86%），Phase 6 完成，下一阶段 Phase 8（libusb）；Phase 7 已跳过暂缓
 > 学习策略：自底向上 — 先把协议基础打牢，再谈开发
 > 深度要求：每个 byte 的每个 bit 含义都要讲清楚（MQTT 报文头级别精度）
 
@@ -10,9 +10,9 @@
 
 ## 前言：学习路线图
 
-### 67 个知识点全景
+### 知识点全景（88 个，原"67"为统计笔误已修正）
 
-本知识库基于以下学习计划构建，总计 8 个阶段、67 个知识点任务。\(\color{green}{\text{⛁}}\) = 逐字节/逐比特精讲。
+本知识库基于以下学习计划构建，总计 8 个阶段、88 个知识点任务。\(\color{green}{\text{⛁}}\) = 逐字节/逐比特精讲。
 
 | 阶段 | 内容 | 知识点数 | 状态 |
 |------|------|:---:|:---:|
@@ -21,7 +21,7 @@
 | Phase 3 | USB 描述符体系 — 逐字节解剖 | 11 | ✅ 完成 |
 | Phase 4 | USB 枚举过程 — 逐包逐事务追踪 | 12 | ✅ 完成 12/12 |
 | Phase 5 | 标准请求与 Setup 包深度解析 | 6 | ✅ 完成 6/6 |
-| Phase 6 | 设备类协议逐字节解析（HID / CDC / UVC） | 26 | ◐ HID 7/26 完成（应用层裁剪版），CDC/UVC 待学 |
+| Phase 6 | 设备类协议逐字节解析（HID / CDC / UVC） | 26 | ✅ 完成 26/26（应用层裁剪版） |
 | Phase 7 | 协议分析工具与实操 | 7 | ⏭ 跳过（暂缓，2026-08-16 用户决定；真机抓包已在 4.11/4.11a 完成） |
 | Phase 8 | libusb 编程衔接 | 5 | ⬜ 待开始 |
 
@@ -3275,7 +3275,7 @@ XU 内容（码流类型/测温/伪彩）        = 厂商私有词汇
 
 # 第六篇：设备类协议逐字节解析 — HID 篇
 
-> 主线 Phase 6（HID / CDC / UVC，26 个知识点）。本篇为 HID 篇（§6.1~§6.7）。**2026-08-16 裁剪决策**：用户为应用层开发者（SDK 消费设备，不写设备固件），Report Descriptor Item 编码按"认字级"执行——能看懂 dump 与工具解析结果即可，不追求会写。6.4/6.5 压缩为速查，6.6 用成品解剖图替代逐字节手写，6.7 类请求精讲（应用层 SDK 直接使用）。CDC 篇（§6.8~6.14）与 UVC 篇（§6.15~6.26）后续补充。
+> 主线 Phase 6（HID / CDC / UVC，26 个知识点，全部完成）。**2026-08-16 裁剪决策**：用户为应用层开发者（SDK 消费设备，不写设备固件），描述符逐字节按"认字级"执行——能看懂 dump 与工具解析结果即可；描述符链用全景图带过，**类请求与数据流精讲**（SDK 直接使用）。全篇以 byte 表 + 结构图为主，减少通篇文字。
 
 ## 6.1 ⛁ HID Descriptor 逐字节
 
@@ -3588,6 +3588,340 @@ libusb_control_transfer(devh, 0x21, 0x0A, (50<<8) | 0, if_num, NULL, 0, 1000);
 ### 一句话总结
 
 **应用层 HID SDK 的全部招式 = 一条中断管道（读报表）+ 六个类请求（带外控制）。Report Descriptor 的逐位编码留给写固件的人，应用层只需要认字。**
+
+---
+
+## 6.8 CDC 功能描述符链完整布局
+
+CDC（Communications Device Class）= **USB 虚拟串口**。两个接口各管一层：
+
+```
+Interface 0: Communication Interface（控制层）
+  bInterfaceClass=0x02 (CDC Control)
+  ├─ CDC Header   (0x24/0x00)    ← 必须第一个
+  ├─ Call Mgmt    (0x24/0x01)    ← 呼叫管理（常见）
+  ├─ ACM          (0x24/0x02)    ← 抽象控制模型："我是虚拟串口"的能力声明
+  ├─ Union        (0x24/0x06)    ← ★ 把控制接口和数据接口绑成一对
+  └─ Endpoint: 中断 IN           ← SerialState 通知管道
+Interface 1: Data Interface（数据层）
+  bInterfaceClass=0x0A (CDC Data)
+  └─ Endpoint: 批量 IN + 批量 OUT ← 收发数据管道
+```
+
+三个关键认知：
+
+1. **CDC 功能描述符 bDescriptorType=0x24——和 UVC CS 同一个值！** 由 bInterfaceClass（0x02/0x0A vs 0x0E）区分是谁的 0x24。同一个"类描述符摊位号"，两家共用，靠门牌（类号）分辨。
+2. **Union 是核心**：`bControlInterface + bSubordinateInterface0` 把两个接口绑成"一个虚拟串口"——Host 驱动靠它知道"控制接口 0 和数据接口 1 是一家人"。
+3. 与第三篇补充问答六（USB 虚拟串口机制）衔接：Host 端 CDC 驱动把批量管道包装成 tty/COM 端口。
+
+## 6.9 ⛁ CDC Header Descriptor（5 字节）
+
+| 偏移 | 字段 | 值 | 说明 |
+|:---:|------|------|------|
+| +0 | bFunctionLength | 0x05 | 固定 5 字节 |
+| +1 | bDescriptorType | 0x24 | CS Interface |
+| +2 | bDescriptorSubType | 0x00 | Header——**必须第一个出现** |
+| +3-4 | bcdCDC | 0x0110 | CDC 规范版本 1.10（BCD） |
+
+## 6.10 ⛁ CDC ACM Descriptor（4 字节）
+
+| 偏移 | 字段 | 值 | 说明 |
+|:---:|------|------|------|
+| +0 | bFunctionLength | 0x04 | |
+| +1 | bDescriptorType | 0x24 | |
+| +2 | bDescriptorSubType | 0x02 | ACM（抽象控制模型） |
+| +3 | bmCapabilities | 典型 0x02 | 能力位图 |
+
+bmCapabilities 逐位：D0=支持 COMM_FEATURE 组；**D1=支持 LINE_CODING 组**（SET/GET_LINE_CODING + SET_CONTROL_LINE_STATE）；D2=支持 SEND_BREAK；D3=网络连接通知。
+
+典型值 0x02 = "我支持行编码配置"——**虚拟串口的必选能力**（没有它，OS 无法设波特率）。
+
+## 6.11 ⛁ CDC Union Descriptor（5 字节，可变）
+
+| 偏移 | 字段 | 值 | 说明 |
+|:---:|------|------|------|
+| +0 | bFunctionLength | 0x05 | 多个从属接口时变长 |
+| +1 | bDescriptorType | 0x24 | |
+| +2 | bDescriptorSubType | 0x06 | Union |
+| +3 | bControlInterface | 0x00 | ★ 主控制接口号 |
+| +4 | bSubordinateInterface0 | 0x01 | ★ 从属数据接口号 |
+
+**Union = 虚拟串口的"结婚证"**：控制接口和数据接口在这里被声明为一对。复合设备可有多个从属接口。
+
+## 6.12 ⛁ CDC Call Mgmt Descriptor（5 字节）
+
+| 偏移 | 字段 | 值 | 说明 |
+|:---:|------|------|------|
+| +0 | bFunctionLength | 0x05 | |
+| +1 | bDescriptorType | 0x24 | |
+| +2 | bDescriptorSubType | 0x01 | Call Management |
+| +3 | bmCapabilities | — | D0=设备自己管理呼叫；D1=通过数据接口发送呼叫管理命令 |
+| +4 | bDataInterface | — | D1=1 时有效：呼叫命令走哪个数据接口 |
+
+虚拟串口场景下它基本是"占位声明"（串口没有"呼叫"），D0=1 意思"我自己搞定"。
+
+## 6.13 ⛁ CDC 类请求（★ SDK 串口目标直接弹药）
+
+形状与 HID/UVC 同款：`bmRequestType = 0x21/0xA1 (Class IF)`，wIndex = 接口号。
+
+| bRequest | 名称 | wValue | 数据阶段 |
+|:---:|------|--------|---------|
+| 0x20 | **SET_LINE_CODING** | 0 | **7 字节行编码** ★ |
+| 0x21 | GET_LINE_CODING | 0 | 7 字节（同上结构） |
+| 0x22 | SET_CONTROL_LINE_STATE | D0=RTS, D1=DTR | 无 |
+| 0x23 | SEND_BREAK | 中断时长(ms) | 无 |
+
+### ★ SET_LINE_CODING 7 字节逐位
+
+```
+dwDTERate   4B LE   波特率（115200 = 0x0001C200 → 线上 00 C2 01 00）
+bCharFormat 1B      停止位: 0=1位, 1=1.5位, 2=2位
+bParityType 1B      校验: 0=无, 1=奇, 2=偶, 3=Mark, 4=Space
+bDataBits   1B      数据位: 5/6/7/8/16
+```
+
+**打开串口时 OS 发的第一个 CDC 请求就是它。** libusb 写法：
+
+```c
+uint8_t line_coding[7] = {0x00, 0xC2, 0x01, 0x00,   // 115200
+                          0x00,                    // 1 停止位
+                          0x00,                    // 无校验
+                          0x08};                   // 8 数据位
+libusb_control_transfer(devh, 0x21, 0x20, 0, if_num, line_coding, 7, 1000);
+```
+
+SET_CONTROL_LINE_STATE（wValue=0x0003 = DTR|RTS）在 Line Coding 之后发——应用层"打开串口"在 USB 上就是这两个请求 + 批量传输开始。
+
+## 6.14 CDC 数据流
+
+### 三条管道分工
+
+```
+中断 IN   = SerialState 通知（10 字节）——串口状态变化（DSR/振铃/断线）主动上报
+批量 OUT  = Host→设备数据（发串口数据）
+批量 IN   = 设备→Host数据（收串口数据）
+```
+
+### SerialState 通知结构（10 字节）
+
+```
+SETUP 形状(8B): bmRequestType=0xA1 | bNotification=0x20(SERIAL_STATE) | wValue=0 | wIndex=IF | wLength=2
+DATA(2B):      状态位图: D1=DSR  D2=Break  D3=Ring  D4=Framing错误  D5=Parity错误  D6=Overrun
+```
+
+### 完整时序
+
+```
+枚举 → SET_LINE_CODING（设波特率）→ SET_CONTROL_LINE_STATE(DTR|RTS=3，拉起握手线）
+     → 批量 OUT/IN 收发数据 → （状态变化时）中断 IN 的 SerialState 通知
+```
+
+**虚拟串口本质**：数据在批量管道里是**裸字节流，没有串口帧结构**（无 start/stop bit）——Line Coding 只是"对端真实串口"的配置参数。USB 侧只有"字节流管道"，串口的物理层由设备固件在对端实现。
+
+## 6.15 UVC 接口组织
+
+UVC（Video Class）：**VC 管控制，VS 管数据流**（第五~八会话实战已深度掌握，本节是理论骨架）。
+
+```
+Interface(VC): bInterfaceClass=0x0E, bInterfaceSubClass=0x01 (Video Control)
+    PU/XU 全在这里 → XU 命令 wIndex 高字节 = bUnitID（第六会话认知的来源）
+Interface(VS): bInterfaceClass=0x0E, bInterfaceSubClass=0x02 (Video Streaming)
+    Alt0 零带宽（无端点）→ Alt1+ 流端点 → SET_INTERFACE 切 Alt 就是开流开关
+```
+
+你的 2bdf:0101：VC 接口号 0、VS 接口号 1（第十会话：VC_IF_NUM 永远从 lsusb -v 确认，同厂商不同型号都不同）。
+
+## 6.16 UVC VC Descriptor 链完整布局
+
+```
+Interface (VC)
+  ├─ VC Header          ← 必须第一个
+  ├─ Input Terminal     ← 数据源（摄像头传感器 = wTerminalType 0x0201）
+  ├─ Processing Unit    ← 标准处理（亮度/对比度…）
+  ├─ Extension Unit     ← 厂商扩展（海康的 CS_ID/SubFunc 就在这，第八篇实战）
+  ├─ Output Terminal    ← 数据出口（链到 VS 的 bTerminalLink）
+  └─ [中断 IN 端点]      ← 可选（VC 状态通知，多数设备不实现）
+```
+
+顺序固定：Header 最先；Terminal/Unit 按数据流向排（输入→处理→扩展→输出）。**Terminal ID / Unit ID 是链内引用句柄**——PU 的 bSourceID 指向上游 Terminal，VS 的 bTerminalLink 指向 Output Terminal。整条链 433 字节的逐段验算见第七篇 §7.8（2bdf:0101 真机）。
+
+## 6.17 ⛁ VC Header Descriptor（12+n 字节）
+
+| 偏移 | 字段 | 值 | 说明 |
+|:---:|------|------|------|
+| +0 | bLength | 0x0C+n | 12 + VS 接口数 |
+| +1 | bDescriptorType | 0x24 | |
+| +2 | bDescriptorSubType | 0x01 | VC_HEADER |
+| +3-4 | bcdUVC | 0x0110 | UVC 1.10（BCD） |
+| +5-6 | wTotalLength | — | **整条 VC 链总长**（读完这链的"目录"） |
+| +7-10 | dwClockFrequency | 0x02DC6C00 | 视频时钟 48MHz（LE） |
+| +11 | bInCollection | n | VS 接口个数 |
+| +12.. | baInterfaceNr[n] | — | 每个 VS 接口的接口号 |
+
+## 6.18 ⛁ Input Terminal Descriptor（Camera，12+N 字节）
+
+| 偏移 | 字段 | 值 | 说明 |
+|:---:|------|------|------|
+| +0 | bLength | 0x0C+N | |
+| +1 | bDescriptorType | 0x24 | |
+| +2 | bDescriptorSubType | 0x02 | VC_INPUT_TERMINAL |
+| +3 | bTerminalID | — | 链内引用句柄（PU 的 bSourceID 指它） |
+| +4-5 | wTerminalType | 0x0201 | ITT_CAMERA |
+| +6 | bAssocTerminal | 0 | 配对终端（立体声等场景） |
+| +7 | iTerminal | — | 字符串索引 |
+| +8-9 | wObjectiveFocalLengthMin | — | 物方焦距范围 |
+| +10-11 | wObjectiveFocalLengthMax | — | |
+| +12-13 | wOcularFocalLength | — | 目方焦距 |
+| +14 | bControlSize | N | bmControls 字节数 |
+| +15.. | bmControls | — | 相机终端控制位图（6.20） |
+
+## 6.19 ⛁ Processing Unit Descriptor（10+n 字节，可变）
+
+| 偏移 | 字段 | 说明 |
+|:---:|------|------|
+| +0 | bLength | 10 + bControlSize（+1 若带 bmVideoStandards） |
+| +1 | bDescriptorType | 0x24 |
+| +2 | bDescriptorSubType | 0x05 (VC_PROCESSING_UNIT) |
+| +3 | bUnitID | ★ PU 的身份证——XU/PU 类请求 wIndex 高字节的来源 |
+| +4 | bSourceID | 指向上游 Terminal/Unit（链式引用） |
+| +5-6 | wMaxMultiplier | 缩放系数（100×） |
+| +7 | bControlSize | bmControls 字节数 |
+| +8.. | bmControls | PU 控制位图（6.20） |
+| ... | iProcessing | 字符串索引 |
+| ... | [bmVideoStandards] | 可选：支持的视频制式 |
+
+（XU = 同款骨架、subtype 0x06，带 guidExtensionCode 厂商签名——第八篇 §8.1 已实战。）
+
+## 6.20 bmControls 控制位图全集
+
+机制你已会（第六会话：小端字节序，bit N=1 → CS_ID(N+1) 存在）。全集分两处：
+
+**PU（处理单元）控制**：
+
+| bit | 控制 | bit | 控制 |
+|:---:|------|:---:|------|
+| 0 | Brightness 亮度 | 8 | Backlight Comp 背光补偿 |
+| 1 | Contrast 对比度 | 9 | Gain 增益 |
+| 2 | Hue 色调 | 10 | Power Line Freq 抗工频 |
+| 3 | Saturation 饱和度 | 11-13 | Hue/WB Temp/WB Comp Auto 自动挡 |
+| 4 | Sharpness 锐度 | 14-15 | Digital Multiplier/Limit |
+| 5 | Gamma 伽马 | 16-17 | Analog Video Standard/Lock |
+| 6 | WB Temperature 白平衡色温 | 18 | Contrast Auto |
+| 7 | WB Component 白平衡分量 | | |
+
+**CT（相机终端）控制**：Auto-Exposure(0/1/2)、Exposure Time(3/4)、Focus(5/6/17)、Iris(7/8)、Zoom(9/10)、PanTilt(11/12)、Roll(13/14)、Privacy(18)。
+
+**你的设备实证（第八篇 §8.8）**：2bdf:0101 的 PU `bmControls = 00 00`——**一个标准控制都没实现**，亮度/对比度/增益全塞进 XU 私有控制，配合厂商 SDK 卖。标准桌面摄像头才会实现 PU。所以"UVC 标准控制"在专业设备上经常是空壳——实际控制全走 XU。
+
+## 6.21 UVC VS Descriptor 链完整布局
+
+```
+Interface (VS, Alt0)                      ← 零带宽（bNumEndpoints=0）
+  ├─ VS Input Header → Format → Frame...
+Interface (VS, Alt1, 流端点)
+  ├─ VS Input Header → Format → Frame...
+  └─ Endpoint (等时 IN, wMaxPacketSize = 带宽配额)
+```
+
+**每个 Alt Setting 一组完整链**；Alt1+ 的链末尾跟 Endpoint Descriptor。切 Alt 换的是带宽配额（wMaxPacketSize），不是端点号——第五篇 §5.5 深挖一的"同一条水管换粗细"。
+
+## 6.22 ⛁ VS Input Header Descriptor（13+N 字节）
+
+| 偏移 | 字段 | 说明 |
+|:---:|------|------|
+| +0 | bLength | 13 + bControlSize |
+| +1 | bDescriptorType | 0x24 |
+| +2 | bDescriptorSubType | 0x01 (VS_INPUT_HEADER) |
+| +3 | bNumFormats | 本 Alt 支持几个格式 |
+| +4-5 | wTotalLength | 本 Alt 的 VS 链总长 |
+| +6 | bEndpointAddress | 流端点地址（0x81=IN EP1） |
+| +7 | bmInfo | D0=支持动态格式切换 |
+| +8 | bTerminalLink | ★ 指回 VC 的 Output Terminal ID（VC/VS 在这里咬合） |
+| +9 | bStillCaptureMethod | 0/1/2/3 |
+| +10 | bTriggerSupport | 硬件触发 |
+| +11 | bTriggerUsage | 触发用途 |
+| +12 | bControlSize | bmaControls 字节数 |
+| +13.. | bmaControls | 每格式一字节的能力位图 |
+
+## 6.23 ⛁ Format Descriptor（MJPEG，26 字节）
+
+| 偏移 | 字段 | 说明 |
+|:---:|------|------|
+| +0 | bLength | 0x1A = 26 |
+| +1 | bDescriptorType | 0x24 |
+| +2 | bDescriptorSubType | 0x06 = VS_FORMAT_MJPEG（Uncompressed 才是 0x04） |
+| +3 | bFormatIndex | 格式编号（1 起） |
+| +4 | bNumFrameDescriptors | 下面挂几个 Frame |
+| +5 | bmFlags | 格式能力标志 |
+| +6-21 | guidFormat | ★ 16 字节 GUID：前 4 字节 ASCII 即格式名 |
+| +22 | bAspectRatioX | 宽高比分子 |
+| +23 | bAspectRatioY | 宽高比分母 |
+| +24 | bmInterlaceFlags | 隔行扫描标志 |
+| +25 | bCopyProtect | 复制保护 |
+
+**guidFormat 认格式**：`4D 4A 50 47` = "MJPG"、`59 55 59 32` = "YUY2"，后 12 字节是固定 GUID 骨架（`00 00 10 00 80 00 00 AA 00 38 9B 71`）。抓包/读描述符看到这 4 个 ASCII 字节就知道编码——比认 GUID 数字快得多。
+
+（注：学习计划列的 bDefaultFrameIndex 不在 Format 描述符中——它在 Still Image 帧描述符里，此处按 UVC 规范 26 字节布局。）
+
+## 6.24 ⛁ Frame Descriptor（MJPEG，26+4n 字节）
+
+| 偏移 | 字段 | 说明 |
+|:---:|------|------|
+| +0 | bLength | 26 + 4×bFrameIntervalType |
+| +1 | bDescriptorType | 0x24 |
+| +2 | bDescriptorSubType | 0x07 = VS_FRAME_MJPEG |
+| +3 | bFrameIndex | 帧编号（1 起） |
+| +4 | bmCapabilities | D0=支持静态图, D1=固定帧率 |
+| +5-6 | wWidth | ★ 分辨率宽 |
+| +7-8 | wHeight | ★ 分辨率高 |
+| +9-12 | dwMinBitRate | 最小码率 |
+| +13-16 | dwMaxBitRate | 最大码率 |
+| +17-20 | dwMaxVideoFrameBufferSize | ★ 单帧最大字节数（缓冲分配依据） |
+| +21-24 | dwDefaultFrameInterval | 默认帧间隔（单位 100ns，30fps=333333） |
+| +25 | bFrameIntervalType | n = 下面跟着几个帧率 |
+| +26.. | dwFrameInterval×n | 每个可选帧间隔（4B LE） |
+
+你的真机对照（第八会话）：2bdf:0101 报 120x160 YUYV，`dwMaxVideoFrameBufferSize`=38400——但实际帧 ~10000 字节（MJPEG 欺诈，第八篇 §8.4 踩坑 3）。**描述符是设备自己写的广告，帧数据才是实物。**
+
+## 6.25 UVC Probe/Commit 协商机制
+
+机制你已实战（第八篇 §8.3/§8.5），此处是骨架：
+
+```
+① GET_MIN / GET_MAX / GET_DEF   → 问设备"你能提供什么范围"（第十会话请求码全家桶）
+② SET_CUR (Probe)               → 试问："我要 bFormatIndex=1, FrameIndex=1, 30fps，行不行"
+③ GET_CUR (Probe)               → 设备回"可以，按这个来"或改参数（协商）
+④ SET_CUR (Commit)              → 敲定："就按刚才商量的"
+⑤ SET_INTERFACE (切 Alt)        → 按 Commit 的带宽需求选 Alt（第五篇 §5.5 深挖一）
+⑥ 开始等时/批量取流
+```
+
+要点：VS 请求 wIndex = VS 接口号（**没有 Unit ID**——第十会话三种 wIndex）；Probe/Commit 负载 26 字节（bmHint、bFormatIndex、bFrameIndex、dwFrameInterval、码率、压缩质量、dwMaxVideoFrameSize、**dwMaxPayloadTransferSize** 等）；`dwMaxPayloadTransferSize` 决定选哪个 Alt 的带宽配额。
+
+## 6.26 ⛁ UVC Payload Header 逐字节（拼帧核心）
+
+```
+HLEN   1B   = 0x0C（头部 12 字节）
+BFH    1B   位字段:
+            D0 = FID  帧 ID——每帧翻转一次（0→1→0→1...）
+            D1 = EOF  帧结束标志（1 = 本帧最后一个包）
+            D2 = PTS 存在   D3 = SCR 存在   D4 = RES
+            D5 = STI        D6 = ERR        D7 = EOH（头结束，头部跨包时用）
+[PTS]  4B   可选（D2=1 时出现）——显示时间戳
+[SCR]  6B   可选（D3=1 时出现）——源时钟
+```
+
+**拼帧算法**（libuvc 内部就干这个，第十会话认知 17）：
+
+```
+同一 FID 的包按序拼接 → 遇到 EOF=1 的包 → 一帧完成 → 下一帧 FID 翻转
+```
+
+等时包 = Payload Header + 视频数据；允许"纯头部零数据"包（第五篇 §5.5 深挖二的抓包空包）。**拼帧失败的可见症状 = 花屏/丢帧**——你第八会话的花屏排查里，FID/EOF 就是底层线索（当时是格式欺诈，不是拼帧错）。
+
+### Phase 6 收官
+
+HID 7 + CDC 7 + UVC 12 = 26/26 完成。**SDK 三大目标的类协议全部就位**：UVC 摄像头（XU + Probe/Commit + Payload Header）、CDC 串口（SET_LINE_CODING + 批量管道）、HID（中断报表 + 六类请求）。下一步 Phase 8：libusb 编程衔接——把这些字节流写成 SDK 代码。
 
 ---
 

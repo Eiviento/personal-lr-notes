@@ -1,8 +1,8 @@
 # HANDOFF — USB 协议学习会话交接文档
 
 > 更新时间：2026-08-16（第十二会话）
-> 主线学习进度：57/67 知识点（85%）— Phase 6 进行中（HID 篇完成，应用层裁剪版），下一阶段 CDC 篇
-> 本会话重点：**Phase 5 连讲收官（5.1~5.6）** + **HID 篇（6.1~6.7，应用层裁剪版）** + SETUP 三类语义修正 + SET_INTERFACE 机制五问 + 知识库两次篇章重排 + Phase 7 跳过决策
+> 主线学习进度：76/88 知识点（86%）— Phase 6 全部完成（HID/CDC/UVC，应用层裁剪版），下一阶段 Phase 8（libusb）
+> 本会话重点：**Phase 5 连讲收官（5.1~5.6）** + **Phase 6 全篇（6.1~6.26，应用层裁剪版）** + SETUP 三类语义修正 + SET_INTERFACE 机制五问 + 知识库两次篇章重排 + Phase 7 跳过决策 + 知识总计修正（67→88）
 > 上一会话（第十一会话）：Phase 4 收官（4.2~4.12）+ TM5X 大数据流程 + 真机抓包分析
 
 ---
@@ -108,8 +108,8 @@
 
 | 类型 | 文件 | 变更 |
 |------|------|------|
-| 知识库 | `USB-Protocol-Knowledge-Base.md` | **新增第五篇：标准请求与 Setup 包深度解析 §5.1~§5.6**（三类语义修正版 + 11 种请求全集 + GET_STATUS 三种响应 + Feature Selector 全集 + SET_INTERFACE 机制 + 参数速查，含三个深挖 Q&A）；附录新增 **A.10 标准请求参数总表**；**新增第六篇：设备类协议 — HID 篇 §6.1~§6.7**（应用层裁剪版：Item 编码认字级 + 键盘报表解剖图 + 六类请求精讲）；**两次篇章重排**（原第五篇→第七篇、原第六篇→第八篇，交叉引用全部同步）；前言/进度更新（4,803 行） |
-| HTML | `usb-notes.html` | **Phase 5 占位符替换为 6 张真卡片**（kp-5-1 ~ kp-5-6）；**Phase 6 新增 7 张 HID 卡片**（kp-6-1 ~ kp-6-7，认字级内容 + 键盘解剖图 + SDK 代码模板）；Phase 7 标注跳过；CSS 新增 `.phase-note`；侧边栏 Phase 5 6/6 ✓ + Phase 6 7/26 ◐；进度条 85%（3,714 行） |
+| 知识库 | `USB-Protocol-Knowledge-Base.md` | **新增第五篇：标准请求与 Setup 包深度解析 §5.1~§5.6**（三类语义修正版 + 11 种请求全集 + GET_STATUS 三种响应 + Feature Selector 全集 + SET_INTERFACE 机制 + 参数速查，含三个深挖 Q&A）；附录新增 **A.10 标准请求参数总表**；**新增第六篇：设备类协议（§6.1~§6.26 全篇）**——HID（Item 编码认字级 + 键盘解剖图 + 六类请求精讲）+ CDC（四件套 byte 表 + SET_LINE_CODING 精讲 + 数据流）+ UVC（VC/VS 链 + 描述符认字级 + bmControls 全集 + Probe/Commit + Payload Header 拼帧）；**两次篇章重排**（原第五篇→第七篇、原第六篇→第八篇，交叉引用全部同步）；**知识总计修正 67→88**；前言/进度更新（5,137 行） |
+| HTML | `usb-notes.html` | **Phase 5 占位符替换为 6 张真卡片**（kp-5-1 ~ kp-5-6）；**Phase 6 新增 17 张卡片**（kp-6-1 ~ kp-6-17，HID 7 + CDC 4 + UVC 6，以 desc-byte-map 单元格 + ASCII 结构图为主，减少文字）；Phase 7 标注跳过；CSS 新增 `.phase-note`；侧边栏 Phase 5 6/6 ✓ + Phase 6 26/26 ✓；进度条 86%（4,033 行） |
 | 计划 | `usb-protocol-learning-plan.md` | 6.1~6.7 标记完成（应用层裁剪版说明）；**Phase 7 标记 ⏭ 跳过（暂缓）** |
 | 交接 | `HANDOFF.md` | 更新（本会话） |
 
@@ -130,6 +130,13 @@
 10. **Array vs Variable 是键盘与鼠标的本质区别**；8 字节 Boot 报表 = 修饰键位图(1B) + 保留(1B) + 6 键位槽；boot protocol（BIOS 固定格式）→ SET_PROTOCOL(1) 切 report protocol（传真机握手类比）
 11. **应用层 HID SDK 全部招式 = 一条中断管道 + 六个类请求**（GET/SET_REPORT 带外查岗、Idle 上报频率、Protocol 格式切换）；"换类协议只换 bmRequestType 字典 + bRequest 编号"
 12. **★ 裁剪决策（教学策略）**：知识挂不上用途就裁剪——Report Descriptor 逐位编码是固件作者的知识，应用层开发者学到"认字级"即可；"看不明白"的信号本身可能就是"这个知识点不该现在学"的信号
+
+**CDC/UVC 篇建立的深层理解（已存 KB 第六篇）：**
+
+13. **CDC 四件套**：Header 必须第一个、Union 是"结婚证"（绑控制/数据接口）、ACM D1 位=支持 LINE_CODING 组（没有它 OS 无法设波特率）；功能描述符 0x24 与 UVC CS 共用，靠 bInterfaceClass 分辨
+14. **"打开串口"在 USB 上 = SET_LINE_CODING(7B: 波特率+停止位+校验+数据位) + SET_CONTROL_LINE_STATE(DTR|RTS) + 批量传输**；虚拟串口无串口帧结构，Line Coding 只是对端真实串口的配置
+15. **UVC 描述符骨架**：VC 链顺序固定（Header→IT→PU→XU→OT），Terminal/Unit ID 是链内引用句柄；bTerminalLink 是 VC/VS 咬合点；guidFormat 前 4 字节 ASCII 认格式（MJPG/YUY2）；2bdf:0101 的 PU bmControls=00 00 实证"专业设备标准控制是空壳，全走 XU"
+16. **Payload Header 拼帧**：FID 翻转 + EOF 收帧（libuvc 内部逻辑）；描述符是设备写的广告、帧数据才是实物
 
 ### 第十一会话：Phase 4 收官 + TM5X 大数据流程 + 真机抓包分析
 
@@ -205,7 +212,7 @@
 | 第三篇 | Phase 3 — 描述符体系（11 节 + 4 篇补充问答 + CDC 综合示例） | `phase3-descriptors.md` |
 | 第四篇 | USB 枚举过程（4.1~4.12 + 4.11a 真机实战） | 第十~十一会话（主线 Phase 4） |
 | 第五篇 | 标准请求与 Setup 包深度解析（5.1~5.6 + 三个深挖 Q&A） | 第十二会话新增（主线 Phase 5） |
-| 第六篇 | 设备类协议逐字节解析 — HID 篇（6.1~6.7，应用层裁剪版） | 第十二会话新增（主线 Phase 6，CDC/UVC 后续补入 6.8+） |
+| 第六篇 | 设备类协议逐字节解析（6.1~6.26：HID 7 + CDC 7 + UVC 12，应用层裁剪版） | 第十二会话新增（主线 Phase 6，全部完成） |
 | 第七篇 | 真实设备描述符实战（7 章 + 10 FAQ） | `real-device-descriptor-analysis.md` |
 | 第八篇 | UVC XU 控制与取流实战（9 节 + 7 条踩坑记录） | `uvc-xu-extension-protocol-design.md` + `xu-new-device-setup-guide.md` |
 | 附录 | 快速参考手册（10 张速查表：SETUP、标准请求参数总表 A.10、wIndex、PID、描述符、MQTT 类比等） | 全部笔记提炼 |
@@ -259,9 +266,9 @@
 ```
 D:\CC\personal-lr-notes\CCNotes\USB\
 ├── HANDOFF.md                                    ← 你正在看的这份交接文档
-├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~4,803 行，八篇 + 附录，HID 篇已补齐）
-├── usb-protocol-learning-plan.md                 ← 完整学习计划（67知识点清单，Phase 7 已标跳过）
-├── usb-notes.html                                ← Phase 1-6 理论可视化（3,714 行，含 kp-4-1 ~ kp-4-12 + kp-4-11a + kp-5-1 ~ kp-5-6 + kp-6-1 ~ kp-6-7）
+├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~5,137 行，八篇 + 附录，Phase 6 全篇已补齐）
+├── usb-protocol-learning-plan.md                 ← 完整学习计划（88知识点清单，原"67"已修正，Phase 7 已标跳过）
+├── usb-notes.html                                ← Phase 1-6 理论可视化（4,033 行，含 kp-4-1 ~ kp-4-12 + kp-4-11a + kp-5-1 ~ kp-5-6 + kp-6-1 ~ kp-6-17）
 ├── usb-notes.css                                 ← 10 层分层样式（暗色默认 IDE 风格）
 ├── usb-notes.js                                  ← 4 模块脚本（数据/渲染/交互/初始化）
 ├── usb-notes-old.html                            ← 旧版备份（翻新前单文件版本）
@@ -297,11 +304,11 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ## 四、当前卡在哪 + 下一步计划
 
-### 主线学习：Phase 6 进行中（HID 篇完成），下一阶段 CDC 篇
+### 主线学习：Phase 6 全部完成，下一阶段 Phase 8（libusb 编程衔接）
 
-**没有卡住。** Phase 1-5 全部完成，Phase 6 HID 篇完成（57/67，85%）。
+**没有卡住。** Phase 1-6 全部完成（76/88，86%）。Phase 7 已跳过暂缓，剩余 = Phase 8 的 5 个知识点（8.1 libusb 架构概览 → 8.2 设备发现枚举 → 8.3 控制传输 → 8.4 批量/中断/等时 → 8.5 热插拔）。
 
-**下一步：6.8 — ⛁ CDC 功能描述符链完整布局**（Interface↔Header↔ACM↔Union↔Call Mgmt↔Interface↔Endpoint×2）。CDC 篇是用户串口 SDK 目标的直接弹药：重点放在 **6.13 CDC 类请求**（SET_LINE_CODING 7 字节——SDK 打开串口时 libusb 控制传输直接要写的字节）。HID 篇的裁剪经验适用于 CDC 篇：描述符链按"认字级"讲（用户不会写 CDC 固件），类请求精讲（SDK 要用）。UVC 篇（6.15+）是用户主战场，正常精讲，随时把第五~八会话实战认知搬回来对照。
+**下一步：Phase 8.1 — libusb 架构概览**（同步/异步模型、context、传输 completion callback）。**注意：这是"方案 A 自底向上"的最后一段——终于要写代码了。** 用户已在第六~八会话实战过 libusb（xu_minimal_get.c / xu_interactive.c / uvc_stream_viewer.cpp），Phase 8 是"把散落的实战知识系统化"：8.1 架构、8.2 设备枚举（libusb_get_device_list ↔ 第四篇枚举对照）、8.3 控制传输（libusb_control_transfer 8 参数 ↔ 第五篇 SETUP 8 字节对照）、8.4 三种传输、8.5 热插拔。每节都可以直接引用用户已写过的代码做教学锚点。
 
 **Phase 7（协议分析工具）已标跳过暂缓**（真机抓包已在 4.11/4.11a 完成），不要主动安排。
 
@@ -334,7 +341,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ### 用户可能要求的下一步
 
-- **主线**：说"继续" → 6.8（⛁ CDC 功能描述符链完整布局——Interface↔Header↔ACM↔Union↔Call Mgmt↔Interface↔Endpoint×2）
+- **主线**：说"继续" → Phase 8.1（libusb 架构概览——同步/异步模型、context、传输 completion callback；方案 A 的最后一段，要开始写代码了）
 - **知识库**：在 `USB-Protocol-Knowledge-Base.md` 中补充后续学习内容（Phase 4+）
 - **取流工具**：加录制/截图/伪彩切换/全屏
 - **XU 探索**：`xu_interactive.c` 加 SET_CUR 暴力扫描未知 CS_ID
@@ -474,7 +481,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 3. **读知识库** — `Read USB-Protocol-Knowledge-Base.md`（★ 第九会话新建、第十二会话扩充：~4,803 行，八篇 + 附录，读它就能获得所有上下文）
 4. **读学习计划** — `Read usb-protocol-learning-plan.md`（如需了解后续 34 个未完成的知识点）
 5. **确定用户意图：**
-   - 如果用户说"继续" → 从 6.8（⛁ CDC 功能描述符链完整布局）开始讲，一次一个知识点
+   - 如果用户说"继续" → 从 Phase 8.1（libusb 架构概览）开始讲，一次一个知识点
    - 如果用户要复习/查阅某主题 → `USB-Protocol-Knowledge-Base.md`（单文件，含 10 张速查表）
    - 如果用户要看理论学习可视化 → 双击 `usb-notes.html`（3 文件架构）
    - 如果用户要看描述符实战 → 双击 `descriptor-viewer.html`
@@ -496,7 +503,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
    - 如果用户要编辑知识库 → 直接编辑 `USB-Protocol-Knowledge-Base.md`（4 空格缩进）
    - 如果用户要编辑 HTML → 改内容 `usb-notes.html`，改样式 `usb-notes.css`，改行为 `usb-notes.js`
 6. **如果用户不确定到哪了：**
-   > "Phase 1-5 全部完成，Phase 6 进行中（HID 篇完成，57/67，85%）。上次会话（第十二会话）把 Phase 5 从 5.1 讲到 5.6 收官，并完成 HID 篇（6.1~6.7，应用层裁剪版）、SETUP 三类语义修正、SET_INTERFACE 机制五问、知识库两次重排（现行八篇）、Phase 7 跳过决策、HTML 补全 Phase 5/6 卡片。准备好了说继续（6.8 CDC 功能描述符链）。"
+   > "Phase 1-6 全部完成（76/88，86%），Phase 7 已跳过暂缓，剩余 Phase 8（libusb 5 个知识点）。上次会话（第十二会话）完成 Phase 5 收官（5.1~5.6）+ Phase 6 全篇（6.1~6.26，HID/CDC/UVC 应用层裁剪版）+ SETUP 三类语义修正 + 知识库两次重排（现行八篇）+ 知识总计修正 67→88 + HTML 补全 Phase 5/6 共 23 张卡片。准备好了说继续（Phase 8.1 libusb 架构概览）。"
 7. **★ 最重要的几条规则（新会话开始务必重申）：**
    - **XU 必须在 `uvc_open` 之前发**，否则报 LIBUSB_ERROR_IO
    - **`libusb_control_transfer` 有 8 个参数**：bmRT + bReq + wVal + wIdx + data + wLen + timeout（极易漏 bRequest！）

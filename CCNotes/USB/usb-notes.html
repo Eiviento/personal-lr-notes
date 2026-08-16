@@ -120,7 +120,7 @@ else document.documentElement.classList.add('dark');})();
         <a class="sub-item" href="#kp-5-6">5.6 参数速查表</a>
     </details>
     <details open>
-        <summary><span>📡 Phase 6: HID/CDC/UVC</span><span class="badge phase-pending">7/26 ◐ HID ✓</span></summary>
+        <summary><span>📡 Phase 6: HID/CDC/UVC</span><span class="badge phase-done">26/26 ✓</span></summary>
         <a class="sub-item" href="#kp-6-1">⛁ 6.1 HID Descriptor 逐字节</a>
         <a class="sub-item" href="#kp-6-2">⛁ 6.2 Report Item 编码规则</a>
         <a class="sub-item" href="#kp-6-3">6.3 Main Item 全集</a>
@@ -128,6 +128,16 @@ else document.documentElement.classList.add('dark');})();
         <a class="sub-item" href="#kp-6-5">6.5 Local 项速查</a>
         <a class="sub-item" href="#kp-6-6">6.6 键盘报表解剖图</a>
         <a class="sub-item" href="#kp-6-7">6.7 HID Report 协议</a>
+        <a class="sub-item" href="#kp-6-8">6.8 CDC 描述符链全景</a>
+        <a class="sub-item" href="#kp-6-9">6.9~6.12 CDC 四件套逐字节</a>
+        <a class="sub-item" href="#kp-6-10">6.13 CDC 类请求 ★</a>
+        <a class="sub-item" href="#kp-6-11">6.14 CDC 数据流</a>
+        <a class="sub-item" href="#kp-6-12">6.15 UVC 接口组织</a>
+        <a class="sub-item" href="#kp-6-13">6.16~6.17 VC 链 + Header</a>
+        <a class="sub-item" href="#kp-6-14">6.18~6.20 Terminal/PU + bmControls</a>
+        <a class="sub-item" href="#kp-6-15">6.21~6.22 VS 链 + Input Header</a>
+        <a class="sub-item" href="#kp-6-16">6.23~6.24 Format/Frame</a>
+        <a class="sub-item" href="#kp-6-17">6.25~6.26 Probe/Commit + Payload Header</a>
     </details>
     <details>
         <summary><span>📡 Phase 7: 协议分析工具</span><span class="badge phase-pending">⏭ 跳过</span></summary>
@@ -136,10 +146,10 @@ else document.documentElement.classList.add('dark');})();
         <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-pending">0/5 ○ · 即将更新</span></summary>
     </details>
 
-    <div class="progress-wrap" role="progressbar" aria-valuenow="85" aria-valuemin="0"
-         aria-valuemax="100" aria-label="学习进度 85%">
-        <div class="progress-bar" style="width:85%"></div>
-        <span class="progress-label">57/67 (85%)</span>
+    <div class="progress-wrap" role="progressbar" aria-valuenow="86" aria-valuemin="0"
+         aria-valuemax="100" aria-label="学习进度 86%">
+        <div class="progress-bar" style="width:86%"></div>
+        <span class="progress-label">76/88 (86%)</span>
     </div>
 </nav>
 
@@ -3429,8 +3439,8 @@ Host 挂起总线（suspend）                 → 整条总线休眠
     </article>
 
     <!-- ===== Phase 6: 设备类协议逐字节解析 (HID / CDC / UVC) ===== -->
-    <div class="phase-header" id="phase-6"><h2>Phase 6: 设备类协议逐字节解析 (HID / CDC / UVC) <span style="font-size:14px;color:var(--color-frame);margin-left:8px;">HID 7/26 ✓ · CDC/UVC 待学</span></h2></div>
-    <p class="phase-note">HID 篇按<strong>应用层裁剪版</strong>（2026-08-16 决策）：应用层开发者不写设备固件，Report Descriptor 编码学到"认字级"（能看懂 dump/工具解析结果即可）；6.4/6.5 压缩为速查、6.6 用成品解剖图、6.7 类请求精讲（SDK 直接使用）。</p>
+    <div class="phase-header" id="phase-6"><h2>Phase 6: 设备类协议逐字节解析 (HID / CDC / UVC) <span style="font-size:14px;color:var(--color-frame);margin-left:8px;">26/26 ✓</span></h2></div>
+    <p class="phase-note">HID / CDC / UVC 三篇完成（2026-08-16）。按<strong>应用层裁剪版</strong>执行：描述符逐字节学"认字级"（看懂 dump/工具解析即可），<strong>类请求与数据流精讲</strong>（SDK 直接使用）。以 byte-map 图 + 结构图为主，减少通篇文字。</p>
 
     <!-- kp-6-1 -->
     <article class="card" id="kp-6-1">
@@ -3676,12 +3686,321 @@ SET_PROTOCOL = 切换报文格式版本（v1 固定 ↔ v2 自定义）</code></
         <p><strong>一句话总结：应用层 HID SDK 的全部招式 = 一条中断管道（读报表）+ 六个类请求（带外控制）。Report Descriptor 的逐位编码留给写固件的人，应用层只需要认字。</strong></p>
     </article>
 
-    <!-- ===== Phase 6 CDC/UVC 待学 ===== -->
-    <div class="placeholder">
-        <h3>CDC / UVC 篇 — 待学习（19 个知识点）</h3>
-        <p><strong>CDC类:</strong> ⛁ CDC功能描述符链 · Header/ACM/Union/Call Mgmt Descriptor · CDC类请求（SET_LINE_CODING 7 字节）· 数据流</p>
-        <p><strong>UVC类:</strong> ⛁ UVC接口组织 · VC/VS描述符链 · Probe/Commit协商 · ⛁ Payload Header</p>
-    </div>
+    <!-- kp-6-8 -->
+    <article class="card" id="kp-6-8">
+        <h3>6.8 CDC 功能描述符链完整布局</h3>
+
+        <div class="info-box">
+          CDC = <strong>USB 虚拟串口</strong>。两个接口各管一层：控制层（Class 0x02）管配置与状态，数据层（Class 0x0A）管收发。
+        </div>
+
+        <h4>描述符链全景</h4>
+        <pre><code>Interface 0: Communication Interface（控制层，Class 0x02）
+  ├─ CDC Header   (0x24/0x00)    ← 必须第一个
+  ├─ Call Mgmt    (0x24/0x01)    ← 呼叫管理（常见）
+  ├─ ACM          (0x24/0x02)    ← "我是虚拟串口"的能力声明
+  ├─ Union        (0x24/0x06)    ← ★ 把控制接口和数据接口绑成一对
+  └─ Endpoint: 中断 IN           ← SerialState 通知管道
+Interface 1: Data Interface（数据层，Class 0x0A）
+  └─ Endpoint: 批量 IN + 批量 OUT ← 收发数据管道</code></pre>
+
+        <h4>三个关键认知</h4>
+        <table>
+          <tr><th>认知</th><th>说明</th></tr>
+          <tr><td><strong>0x24 与 UVC 共用</strong></td><td>CDC 功能描述符 bDescriptorType=0x24——和 UVC CS 同一个值！由 bInterfaceClass（0x02/0x0A vs 0x0E）区分是谁的 0x24。同一个摊位号，两家共用，靠门牌分辨。</td></tr>
+          <tr><td><strong>Union 是核心</strong></td><td>bControlInterface + bSubordinateInterface0 把两个接口绑成"一个虚拟串口"——Host 驱动靠它知道"接口 0 和接口 1 是一家人"。</td></tr>
+          <tr><td><strong>虚拟串口本质</strong></td><td>Host 端 CDC 驱动把批量管道包装成 tty/COM 端口（第三篇补充问答六已学）。</td></tr>
+        </table>
+    </article>
+
+    <!-- kp-6-9 -->
+    <article class="card" id="kp-6-9">
+        <h3>6.9~6.12 CDC 功能描述符四件套逐字节</h3>
+
+        <h4>Header（5 字节）——必须第一个</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bFunctionLength</span><span class="dlabel">05</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">00 Header</span></div>
+          <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">3-4</span><span class="dval">bcdCDC</span><span class="dlabel">0110 = 1.10</span></div>
+        </div>
+
+        <h4>ACM（4 字节）——"虚拟串口"能力声明</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bFunctionLength</span><span class="dlabel">04</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">02 ACM</span></div>
+          <div class="dcell dc-bg-vidpid" style="flex:2"><span class="doff">3</span><span class="dval">bmCapabilities</span><span class="dlabel">典型 02</span></div>
+        </div>
+        <p>bmCapabilities：D0=COMM_FEATURE 组；<strong>D1=LINE_CODING 组</strong>（SET/GET_LINE_CODING + SET_CONTROL_LINE_STATE）；D2=SEND_BREAK；D3=网络通知。典型值 0x02 = "支持行编码配置"——<strong>没有它，OS 无法设波特率</strong>。</p>
+
+        <h4>Union（5 字节）——★ 虚拟串口的"结婚证"</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bFunctionLength</span><span class="dlabel">05</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">06 Union</span></div>
+          <div class="dcell dc-bg-ep0" style="flex:1"><span class="doff">3</span><span class="dval">bControlInterface</span><span class="dlabel">★ 控制接口号</span></div>
+          <div class="dcell dc-bg-ep" style="flex:1"><span class="doff">4</span><span class="dval">bSubordinateInterface0</span><span class="dlabel">★ 数据接口号</span></div>
+        </div>
+
+        <h4>Call Mgmt（5 字节）——串口场景下基本是占位声明</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bFunctionLength</span><span class="dlabel">05</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">01 Call Mgmt</span></div>
+          <div class="dcell dc-bg-vidpid" style="flex:1"><span class="doff">3</span><span class="dval">bmCapabilities</span><span class="dlabel">D0=自管理</span></div>
+          <div class="dcell dc-bg-ep" style="flex:1"><span class="doff">4</span><span class="dval">bDataInterface</span><span class="dlabel">D1=1 时有效</span></div>
+        </div>
+        <p>串口没有"呼叫"，D0=1 意思"我自己搞定"。</p>
+    </article>
+
+    <!-- kp-6-10 -->
+    <article class="card" id="kp-6-10">
+        <h3>6.13 CDC 类请求（★ SDK 串口目标直接弹药）</h3>
+
+        <div class="info-box">
+          形状与 HID/UVC 同款：<strong>bmRequestType = 0x21/0xA1 (Class IF)</strong>，wIndex = 接口号。
+        </div>
+
+        <table>
+          <tr><th>bRequest</th><th>名称</th><th>wValue</th><th>数据阶段</th></tr>
+          <tr><td>0x20</td><td><strong>SET_LINE_CODING</strong></td><td>0</td><td><strong>7 字节行编码</strong> ★</td></tr>
+          <tr><td>0x21</td><td>GET_LINE_CODING</td><td>0</td><td>7 字节（同上结构）</td></tr>
+          <tr><td>0x22</td><td>SET_CONTROL_LINE_STATE</td><td>D0=RTS, D1=DTR</td><td>无</td></tr>
+          <tr><td>0x23</td><td>SEND_BREAK</td><td>中断时长(ms)</td><td>无</td></tr>
+        </table>
+
+        <h4>★ SET_LINE_CODING 7 字节逐位</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bcd" style="flex:4"><span class="doff">0-3</span><span class="dval">dwDTERate (LE)</span><span class="dlabel">波特率：115200 = 00 C2 01 00</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">4</span><span class="dval">bCharFormat</span><span class="dlabel">停止位 0/1/2</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">5</span><span class="dval">bParityType</span><span class="dlabel">校验 0~4</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">6</span><span class="dval">bDataBits</span><span class="dlabel">5/6/7/8/16</span></div>
+        </div>
+        <p><strong>打开串口时 OS 发的第一个 CDC 请求就是它。</strong> libusb 写法：</p>
+        <pre><code>uint8_t line_coding[7] = {0x00, 0xC2, 0x01, 0x00,   // 115200
+                          0x00,                    // 1 停止位
+                          0x00,                    // 无校验
+                          0x08};                   // 8 数据位
+libusb_control_transfer(devh, 0x21, 0x20, 0, if_num, line_coding, 7, 1000);</code></pre>
+        <p>SET_CONTROL_LINE_STATE（wValue=0x0003 = DTR|RTS）紧随其后——<strong>应用层"打开串口"在 USB 上 = 这两个请求 + 批量传输开始</strong>。</p>
+    </article>
+
+    <!-- kp-6-11 -->
+    <article class="card" id="kp-6-11">
+        <h3>6.14 CDC 数据流</h3>
+
+        <h4>三条管道分工</h4>
+        <table>
+          <tr><th>管道</th><th>方向</th><th>内容</th></tr>
+          <tr><td>中断 IN</td><td>设备→Host</td><td>SerialState 通知（10 字节）——状态变化主动上报</td></tr>
+          <tr><td>批量 OUT</td><td>Host→设备</td><td>发串口数据</td></tr>
+          <tr><td>批量 IN</td><td>设备→Host</td><td>收串口数据</td></tr>
+        </table>
+
+        <h4>SerialState 通知结构（10 字节）</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-vidpid" style="flex:1"><span class="doff">0</span><span class="dval">bmRequestType</span><span class="dlabel">A1</span></div>
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">1</span><span class="dval">bNotification</span><span class="dlabel">20 SERIAL_STATE</span></div>
+          <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">2-3</span><span class="dval">wValue</span><span class="dlabel">0000</span></div>
+          <div class="dcell dc-bg-ep0" style="flex:2"><span class="doff">4-5</span><span class="dval">wIndex</span><span class="dlabel">接口号</span></div>
+          <div class="dcell dc-bg-config" style="flex:2"><span class="doff">6-7</span><span class="dval">wLength</span><span class="dlabel">0002</span></div>
+          <div class="dcell dc-bg-ialt" style="flex:2"><span class="doff">8-9</span><span class="dval">状态位图</span><span class="dlabel">D1=DSR D2=Break D3=Ring D4=Framing D5=Parity D6=Overrun</span></div>
+        </div>
+
+        <h4>完整时序</h4>
+        <pre><code>枚举 → SET_LINE_CODING（设波特率）→ SET_CONTROL_LINE_STATE(DTR|RTS=3，拉起握手线)
+     → 批量 OUT/IN 收发数据 → （状态变化时）中断 IN 的 SerialState 通知</code></pre>
+        <p><strong>虚拟串口本质</strong>：批量管道里是裸字节流，没有串口帧结构（无 start/stop bit）——Line Coding 只是"对端真实串口"的配置参数。USB 侧只有"字节流管道"，串口物理层由设备固件在对端实现。</p>
+    </article>
+
+    <!-- kp-6-12 -->
+    <article class="card" id="kp-6-12">
+        <h3>6.15 UVC 接口组织</h3>
+
+        <div class="info-box">
+          UVC：<strong>VC 管控制，VS 管数据流</strong>（XU 实战已深度掌握，这里是理论骨架）。
+        </div>
+
+        <pre><code>Interface(VC): bInterfaceClass=0x0E, bInterfaceSubClass=0x01 (Video Control)
+    PU/XU 全在这里 → XU 命令 wIndex 高字节 = bUnitID（第六会话认知的来源）
+Interface(VS): bInterfaceClass=0x0E, bInterfaceSubClass=0x02 (Video Streaming)
+    Alt0 零带宽（无端点）→ Alt1+ 流端点 → SET_INTERFACE 切 Alt 就是开流开关</code></pre>
+        <p>你的 2bdf:0101：VC 接口号 0、VS 接口号 1（第十会话：VC_IF_NUM 永远从 lsusb -v 确认，同厂商不同型号都不同）。</p>
+    </article>
+
+    <!-- kp-6-13 -->
+    <article class="card" id="kp-6-13">
+        <h3>6.16~6.17 VC 描述符链 + VC Header 逐字节</h3>
+
+        <h4>VC 链全景（顺序固定：输入→处理→扩展→输出）</h4>
+        <pre><code>Interface (VC)
+  ├─ VC Header          ← 必须第一个
+  ├─ Input Terminal     ← 数据源（摄像头 = wTerminalType 0x0201）
+  ├─ Processing Unit    ← 标准处理（亮度/对比度…）
+  ├─ Extension Unit     ← 厂商扩展（海康 CS_ID/SubFunc 就在这）
+  ├─ Output Terminal    ← 数据出口（VS 的 bTerminalLink 指向它）
+  └─ [中断 IN 端点]      ← 可选（多数设备不实现）</code></pre>
+        <p>Terminal ID / Unit ID 是<strong>链内引用句柄</strong>：PU 的 bSourceID 指上游 Terminal，VS 的 bTerminalLink 指 Output Terminal。整条链 433 字节的逐段验算见 4.x 真机实战（2bdf:0101）。</p>
+
+        <h4>VC Header（12+n 字节）逐字节</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bLength</span><span class="dlabel">0C+n</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">01 VC_HEADER</span></div>
+          <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">3-4</span><span class="dval">bcdUVC</span><span class="dlabel">0110 = 1.10</span></div>
+          <div class="dcell dc-bg-config" style="flex:2"><span class="doff">5-6</span><span class="dval">wTotalLength</span><span class="dlabel">★ VC 链总长（目录）</span></div>
+          <div class="dcell dc-bg-vidpid" style="flex:4"><span class="doff">7-10</span><span class="dval">dwClockFrequency</span><span class="dlabel">48MHz = 02 DC 6C 00</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">11</span><span class="dval">bInCollection</span><span class="dlabel">VS 接口数</span></div>
+          <div class="dcell dc-bg-ep" style="flex:2"><span class="doff">12..</span><span class="dval">baInterfaceNr[n]</span><span class="dlabel">VS 接口号列表</span></div>
+        </div>
+    </article>
+
+    <!-- kp-6-14 -->
+    <article class="card" id="kp-6-14">
+        <h3>6.18~6.20 Input Terminal + PU 逐字节 + bmControls 全集</h3>
+
+        <h4>Input Terminal（Camera，12+N 字节）</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bLength</span><span class="dlabel">0C+N</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">02 INPUT_TERMINAL</span></div>
+          <div class="dcell dc-bg-ep0" style="flex:1"><span class="doff">3</span><span class="dval">bTerminalID</span><span class="dlabel">★ 引用句柄</span></div>
+          <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">4-5</span><span class="dval">wTerminalType</span><span class="dlabel">0201 = Camera</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">6</span><span class="dval">bAssocTerminal</span><span class="dlabel">0</span></div>
+          <div class="dcell dc-bg-str" style="flex:1"><span class="doff">7</span><span class="dval">iTerminal</span><span class="dlabel">字符串</span></div>
+          <div class="dcell dc-bg-vidpid" style="flex:4"><span class="doff">8-13</span><span class="dval">焦距三件套</span><span class="dlabel">wObjFocalMin/Max + wOcularFocal</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">14</span><span class="dval">bControlSize</span><span class="dlabel">N</span></div>
+          <div class="dcell dc-bg-ialt" style="flex:2"><span class="doff">15..</span><span class="dval">bmControls</span><span class="dlabel">CT 控制位图</span></div>
+        </div>
+
+        <h4>Processing Unit（10+n 字节，可变）</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bLength</span><span class="dlabel">10+n</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">05 PROCESSING_UNIT</span></div>
+          <div class="dcell dc-bg-ep0" style="flex:1"><span class="doff">3</span><span class="dval">bUnitID</span><span class="dlabel">★ wIndex 高字节来源</span></div>
+          <div class="dcell dc-bg-ep" style="flex:1"><span class="doff">4</span><span class="dval">bSourceID</span><span class="dlabel">指上游 Terminal</span></div>
+          <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">5-6</span><span class="dval">wMaxMultiplier</span><span class="dlabel">缩放 ×100</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">7</span><span class="dval">bControlSize</span><span class="dlabel">N</span></div>
+          <div class="dcell dc-bg-ialt" style="flex:2"><span class="doff">8..</span><span class="dval">bmControls</span><span class="dlabel">PU 控制位图</span></div>
+          <div class="dcell dc-bg-str" style="flex:1"><span class="doff">..</span><span class="dval">iProcessing</span><span class="dlabel">字符串</span></div>
+        </div>
+        <p>（XU = 同款骨架、subtype 0x06，带 guidExtensionCode 厂商签名——XU 实战已用过。）</p>
+
+        <h4>bmControls 位图全集（bit N=1 → CS_ID(N+1) 存在）</h4>
+        <table>
+          <tr><th colspan="2">PU（处理单元）</th><th colspan="2">CT（相机终端）</th></tr>
+          <tr><td>0</td><td>Brightness 亮度</td><td>0-2</td><td>Auto-Exposure 组</td></tr>
+          <tr><td>1</td><td>Contrast 对比度</td><td>3-4</td><td>Exposure Time</td></tr>
+          <tr><td>2</td><td>Hue 色调</td><td>5-6</td><td>Focus</td></tr>
+          <tr><td>3</td><td>Saturation 饱和度</td><td>7-8</td><td>Iris 光圈</td></tr>
+          <tr><td>4</td><td>Sharpness 锐度</td><td>9-10</td><td>Zoom 变焦</td></tr>
+          <tr><td>5</td><td>Gamma 伽马</td><td>11-12</td><td>PanTilt 云台</td></tr>
+          <tr><td>6-7</td><td>WB Temperature/Component</td><td>13-14</td><td>Roll 旋转</td></tr>
+          <tr><td>8</td><td>Backlight Comp 背光</td><td>17</td><td>Focus Auto</td></tr>
+          <tr><td>9</td><td>Gain 增益</td><td>18</td><td>Privacy 隐私挡板</td></tr>
+          <tr><td>10</td><td>Power Line Freq 抗工频</td><td></td><td></td></tr>
+          <tr><td>11-13</td><td>Hue/WB Temp/WB Comp Auto</td><td></td><td></td></tr>
+        </table>
+        <p><strong>你的设备实证</strong>：2bdf:0101 的 PU <code>bmControls = 00 00</code>——一个标准控制都没实现，亮度/对比度/增益全塞进 XU 私有控制，配合厂商 SDK 卖。"UVC 标准控制"在专业设备上经常是空壳——实际控制全走 XU。</p>
+    </article>
+
+    <!-- kp-6-15 -->
+    <article class="card" id="kp-6-15">
+        <h3>6.21~6.22 VS 描述符链 + Input Header 逐字节</h3>
+
+        <h4>VS 链全景</h4>
+        <pre><code>Interface (VS, Alt0)                      ← 零带宽（bNumEndpoints=0）
+  ├─ VS Input Header → Format → Frame...
+Interface (VS, Alt1, 流端点)
+  ├─ VS Input Header → Format → Frame...
+  └─ Endpoint (等时 IN, wMaxPacketSize = 带宽配额)</code></pre>
+        <p><strong>每个 Alt Setting 一组完整链</strong>；Alt1+ 的链末尾跟 Endpoint。切 Alt 换的是带宽配额（wMaxPacketSize），不是端点号——"同一条水管换粗细"。</p>
+
+        <h4>VS Input Header（13+N 字节）逐字节</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bLength</span><span class="dlabel">0D+N</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">01 VS_INPUT_HEADER</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">3</span><span class="dval">bNumFormats</span><span class="dlabel">格式数</span></div>
+          <div class="dcell dc-bg-config" style="flex:2"><span class="doff">4-5</span><span class="dval">wTotalLength</span><span class="dlabel">VS 链总长</span></div>
+          <div class="dcell dc-bg-ep" style="flex:1"><span class="doff">6</span><span class="dval">bEndpointAddress</span><span class="dlabel">81 = IN EP1</span></div>
+          <div class="dcell dc-bg-vidpid" style="flex:1"><span class="doff">7</span><span class="dval">bmInfo</span><span class="dlabel">D0=动态切换</span></div>
+          <div class="dcell dc-bg-ep0" style="flex:1"><span class="doff">8</span><span class="dval">bTerminalLink</span><span class="dlabel">★ 指回 Output Terminal</span></div>
+          <div class="dcell dc-bg-attr" style="flex:3"><span class="doff">9-11</span><span class="dval">Still/Trigger 三件套</span><span class="dlabel">bStillCaptureMethod + TriggerSupport + TriggerUsage</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">12</span><span class="dval">bControlSize</span><span class="dlabel">N</span></div>
+          <div class="dcell dc-bg-ialt" style="flex:2"><span class="doff">13..</span><span class="dval">bmaControls</span><span class="dlabel">每格式能力位图</span></div>
+        </div>
+        <p><strong>bTerminalLink 是 VC/VS 的咬合点</strong>——VS 链通过它接回 VC 的 Output Terminal，两半拼成完整数据通路。</p>
+    </article>
+
+    <!-- kp-6-16 -->
+    <article class="card" id="kp-6-16">
+        <h3>6.23~6.24 Format + Frame Descriptor 逐字节</h3>
+
+        <h4>Format（MJPEG，26 字节）——bDescriptorSubType = 0x06</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bLength</span><span class="dlabel">1A = 26</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">06 FORMAT_MJPEG</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">3</span><span class="dval">bFormatIndex</span><span class="dlabel">编号</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">4</span><span class="dval">bNumFrameDescriptors</span><span class="dlabel">Frame 数</span></div>
+          <div class="dcell dc-bg-vidpid" style="flex:1"><span class="doff">5</span><span class="dval">bmFlags</span><span class="dlabel">能力</span></div>
+          <div class="dcell dc-bg-bcd" style="flex:4"><span class="doff">6-21</span><span class="dval">guidFormat (16B)</span><span class="dlabel">★ 前 4 字节 ASCII = 格式名</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">22</span><span class="dval">bAspectRatioX</span><span class="dlabel">宽高比</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">23</span><span class="dval">bAspectRatioY</span><span class="dlabel">宽高比</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">24</span><span class="dval">bmInterlaceFlags</span><span class="dlabel">隔行</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">25</span><span class="dval">bCopyProtect</span><span class="dlabel">防拷</span></div>
+        </div>
+        <p><strong>guidFormat 认格式</strong>：<code>4D 4A 50 47</code> = "MJPG"、<code>59 55 59 32</code> = "YUY2"，后 12 字节是固定 GUID 骨架（<code>00 00 10 00 80 00 00 AA 00 38 9B 71</code>）。看到这 4 个 ASCII 字节就知道编码——比认 GUID 数字快得多。</p>
+
+        <h4>Frame（MJPEG，26+4n 字节）——bDescriptorSubType = 0x07</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">bLength</span><span class="dlabel">26+4n</span></div>
+          <div class="dcell dc-bg-class" style="flex:1"><span class="doff">1</span><span class="dval">bDescriptorType</span><span class="dlabel">24</span></div>
+          <div class="dcell dc-bg-bgtype" style="flex:1"><span class="doff">2</span><span class="dval">bDescriptorSubType</span><span class="dlabel">07 FRAME_MJPEG</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">3</span><span class="dval">bFrameIndex</span><span class="dlabel">编号</span></div>
+          <div class="dcell dc-bg-vidpid" style="flex:1"><span class="doff">4</span><span class="dval">bmCapabilities</span><span class="dlabel">D0=Still D1=固定帧率</span></div>
+          <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">5-6</span><span class="dval">wWidth</span><span class="dlabel">★ 宽</span></div>
+          <div class="dcell dc-bg-bcd" style="flex:2"><span class="doff">7-8</span><span class="dval">wHeight</span><span class="dlabel">★ 高</span></div>
+          <div class="dcell dc-bg-attr" style="flex:2"><span class="doff">9-12</span><span class="dval">dwMinBitRate</span><span class="dlabel">最小码率</span></div>
+          <div class="dcell dc-bg-attr" style="flex:2"><span class="doff">13-16</span><span class="dval">dwMaxBitRate</span><span class="dlabel">最大码率</span></div>
+          <div class="dcell dc-bg-config" style="flex:2"><span class="doff">17-20</span><span class="dval">dwMaxVideoFrameBufferSize</span><span class="dlabel">★ 单帧最大字节数</span></div>
+          <div class="dcell dc-bg-ep0" style="flex:2"><span class="doff">21-24</span><span class="dval">dwDefaultFrameInterval</span><span class="dlabel">100ns 单位，30fps=333333</span></div>
+          <div class="dcell dc-bg-attr" style="flex:1"><span class="doff">25</span><span class="dval">bFrameIntervalType</span><span class="dlabel">n</span></div>
+          <div class="dcell dc-bg-ialt" style="flex:2"><span class="doff">26..</span><span class="dval">dwFrameInterval×n</span><span class="dlabel">可选帧率列表</span></div>
+        </div>
+        <p>你的真机对照：2bdf:0101 报 120x160 YUYV，dwMaxVideoFrameBufferSize=38400——但实际帧 ~10000 字节（MJPEG 欺诈）。<strong>描述符是设备自己写的广告，帧数据才是实物。</strong></p>
+    </article>
+
+    <!-- kp-6-17 -->
+    <article class="card" id="kp-6-17">
+        <h3>6.25~6.26 Probe/Commit 协商 + Payload Header 逐字节</h3>
+
+        <h4>Probe/Commit 协商流程（XU 实战已跑通，此处是骨架）</h4>
+        <pre><code>① GET_MIN / GET_MAX / GET_DEF   → 问设备"你能提供什么范围"
+② SET_CUR (Probe)               → 试问："FormatIndex=1, FrameIndex=1, 30fps 行不行"
+③ GET_CUR (Probe)               → 设备回"可以，按这个来"或改参数（协商）
+④ SET_CUR (Commit)              → 敲定："就按刚才商量的"
+⑤ SET_INTERFACE (切 Alt)        → 按 Commit 的带宽需求选 Alt
+⑥ 开始等时/批量取流</code></pre>
+        <p>要点：VS 请求 wIndex = VS 接口号（<strong>没有 Unit ID</strong>）；Probe/Commit 负载 26 字节；其中的 <strong>dwMaxPayloadTransferSize 决定选哪个 Alt 的带宽配额</strong>。</p>
+
+        <h4>Payload Header（12 字节）逐字节——★ 拼帧核心</h4>
+        <div class="desc-byte-map" style="margin-bottom:10px;">
+          <div class="dcell dc-bg-bglen" style="flex:1"><span class="doff">0</span><span class="dval">HLEN</span><span class="dlabel">0C = 12</span></div>
+          <div class="dcell dc-bg-vidpid" style="flex:2"><span class="doff">1</span><span class="dval">BFH 位字段</span><span class="dlabel">D0=FID D1=EOF D2=PTS存在 D3=SCR存在 D4=RES D5=STI D6=ERR D7=EOH</span></div>
+          <div class="dcell dc-bg-ialt" style="flex:2"><span class="doff">2-5</span><span class="dval">[PTS]</span><span class="dlabel">可选（D2=1 时）显示时间戳</span></div>
+          <div class="dcell dc-bg-ialt" style="flex:2"><span class="doff">6-11</span><span class="dval">[SCR]</span><span class="dlabel">可选（D3=1 时）源时钟</span></div>
+        </div>
+
+        <h4>FID/EOF 拼帧算法</h4>
+        <pre><code> 帧 N (FID=0): ▓▓▓▓  ▓▓▓▓  ▓▓▓▓█   ← 最后一包 EOF=1
+ 帧 N+1 (FID=1): ▓▓▓▓█            ← FID 翻转，EOF 收帧
+ 同一 FID 的包按序拼接 → 遇到 EOF=1 → 一帧完成 → 下一帧 FID 翻转</code></pre>
+        <p>libuvc 内部就干这个（第十会话认知 17）。等时包 = Payload Header + 视频数据；允许"纯头部零数据"包（抓包空包）。<strong>拼帧失败的可见症状 = 花屏/丢帧。</strong></p>
+    </article>
 
     <!-- ===== Phase 7: 跳过 ===== -->
     <div class="phase-header" id="phase-7"><h2>Phase 7: 协议分析工具与实操 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">⏭ 跳过（暂缓，2026-08-16）</span></h2></div>

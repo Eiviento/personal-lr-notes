@@ -93,7 +93,7 @@
 
 ## 第六阶段：设备类协议逐字节解析（HID / CDC / UVC）
 
-> **2026-08-16 裁剪决策**：用户是应用层开发者（SDK 消费设备，不写设备固件），HID 篇按**应用层裁剪版**执行——Report Descriptor Item 编码只学到"认字"级别（能看懂 dump/工具解析结果），不追求会写。6.4/6.5 压缩为速查，6.6 用成品解剖图替代逐字节手写，6.7 类请求精讲（SDK 直接要用）。
+> **2026-08-16 裁剪决策**：用户是应用层开发者（SDK 消费设备，不写设备固件），本篇按**应用层裁剪版**执行——描述符逐字节学到"认字"级别（能看懂 dump/工具解析结果），描述符链用全景图带过，**类请求与数据流精讲**（SDK 直接要用）。以 byte 表 + 结构图为主，减少通篇文字。26/26 全部完成。
 
 | # | 知识点 | 要讲清楚什么 | 状态 |
 |---|--------|-------------|------|
@@ -106,26 +106,26 @@
 | 6.6 | 键盘 Report Descriptor 完整范例 | 8 字节 Boot Keyboard Report 一步一步写出 | ✅（成品解剖图） |
 | 6.7 | HID Report 协议 | Get_Report/Set_Report/Get_Idle/Set_Idle/Get_Protocol/Set_Protocol | ✅（精讲） |
 | **CDC 类** | | | |
-| 6.8 | ⛁ CDC 功能描述符链完整布局 | Interface↔Header↔ACM↔Union↔Call Mgmt↔Interface↔Endpoint×2 | ⬜ |
-| 6.9 | CDC Header Descriptor 逐字节 | bFunctionLength/bDescriptorType(0x24 CS)/bDescriptorSubType(0x00)/bcdCDC | ⬜ |
-| 6.10 | CDC ACM Descriptor 逐字节 | bDescriptorSubType(0x02)/bmCapabilities 逐位 | ⬜ |
-| 6.11 | CDC Union Descriptor 逐字节 | 主控制接口号 + 从属接口号列表 | ⬜ |
-| 6.12 | CDC Call Management Descriptor 逐字节 | bmCapabilities/bDataInterface | ⬜ |
-| 6.13 | CDC 类请求逐字节 | SET_LINE_CODING(7 字节)/GET_LINE_CODING/SET_CONTROL_LINE_STATE/SEND_BREAK | ⬜ |
-| 6.14 | CDC 数据流 | 中断端点(SerialState 10 字节) + 批量端点(收发数据) | ⬜ |
+| 6.8 | ⛁ CDC 功能描述符链完整布局 | Interface↔Header↔ACM↔Union↔Call Mgmt↔Interface↔Endpoint×2 | ✅ |
+| 6.9 | CDC Header Descriptor 逐字节 | bFunctionLength/bDescriptorType(0x24 CS)/bDescriptorSubType(0x00)/bcdCDC | ✅（认字级） |
+| 6.10 | CDC ACM Descriptor 逐字节 | bDescriptorSubType(0x02)/bmCapabilities 逐位 | ✅（认字级） |
+| 6.11 | CDC Union Descriptor 逐字节 | 主控制接口号 + 从属接口号列表 | ✅（认字级） |
+| 6.12 | CDC Call Management Descriptor 逐字节 | bmCapabilities/bDataInterface | ✅（认字级） |
+| 6.13 | CDC 类请求逐字节 | SET_LINE_CODING(7 字节)/GET_LINE_CODING/SET_CONTROL_LINE_STATE/SEND_BREAK | ✅（精讲） |
+| 6.14 | CDC 数据流 | 中断端点(SerialState 10 字节) + 批量端点(收发数据) | ✅（精讲） |
 | **UVC 类** | | | |
-| 6.15 | ⛁ UVC 接口组织 | VC 接口(Video Control) + VS 接口(Video Streaming) | ⬜ |
-| 6.16 | ⛁ UVC VC Descriptor 链完整布局 | Interface↔VC Header↔Input Terminal↔Processing Unit↔Output Terminal↔Endpoint(可选) | ⬜ |
-| 6.17 | ⛁ UVC VC Header Descriptor 逐字节 | bLength/bDescriptorType/bDescriptorSubType/bcdUVC/wTotalLength/dwClockFrequency/bInCollection/baInterfaceNr | ⬜ |
-| 6.18 | ⛁ UVC Input Terminal Descriptor 逐字节 | bTerminalID/wTerminalType/bAssocTerminal/bmControls 位图 | ⬜ |
-| 6.19 | ⛁ UVC Processing Unit Descriptor 逐字节 | bUnitID/bSourceID/bmControls + bmVideoStandards | ⬜ |
-| 6.20 | UVC 控制位图 (bmControls) 详解 | Brightness/Contrast/Hue/Saturation/Sharpness/Gamma/White Balance/Gain/Focus/Zoom/PanTilt 等全集 | ⬜ |
-| 6.21 | ⛁ UVC VS Descriptor 链完整布局 | Interface↔Input Header↔Format↔Frame↔Color Matching(可选)↔Endpoint | ⬜ |
-| 6.22 | ⛁ UVC VS Input Header Descriptor 逐字节 | bNumFormats/wTotalLength/bEndpointAddress/bmInfo/bTerminalLink/bmaControls | ⬜ |
-| 6.23 | ⛁ UVC Format Descriptor (MJPEG) 逐字节 | bFormatIndex/bNumFrameDescriptors/bFlags/bDefaultFrameIndex/bAspectRatio | ⬜ |
-| 6.24 | ⛁ UVC Frame Descriptor (MJPEG) 逐字节 | wWidth/wHeight/dwMinBitRate/dwMaxBitRate/dwMaxVideoFrameBufSize/dwDefaultFrameInterval/bFrameIntervalType | ⬜ |
-| 6.25 | UVC Probe/Commit 协商机制 | SET_CUR/GET_CUR/GET_MIN/GET_MAX/GET_DEF 协商格式/分辨率/帧率 | ⬜ |
-| 6.26 | ⛁ UVC Payload Header 逐字节 | HLEN/Bit Field Header(FID/EOF/PTS/SCR/STI)/PTS/SCR；FID 翻转判断帧边界 | ⬜ |
+| 6.15 | ⛁ UVC 接口组织 | VC 接口(Video Control) + VS 接口(Video Streaming) | ✅ |
+| 6.16 | ⛁ UVC VC Descriptor 链完整布局 | Interface↔VC Header↔Input Terminal↔Processing Unit↔Output Terminal↔Endpoint(可选) | ✅ |
+| 6.17 | ⛁ UVC VC Header Descriptor 逐字节 | bLength/bDescriptorType/bDescriptorSubType/bcdUVC/wTotalLength/dwClockFrequency/bInCollection/baInterfaceNr | ✅（认字级） |
+| 6.18 | ⛁ UVC Input Terminal Descriptor 逐字节 | bTerminalID/wTerminalType/bAssocTerminal/bmControls 位图 | ✅（认字级） |
+| 6.19 | ⛁ UVC Processing Unit Descriptor 逐字节 | bUnitID/bSourceID/bmControls + bmVideoStandards | ✅（认字级） |
+| 6.20 | UVC 控制位图 (bmControls) 详解 | PU/CT 两套全集 + 2bdf:0101 真机（PU 空壳，控制全走 XU） | ✅ |
+| 6.21 | ⛁ UVC VS Descriptor 链完整布局 | Interface↔Input Header↔Format↔Frame↔Color Matching(可选)↔Endpoint | ✅ |
+| 6.22 | ⛁ UVC VS Input Header Descriptor 逐字节 | bNumFormats/wTotalLength/bEndpointAddress/bmInfo/bTerminalLink/bmaControls | ✅（认字级） |
+| 6.23 | ⛁ UVC Format Descriptor (MJPEG) 逐字节 | 26 字节布局（guidFormat 前 4 字节 ASCII 认格式；bDefaultFrameIndex 不在 Format 而在 Still Image 帧描述符） | ✅（认字级） |
+| 6.24 | ⛁ UVC Frame Descriptor (MJPEG) 逐字节 | wWidth/wHeight/dwMinBitRate/dwMaxBitRate/dwMaxVideoFrameBufSize/dwDefaultFrameInterval/bFrameIntervalType | ✅（认字级） |
+| 6.25 | UVC Probe/Commit 协商机制 | SET_CUR/GET_CUR/GET_MIN/GET_MAX/GET_DEF 协商格式/分辨率/帧率 | ✅ |
+| 6.26 | ⛁ UVC Payload Header 逐字节 | HLEN/Bit Field Header(FID/EOF/PTS/SCR/STI)/PTS/SCR；FID 翻转判断帧边界 | ✅ |
 
 ---
 
@@ -158,5 +158,5 @@
 ---
 
 > ⛁ = 逐字节/逐比特精讲
-> 总计：8 个阶段，67 个知识点任务
+> 总计：8 个阶段，88 个知识点任务（原"67"为统计笔误，2026-08-16 修正；Phase 7 已跳过暂缓，有效剩余 = Phase 8 的 5 个）
 > 创建日期：2026-07-25
