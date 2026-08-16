@@ -304,6 +304,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 │   ├── xu_interactive.c                          ← 交互式 XU 调试工具（★ 支持 SET_CUR 选择）
 │   └── uvc_stream_viewer.cpp                     ← ★★★ libuvc 取流 + OpenCV 显示（第八会话核心产出）
 │   └── hotplug_demo.c                            ← ★ 热插拔最小演示（第十二会话，已真机验证）
+│   └── examples/                                 ← ★ 13 份最小可运行示例 + README（第十二会话，配 usb-sdk-examples.html）
 ├── notes/
 │   ├── phase1-usb-overview.md                    ← Phase 1
 │   ├── phase2-communication-model.md             ← Phase 2（新增接口-端点关系问答）
