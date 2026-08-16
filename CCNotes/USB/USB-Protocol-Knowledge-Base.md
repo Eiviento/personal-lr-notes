@@ -3902,6 +3902,8 @@ Interface (VS, Alt1, 流端点)
 
 **★ 真机实测（2026-08-16，示例 07）**：2bdf:0101 的 Probe 返回**不合常理的字段**（Format=0、帧间隔 10.24s、单帧 9.8MB）——不是解析错，是**该设备的 VS Probe 协商本身不可靠**，与第八篇踩坑 38（libuvc 自动协商失败、需遍历原始格式描述符）完全一致。另注意：SET_CUR 是 OUT 传输，设备**不会回写缓冲**——发送后打印的缓冲是请求回显，设备的敲定要再发 GET_CUR 读。
 
+**★ 真机实测续（示例 08，同日验证）**：只发 SET_INTERFACE 开流 → **1 秒收 0 字节**（设备对每个 IN Token 都 NAK）；补上 Probe/Commit 后 → **1 秒收 33,361 字节（≈3.3 帧/秒 × 10KB MJPEG，与第八会话帧数据吻合）**。结论：**本机固件把 Probe/Commit 当"管线武装命令"**——内部视频管线靠协商启动，SET_INTERFACE 只是打开管道闸门。完整开流公式：`GET_DEF → Probe → Commit（武装）→ SET_INTERFACE（开闸）→ Host IN Token（拉数据）`，缺一环都是 0 字节。
+
 ## 6.26 ⛁ UVC Payload Header 逐字节（拼帧核心）
 
 ```

@@ -123,7 +123,7 @@
 3. **两种 STALL 生命周期**：EP0 一次性（下个 SETUP 自动清除）vs 数据端点粘性（CLEAR_FEATURE 才解冻）——EP0 不能锁死，数据端点锁死是事故报警机制；GET_STATUS 确认 → CLEAR_FEATURE 解冻的故障闭环
 4. **Feature Selector 三开关**：ENDPOINT_HALT（两入口一出口）/ DEVICE_REMOTE_WAKEUP（能力 vs 权限分离）/ TEST_MODE（参数藏 wIndex 高字节，唯一禁止 CLEAR）；Interface 是标准请求里最清闲的接收者
 5. **SET_INTERFACE 是"选择"不是"创造"**：Alt 索引指向描述符链里预先声明好的端点组合；UVC 主流是同一端点换 wMaxPacketSize（带宽配额），不是换通道；切 Alt 后 toggle 归零
-6. **开流≠送流**：Host 中心化铁律——SET_INTERFACE 只让管道就绪，数据从 Host 第一个 IN Token 才开始（水龙头与泵类比）；等时 FIFO 空回零长度包、批量回 NAK，空包合法
+6. **开流≠送流**：Host 中心化铁律——SET_INTERFACE 只让管道就绪，数据从 Host 第一个 IN Token 才开始（水龙头与泵类比）；等时 FIFO 空回零长度包、批量回 NAK，空包合法（★ 真机补充 2026-08-16：2bdf:0101 只 SET_INTERFACE 收 0 字节，补 Probe/Commit 才通——本机固件把协商当"管线武装命令"，完整公式 GET_DEF→Probe→Commit→SET_INTERFACE→IN Token）
 7. **Probe/Commit 参数 = 解码契约不是命令**：三层强制力（物理带宽/标准解码器/认证与生态）；撒谎边界 = 哪里有标准验证者（2bdf:0101 的 YUYV→MJPEG 欺诈：格式层撒谎代价是解码器崩，内容层无人验证）；USB 可信度靠"遵守对厂商更有利"的利益结构
 
 **HID 篇建立的深层理解（已存 KB 第六篇）：**
