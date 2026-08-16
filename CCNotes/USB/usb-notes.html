@@ -110,8 +110,14 @@ else document.documentElement.classList.add('dark');})();
         <a class="sub-item" href="#kp-4-11a">⟐ 4.11a 真机抓包实战</a>
         <a class="sub-item" href="#kp-4-12">4.12 枚举失败排查</a>
     </details>
-    <details>
-        <summary><span>📡 Phase 5: 标准请求</span><span class="badge phase-pending">0/6 ○ · 即将更新</span></summary>
+    <details open>
+        <summary><span>📡 Phase 5: 标准请求</span><span class="badge phase-done">6/6 ✓</span></summary>
+        <a class="sub-item" href="#kp-5-1">⛁ 5.1 SETUP 包 8 字节逐位</a>
+        <a class="sub-item" href="#kp-5-2">5.2 11 种标准请求全集</a>
+        <a class="sub-item" href="#kp-5-3">5.3 GET_STATUS 响应解析</a>
+        <a class="sub-item" href="#kp-5-4">5.4 Feature Selector 全集</a>
+        <a class="sub-item" href="#kp-5-5">5.5 SET/GET_INTERFACE</a>
+        <a class="sub-item" href="#kp-5-6">5.6 参数速查表</a>
     </details>
     <details>
         <summary><span>📡 Phase 6: HID/CDC/UVC</span><span class="badge phase-pending">0/26 ○ · 即将更新</span></summary>
@@ -123,10 +129,10 @@ else document.documentElement.classList.add('dark');})();
         <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-pending">0/5 ○ · 即将更新</span></summary>
     </details>
 
-    <div class="progress-wrap" role="progressbar" aria-valuenow="66" aria-valuemin="0"
-         aria-valuemax="100" aria-label="学习进度 66%">
-        <div class="progress-bar" style="width:66%"></div>
-        <span class="progress-label">44/67 (66%)</span>
+    <div class="progress-wrap" role="progressbar" aria-valuenow="75" aria-valuemin="0"
+         aria-valuemax="100" aria-label="学习进度 75%">
+        <div class="progress-bar" style="width:75%"></div>
+        <span class="progress-label">50/67 (75%)</span>
     </div>
 </nav>
 
@@ -3105,12 +3111,315 @@ wLength = 9 = Config Descriptor 头部固定长度（§3.4）</code></pre>
         <p><strong>Phase 4 收官</strong>：纸上推演（4.2~4.10）→ 真机验证（4.11/4.11a）→ 故障排查（4.12）三段闭环。<strong>枚举是整个 USB 协议的主干</strong>——之后写的每一行 libusb 代码、每一个新设备调试，都跑在这条流水线上。</p>
     </article>
 
-    <!-- ===== Phase 5 Placeholder ===== -->
-    <div class="phase-header" id="phase-5"><h2>Phase 5: 标准请求与 Setup 包深度解析 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
-    <div class="placeholder">
-        <h3>第五阶段 — 6 个知识点</h3>
-        <p>⛁ SETUP包8字节逐位 · 11种标准设备请求全集 · GET_STATUS / SET_FEATURE / CLEAR_FEATURE · SET_INTERFACE / GET_INTERFACE · wValue/wIndex/wLength速查表</p>
-    </div>
+    <!-- ===== Phase 5: 标准请求与 Setup 包深度解析 ===== -->
+    <div class="phase-header" id="phase-5"><h2>Phase 5: 标准请求与 Setup 包深度解析 <span style="font-size:14px;color:var(--color-frame);margin-left:8px;">6/6 ✓</span></h2></div>
+
+    <!-- kp-5-1 -->
+    <article class="card" id="kp-5-1">
+        <h3>5.1 ⛁ SETUP 包 8 字节逐位</h3>
+
+        <div class="info-box">
+          <strong>三类语义（2026-08-16 修正版）</strong>：8 字节按"语义是否随请求变化"分三类——真正随请求换含义的只有 <strong>wValue + wIndex 这 4 个字节</strong>。
+        </div>
+
+        <h4>三类语义</h4>
+        <table>
+          <tr><th>类别</th><th>字段</th><th>语义</th></tr>
+          <tr><td>① 语义永远不变</td><td>wLength (2B)</td><td>永远是"DATA 阶段字节数"</td></tr>
+          <tr><td>② 位布局不变，起路由作用</td><td>bmRequestType (1B)</td><td>三把钥匙；它的值决定后面字节怎么读</td></tr>
+          <tr><td>③ 永远是请求号，查哪张表由 ② 决定</td><td>bRequest (1B)</td><td>0x01 在 Standard = CLEAR_FEATURE，在 UVC Class = SET_CUR</td></tr>
+          <tr><td>④ 真正随请求换含义</td><td>wValue + wIndex (2+2B)</td><td>每次换填法，有时干脆不用（填 0）</td></tr>
+        </table>
+
+        <h4>逐位总表</h4>
+        <table>
+          <tr><th>字节</th><th>字段</th><th>位</th><th>编码全集</th></tr>
+          <tr><td>0</td><td>bmRequestType</td><td><strong>D7 方向</strong></td><td>0=OUT（Host→设备），1=IN（设备→Host）</td></tr>
+          <tr><td>0</td><td>bmRequestType</td><td><strong>D6-5 字典</strong></td><td>00=Standard、01=Class、10=Vendor、11=Reserved</td></tr>
+          <tr><td>0</td><td>bmRequestType</td><td><strong>D4-0 接收者</strong></td><td>00000=Device、00001=Interface、00010=Endpoint、00011=Other、00100~11111=Reserved</td></tr>
+          <tr><td>1</td><td>bRequest</td><td>—</td><td>0x00~0x0C 标准请求（<strong>0x02、0x04 是空洞</strong>），Class/Vendor 字典下随类/厂商定义</td></tr>
+          <tr><td>2-3</td><td>wValue (LE)</td><td>—</td><td><strong>每次请求换含义</strong>（见 5.6 速查表）</td></tr>
+          <tr><td>4-5</td><td>wIndex (LE)</td><td>—</td><td><strong>每次请求换含义</strong>（接口号 / 端点号 / LANGID / 0）</td></tr>
+          <tr><td>6-7</td><td>wLength (LE)</td><td>—</td><td><strong>永远 = DATA 阶段字节数</strong>（唯一不变的字段）</td></tr>
+        </table>
+
+        <h4>三个补课点</h4>
+        <ol>
+          <li><strong>D4-0 接收者全集里有 "Other"（0x03）</strong>："为未来保留"，三十多年没设备用过。<code>bmRequestType &amp; 0x1F</code> 值 ≥4 就是非法请求，设备在 STATUS 回 STALL。</li>
+          <li><strong>bRequest 标准请求表有两个空洞</strong>：0x02、0x04 是给未来扩展留的洞（USB 1.0 起就 Reserved，至今未填）→ 实际可用标准请求 = <strong>11 种</strong>。</li>
+          <li><strong>SETUP 事务三条铁律</strong>：① 永远 8 字节（多一少一都直接忽略）；② 永远 DATA0 + toggle 归零（DATA 阶段第一个包必然是 DATA1，STATUS 恒为 DATA1）；③ 永远发给 EP0（SETUP 必 ACK，拒绝只能在 STATUS 表达——详见 kp-2-17 的快递回执/法庭传票类比）。</li>
+        </ol>
+
+        <p><strong>面单类比</strong>：SETUP 包像标准快递面单——第 0 字节是"寄收方向 + 哪家快递（字典）+ 收件人"；第 1 字节是业务类型；wValue/wIndex 是两张随业务换填法的表格；wLength 永远是"包裹多大"。面单格式全国统一，填什么取决于业务。</p>
+    </article>
+
+    <!-- kp-5-2 -->
+    <article class="card" id="kp-5-2">
+        <h3>5.2 11 种标准请求全集（速览）</h3>
+
+        <div class="info-box">
+          <strong>枚举 10 步从头到尾只用了 11 种里的 3 种</strong>（GET_DESCRIPTOR、SET_ADDRESS、SET_CONFIGURATION），加上 UVC 实战的 SET_INTERFACE 共 4 种，其余 7 种首次见面。
+        </div>
+
+        <h4>总表（按 bRequest 编号）</h4>
+        <table>
+          <tr><th>#</th><th>bRequest</th><th>方向</th><th>接收者</th><th>wValue</th><th>wIndex</th><th>wLength</th><th>数据阶段</th></tr>
+          <tr><td>0x00</td><td>GET_STATUS</td><td>IN</td><td>D/I/E</td><td>0</td><td>0 / IF / EP</td><td>2</td><td>2 字节状态（5.3）</td></tr>
+          <tr><td>0x01</td><td>CLEAR_FEATURE</td><td>OUT</td><td>D/I/E</td><td>Feature Selector</td><td>0 / IF / EP</td><td>0</td><td>无（5.4）</td></tr>
+          <tr><td>0x03</td><td>SET_FEATURE</td><td>OUT</td><td>D/I/E</td><td>Feature Selector</td><td>0 / IF / EP</td><td>0</td><td>无（5.4）</td></tr>
+          <tr><td>0x05</td><td>SET_ADDRESS</td><td>OUT</td><td>D</td><td>新地址 0~127</td><td>0</td><td>0</td><td>无（4.5）</td></tr>
+          <tr><td>0x06</td><td>GET_DESCRIPTOR</td><td>IN</td><td>D</td><td>(类型&lt;&lt;8)|索引</td><td>0 或 LANGID</td><td>N</td><td>N 字节描述符</td></tr>
+          <tr><td>0x07</td><td>SET_DESCRIPTOR</td><td>OUT</td><td>D</td><td>(类型&lt;&lt;8)|索引</td><td>LANGID</td><td>N</td><td>N 字节（几乎没人用）</td></tr>
+          <tr><td>0x08</td><td>GET_CONFIGURATION</td><td>IN</td><td>D</td><td>0</td><td>0</td><td>1</td><td>1 字节：当前配置号</td></tr>
+          <tr><td>0x09</td><td>SET_CONFIGURATION</td><td>OUT</td><td>D</td><td>配置编号</td><td>0</td><td>0</td><td>无（4.10）</td></tr>
+          <tr><td>0x0A</td><td>GET_INTERFACE</td><td>IN</td><td>IF</td><td>0</td><td>接口号</td><td>1</td><td>1 字节：当前 Alt（5.5）</td></tr>
+          <tr><td>0x0B</td><td>SET_INTERFACE</td><td>OUT</td><td>IF</td><td>Alt Setting</td><td>接口号</td><td>0</td><td>无（5.5）</td></tr>
+          <tr><td>0x0C</td><td>SYNCH_FRAME</td><td>IN</td><td>EP</td><td>0</td><td>端点号</td><td>2</td><td>2 字节帧号（几乎没人用）</td></tr>
+        </table>
+
+        <h4>按家族分组看规律</h4>
+        <table>
+          <tr><th>家族</th><th>成员</th><th>规律</th></tr>
+          <tr><td><strong>GET_ 读类</strong>（5 个）</td><td>STATUS/DESCRIPTOR/CONFIGURATION/INTERFACE/SYNCH_FRAME</td><td>全 IN；wLength &gt; 0；数据 = 被读的那个东西</td></tr>
+          <tr><td><strong>SET_ 写类</strong>（4 个）</td><td>ADDRESS/CONFIGURATION/INTERFACE/DESCRIPTOR</td><td>全 OUT；前三个 wLength=0——"写"的内容整个塞在 wValue 里</td></tr>
+          <tr><td><strong>FEATURE 开关类</strong>（2 个）</td><td>SET_FEATURE / CLEAR_FEATURE</td><td>OUT；wLength=0；wValue = 开/关哪个开关</td></tr>
+        </table>
+        <p>反直觉点：SET_DESCRIPTOR 是 SET_ 家族唯一的"真写"（带数据阶段），其余三个 SET_ 都是"参数全在 wValue 里的空手写"。</p>
+
+        <h4>四个值得一提的细节</h4>
+        <ol>
+          <li><strong>GET_CONFIGURATION 和 GET_INTERFACE 是一对镜像</strong>：读"当前配置号"（Device 级）vs 读"当前 Alt"（Interface 级），都返回 1 字节。SET 写进去什么，GET 读回什么。</li>
+          <li><strong>SET_CONFIGURATION(0) 有隐藏含义</strong>：wValue=0 → 设备回到 Address 状态（解除配置）。既是"上岗"命令也是"下岗"命令。</li>
+          <li><strong>规范允许个别请求 STALL</strong>：SET_DESCRIPTOR 和 SYNCH_FRAME 是"可选实现"——设备不想支持就在 STATUS 回 STALL，<strong>合法</strong>。不支持≠违规，明确拒绝也是合规行为。</li>
+          <li><strong>SYNCH_FRAME 只服务等时端点</strong>：Host 问"你的数据模式从哪一帧开始"，只有等时传输（无握手、按帧对齐）才需要帧号。</li>
+        </ol>
+
+        <h4>三层法律体系类比</h4>
+        <pre><code>Standard 请求 = 宪法基本法    ← 全 USB 设备必须理解（11 种）
+Class 请求   = 行业规章       ← 只有同类设备才懂（UVC 的 SET_CUR，键盘不懂）
+Vendor 请求  = 公司内部规定    ← 只有自家设备认识（海康 CS_ID 那套）</code></pre>
+        <p>枚举 = 基本法里 3 条的连环调用；XU 实战 = 行业规章 + 内部规定。</p>
+    </article>
+
+    <!-- kp-5-3 -->
+    <article class="card" id="kp-5-3">
+        <h3>5.3 GET_STATUS 响应解析</h3>
+
+        <div class="info-box">
+          <strong>GET_STATUS 是唯一横跨三种接收者的标准请求</strong>：同一个 bRequest=0x00，D4-0 填谁就问谁的状态。响应统一 <strong>2 字节（16 位，小端）</strong>，三种接收者 = 三种完全不同的位图。
+        </div>
+
+        <pre><code>0x80 → Device 状态    0x81 → Interface 状态    0x82 → Endpoint 状态</code></pre>
+
+        <h4>一、Device Status（0x80，wIndex=0）</h4>
+        <table>
+          <tr><th>位</th><th>名称</th><th>含义</th></tr>
+          <tr><td>D0</td><td>Self Powered</td><td>1=自供电（外部电源），0=总线供电（吃 VBUS）</td></tr>
+          <tr><td>D1</td><td>Remote Wakeup</td><td>1=远程唤醒<strong>已使能</strong>，0=禁用</td></tr>
+          <tr><td>D2-15</td><td>Reserved</td><td>永远 0</td></tr>
+        </table>
+        <p><strong>关键认知：描述符声明"能力"，GET_STATUS 报"现状"。</strong></p>
+        <pre><code>bmAttributes D6 = Self-powered    ← 描述符: "我能自供电"
+bmAttributes D5 = Remote Wakeup   ← 描述符: "我支持远程唤醒"
+GET_STATUS   D0 = Self Powered    ← 状态:   "我现在真的自供电"（电源可能动态切换！）
+GET_STATUS   D1 = Remote Wakeup   ← 状态:   "该权限当前是否被打开"</code></pre>
+        <p>两个 D1 尤其容易混：描述符 D5 是<strong>能力</strong>（出厂就有），GET_STATUS D1 是<strong>权限</strong>（Host 用 SET_FEATURE 开了才变 1，见 5.4）。</p>
+        <p>示例：<code>0x0003</code>（线上 <code>03 00</code>）= 自供电 + 远程唤醒已使能。</p>
+        <p><strong>Windows 对应物</strong>：设备管理器 → USB 设备属性 → 电源管理 → "允许此设备唤醒计算机"勾选框——勾上 = SET_FEATURE(DEVICE_REMOTE_WAKEUP)，状态源头就是 GET_STATUS 的 D1。</p>
+
+        <h4>二、Interface Status（0x81）——规范考古现场</h4>
+        <p><strong>全部 16 位 Reserved，永远回 0x0000。</strong> 从 USB 1.0 至今三十多年没填进去一个 bit。存在理由是<strong>对称性强迫症</strong>——三种接收者都要有 GET_STATUS 这一行，Interface 是那个"预留的空行"。类比：写字楼里那间"备用会议室"——平面图上必须有（对称布局），但里面从来没放过家具。</p>
+        <p>通用认知：规范里"Reserved"分两种——5.1 的 0x02/0x04 <strong>编号空洞</strong>（给未来留编号），和这里"定义了字段但内容全是 Reserved"（给未来留位）。</p>
+
+        <h4>三、Endpoint Status（0x82）——重头戏：Halt</h4>
+        <table>
+          <tr><th>位</th><th>名称</th><th>含义</th></tr>
+          <tr><td>D0</td><td>Halt</td><td>1=端点已暂停（Halted），0=正常</td></tr>
+          <tr><td>D1-15</td><td>Reserved</td><td>永远 0</td></tr>
+        </table>
+        <p>wIndex 填<strong>端点地址原样</strong>：0x81=IN EP1，0x02=OUT EP2（D7 方向 + D3-0 端点号）。</p>
+        <p><strong>Halt 是什么</strong>：数据端点（批量/中断）在 DATA 阶段回 STALL → 端点进入 Halted → <strong>之后所有指向它的事务全部回 STALL</strong>，整条管道冻结。</p>
+        <p><strong>★ 深水区：两种 STALL 的生命周期完全不同</strong></p>
+        <table>
+          <tr><th></th><th>EP0 的 STALL</th><th>数据端点的 STALL</th></tr>
+          <tr><td>持续时间</td><td><strong>一次性的</strong></td><td><strong>粘性的</strong></td></tr>
+          <tr><td>何时解除</td><td>下一个 SETUP 一到，<strong>自动清除</strong></td><td>Host 显式发 CLEAR_FEATURE(ENDPOINT_HALT) 才解冻</td></tr>
+          <tr><td>为什么</td><td>EP0 必须永远可用（如果 EP0 能锁死，设备就永久失联了）</td><td>锁死是<strong>事故报警机制</strong>：设备在喊"这条管道出事了"，喊完停摆等你处理</td></tr>
+        </table>
+
+        <h4>端到端的故障处理闭环</h4>
+        <pre><code>① 设备发现批量端点数据错误/缓冲区溢出
+② 设备在 DATA 阶段回 STALL 报警        → 端点进入 Halted
+③ Host 发 GET_STATUS(EP)               → 确认 D0=1，"管道确实卡了"
+④ Host 决定处理方式（丢弃数据/重置逻辑/清 Halt）
+⑤ Host 发 CLEAR_FEATURE(ENDPOINT_HALT)  → 端点解冻，管道恢复</code></pre>
+        <p><strong>水管类比</strong>：水管漏水（设备 STALL 报警）→ 水阀自动锁死（Halted）→ 物业去问"哪条管卡了"（GET_STATUS 回 D0=1）→ 检修完重新开阀（CLEAR_FEATURE）。第③步不是多余的——要先<strong>确认</strong>是 Halt 还是别的错误，才能决定开阀还是换管子。</p>
+        <p>Phase 8 的 libusb 里这套闭环就是 <code>libusb_clear_halt()</code>。</p>
+
+        <h4>三合一速查</h4>
+        <table>
+          <tr><th>接收者</th><th>bmRequestType</th><th>wIndex</th><th>响应内容</th></tr>
+          <tr><td>Device</td><td>0x80</td><td>0</td><td>D0=自供电, D1=远程唤醒权限</td></tr>
+          <tr><td>Interface</td><td>0x81</td><td>接口号</td><td>全 0（占位符）</td></tr>
+          <tr><td>Endpoint</td><td>0x82</td><td>端点地址</td><td>D0=Halt</td></tr>
+        </table>
+    </article>
+
+    <!-- kp-5-4 -->
+    <article class="card" id="kp-5-4">
+        <h3>5.4 SET_FEATURE / CLEAR_FEATURE — Feature Selector 全集</h3>
+
+        <div class="info-box">
+          <strong>一对开关命令</strong>：SET_FEATURE（0x03, OUT）= 打开开关；CLEAR_FEATURE（0x01, OUT）= 关闭。参数：<strong>wValue = 开关编号（Feature Selector）</strong>，wIndex = 装在谁身上（0=设备 / 端点地址）。名带 SET 却无数据阶段——要开哪个开关，全在 wValue 里。
+        </div>
+
+        <h4>Selector 全集（USB 2.0 只有 3 个）</h4>
+        <table>
+          <tr><th>Selector</th><th>wValue</th><th>接收者</th><th>SET（打开）</th><th>CLEAR（关闭）</th></tr>
+          <tr><td>ENDPOINT_HALT</td><td>0x00</td><td>Endpoint</td><td>主动冻结端点</td><td><strong>解冻</strong>（5.3 闭环第⑤步）</td></tr>
+          <tr><td>DEVICE_REMOTE_WAKEUP</td><td>0x01</td><td>Device</td><td>授予远程唤醒权限</td><td>吊销权限</td></tr>
+          <tr><td>TEST_MODE</td><td>0x02</td><td>Device</td><td>进入测试模式</td><td>❌ 规范禁止 CLEAR</td></tr>
+        </table>
+
+        <h4>① ENDPOINT_HALT——补齐 5.3 的另一半</h4>
+        <pre><code>Halted 状态的两个入口:
+  ① 设备在 DATA 阶段回 STALL          ← 被动报警（常见）
+  ② Host 发 SET_FEATURE(ENDPOINT_HALT) ← 主动叫停（少见：调试/故障隔离）
+出口只有一个:
+  CLEAR_FEATURE(ENDPOINT_HALT)        ← Host 显式解冻</code></pre>
+        <p>实际中 99% 是"设备报警 → Host 清除"；Host 主动 SET 主要用于调试——故意冻结一条端点，看驱动能不能正确恢复。</p>
+
+        <h4>② DEVICE_REMOTE_WAKEUP——权限模型</h4>
+        <pre><code>描述符 bmAttributes D5 = 1              → 能力："我支持远程唤醒"（出厂自带）
+Host: SET_FEATURE(DEVICE_REMOTE_WAKEUP) → 授权："允许你用"
+GET_STATUS D1 = 1                       → 状态："权限当前生效"
+Host 挂起总线（suspend）                 → 整条总线休眠
+设备拉信号线唤醒 Host                    → 只有被授权的设备才被允许这么干</code></pre>
+        <p><strong>能力 vs 权限的分离</strong>是核心设计：设备天生能唤醒，但不授权就不许用——总线挂起是 Host 的决定，不能让任何设备随便叫醒。类比：员工有手机（能力），但开会时手机必须静音——<strong>静音开关掌握在主持人手里</strong>。Host 就是主持人。</p>
+
+        <h4>③ TEST_MODE——你永远不会发，但应该认识</h4>
+        <pre><code>wIndex 高字节 = 测试模式编号（参数藏在 wIndex 高字节！）
+  0x0100 = Test_J          0x0200 = Test_K
+  0x0300 = Test_SE0_NAK    0x0400 = Test_Packet
+  0x0500 = Test_Force_Enable</code></pre>
+        <ol>
+          <li><strong>参数位置的怪例</strong>：通常参数放 wValue，这里编号放在 wIndex 高字节——SETUP 8 字节里又一个"不按惯例填"的案例。</li>
+          <li><strong>唯一禁止 CLEAR 的开关</strong>：测试模式把设备正常协议行为全部打乱，只能靠总线复位退出——没有"关闭"按钮，只有"整机重启"。这也是日常抓包里永远看不到 wValue=0x0002 的 SET_FEATURE 的原因。</li>
+        </ol>
+
+        <h4>开关面板类比</h4>
+        <pre><code>0x00 急停闸（ENDPOINT_HALT）：生产线的急停按钮。
+      机器自己会拍（设备 STALL），管理员也能远程拍（Host SET），复位只能按复位键（CLEAR）。
+0x01 门禁授权闸（REMOTE_WAKEUP）：给员工"下班后仍可刷卡进楼"的权限。
+      可授权、可吊销、随时可查状态（GET_STATUS D1）。
+0x02 消防测试闸（TEST_MODE）：拉下后整楼进入消防演习状态，警笛长鸣，
+      连中控台都停用——只能等总电源重启（总线复位）。</code></pre>
+        <p><strong>对称性细节</strong>：Interface 在 FEATURE 里又没有戏份——3 个 Selector 只服务 Device 和 Endpoint。加上 5.3 的全 0 Interface Status：在标准请求体系里，<strong>Interface 是最清闲的接收者</strong>（它唯一的专属请求就是 5.5 的 GET/SET_INTERFACE）。</p>
+    </article>
+
+    <!-- kp-5-5 -->
+    <article class="card" id="kp-5-5">
+        <h3>5.5 SET_INTERFACE / GET_INTERFACE</h3>
+
+        <h4>参数表</h4>
+        <table>
+          <tr><th>字段</th><th>SET_INTERFACE (0x0B, OUT, 0x01)</th><th>GET_INTERFACE (0x0A, IN, 0x81)</th></tr>
+          <tr><td>wValue</td><td>低字节 = Alt Setting 号</td><td>0</td></tr>
+          <tr><td>wIndex</td><td>低字节 = 接口号</td><td>低字节 = 接口号</td></tr>
+          <tr><td>wLength</td><td>0（无数据阶段）</td><td>1</td></tr>
+          <tr><td>数据阶段</td><td>无</td><td>1 字节：当前 Alt 号</td></tr>
+        </table>
+        <p>UVC 开流抓包 <code>CTL 01 0B 01 00 01 00 00 00</code>：OUT Standard Interface，SET_INTERFACE，wValue=0x0001（切 Alt 1），wIndex=0x0001（接口 1），wLength=0。</p>
+
+        <h4>SET_INTERFACE 触发的动作序列（规定动作）</h4>
+        <pre><code>① 旧 Alt Setting 的全部端点 → 解除激活（失效）
+② 新 Alt Setting 的全部端点 → 激活
+③ 受影响端点的数据 toggle → 归零，从 DATA0 重新开始</code></pre>
+        <p>第③步：换到新 Alt 后管道语义变了，旧管道的 DATA0/DATA1 序列号已作废——类比：换了一本合同，旧合同的页码必须作废，从新合同第一页开始签。</p>
+        <ul>
+          <li><strong>原子性</strong>：新 Alt 号不存在 → STALL，且<strong>保持原 Alt 不变</strong>——不允许切一半。失败就是"什么都没发生"。</li>
+          <li><strong>前置条件</strong>：只在 <strong>Configured 状态</strong>有效。Address 状态收到 → STALL（配置态之前谈"接口切换"是无本之木）。</li>
+        </ul>
+        <p><strong>GET_INTERFACE 是 SET 的镜像</strong>：读回当前 Alt 号（1 字节），与 GET_CONFIGURATION 完全对称——SET 写进去什么，GET 读回什么。实际用途：<strong>切换后验证</strong>（SET 之后 GET 确认）。</p>
+
+        <h4>落到 UVC 实战：双向开关</h4>
+        <pre><code>开流:  SET_INTERFACE(Alt1) → 旧端点(无)失效 → VS 流端点激活 → toggle 归零 → 开始取流
+关流:  SET_INTERFACE(Alt0) → 流端点失效 → 回到零带宽待机</code></pre>
+        <p><strong>舞台类比</strong>：Interface 是剧场舞台，Alt Setting 是灯光/布景预设。同一块舞台，按一个键切换"演出模式"（Alt1：灯光道具全上）和"待机模式"（Alt0：只留一盏安全灯，零带宽）。切布景时先撤旧道具再上新道具（①→②），舞台不会出现"半场布景"（原子性）。</p>
+
+        <h4>★ 深挖：机制五问（Q&amp;A 精华）</h4>
+        <ol>
+          <li><strong>切换端点根据描述符确定？</strong>——是的，而且"早就定好了"。配置描述符链里同一个 bInterfaceNumber 出现多次，每次一个 bAlternateSetting 各带各的端点。SET_INTERFACE 的 wValue 只是<strong>索引</strong>——<strong>不是"创造"端点，是"选择"端点</strong>。Alt 不存在 → 索引越界 → STALL。</li>
+          <li><strong>切换后数据流在另一条通道上？</strong>——不必然。端点号不同 → 真换通道；端点号相同（Alt 可复用端点号）→ 同一条管道换参数。UVC 的主流是后者：<strong>各 Alt 同一个端点号，只换 wMaxPacketSize（带宽配额）</strong>——640x480 和 1920x1080 的 Alt 是"同一条水管换粗细"。</li>
+          <li><strong>可能从等时转批量吗？</strong>——协议可以（每个 Alt 独立声明 bmAttributes），现实几乎不。<strong>传输类型由数据语义决定</strong>：视频数据不会因为"开流"就从"要实时"变成"要完整"。切 Alt 换的是参数，不是数据的本性。</li>
+          <li><strong>开流 = 设备就会送流？</strong>——不会，只是管道就绪。<strong>USB 是 Host 中心化的，设备永远不能主动发送</strong>。SET_INTERFACE 后设备内部管线可能已开转（数据灌进 FIFO），但总线上零字节，直到 Host 发第一个 IN Token。<strong>水龙头与泵</strong>：SET_INTERFACE = 拧开水龙头，水泵（Host 的 IN Token）不启动，管子里一滴水都不会流。</li>
+          <li><strong>可以搭配 XU 切码流类型？</strong>——可以，uvc_stream_viewer.cpp 就是。<strong>SET_INTERFACE = 传输层开关</strong>（管道建不建、多粗），<strong>XU = 内容层开关</strong>（帧里装什么）。约束：码流类型切换不能在取流中做（数据格式突变），完整姿势 = 关流 Alt0 → XU 切换 → 再开流 Alt1。</li>
+        </ol>
+
+        <h4>★ 深挖：开流后设备送什么？（空包与默认码流）</h4>
+        <pre><code>等时端点：FIFO 无数据 → 回零长度包（等时不允许 NAK，"空包"就是"无数据"的合法表达）
+批量端点：FIFO 无数据 → 回 NAK（"忙，稍后再问"）</code></pre>
+        <p><strong>"只有 XU 指定码流类型才送流"不成立</strong>（至少 2bdf:0101 上）——反证就是花屏踩坑：没发 XU 时流照样有（机芯默认码流类型 8/6 = 测温+YUV 混合），否则当时看到的是黑屏而不是花屏。分层结论：<strong>送不送流 = 传输层（SET_INTERFACE + Host IN Token），送哪种流 = 内容层（当前生效的码流类型配置，默认值由固件定）</strong>。XU 不是送流开关，是内容选择器。</p>
+        <p><strong>水龙头 + 净水器类比</strong>：SET_INTERFACE 拧开水龙头、IN Token 是泵启动——泵一转，管子里默认流的是"原水"（固件默认码流类型）。XU 是净水器档位旋钮：拨到"纯水档"（YUV_ONLY）流出纯 YUV，不拨也有水，只是水质默认。</p>
+        <p><strong>抓包注意</strong>：正常取流中<strong>也有空包</strong>（等时带宽静态预留，传感器产出不够时那一帧的空位就是零长度包）——零长度包不能说明"设备没开流"。判断有没有真流要看 UVC Payload Header（FID/EOF）——Phase 6 的内容。</p>
+
+        <h4>★ 深挖：为什么需要 XU？参数凭什么被遵守？</h4>
+        <p><strong>标准 UVC（Probe/Commit）管的三个维度</strong>：格式、分辨率、帧率——全是<strong>"帧的包装与节奏"</strong>，一个都不涉及"帧里装的是什么内容"。而热成像的"测温矩阵""伪彩""6 种码流类型"是机芯厂商私有概念，UVC 词汇表里根本没有这些词。XU = <strong>Class 信封 + Vendor 内容</strong>的合法扩展点：信封保证 UVC 类驱动都认识这个通道，内容随便厂商定义。没有 XU，厂商只能发纯 Vendor 请求（D6-5=10），OS 类驱动不认识。</p>
+        <p><strong>"设备可以完全不按参数发送呀"——协议层面确实没有警察，但有三层强制力：</strong></p>
+        <ol>
+          <li><strong>物理层</strong>：等时带宽静态预留（Alt 的 wMaxPacketSize）。想发更大的帧，物理上送不出去。</li>
+          <li><strong>生态层</strong>：Host 按 Commit 参数准备解码器和缓冲。乱发 → 花屏/崩溃 → 立刻现形。</li>
+          <li><strong>商业层</strong>：UVC 设备的命根子是"免驱动、即插即用"，拿 USB-IF 认证才有通行证。</li>
+        </ol>
+        <p>参数的性质：<strong>不是"命令"，是"解码契约"</strong>——执法者不是规范条文，是<strong>标准解码器本身</strong>。</p>
+        <p><strong>但撒谎确实会发生——2bdf:0101 就是活例</strong>（描述符声称 YUYV，实际送 MJPEG）。撒谎的精准边界：分辨率/帧率没撒谎（一验就破，不敢）→ 格式撒谎了（赌你用厂商 SDK 不挑）→ 内容（测温掺 YUV）随便掺（标准解码器根本察觉不了）。<strong>哪里有标准验证者，哪里就没人敢乱来；哪里没有，哪里就是灰色地带。</strong></p>
+        <p><strong>餐厅点菜类比</strong>：菜单（GET_MIN/MAX/DEF 自报能力）→ 点菜（Probe/Commit 在菜单范围内选）→ 厨房按单出菜。厨房也可以挂羊头——菜单写"清蒸鱼"端上来的其实是别的鱼（YUYV 实为 MJPEG），但只有"熟客常客"（厂商 SDK）的餐厅才敢这么干；而"菜里放了什么料"（XU 内容）只有厨师知道，食客永远尝不出来。</p>
+        <p><strong>一句话总结：USB 协议的可信度不是靠条文强制，而是靠"遵守对厂商更有利"的利益结构——即插即用生态本身就是最大的执法力量。而 XU 恰好站在这个利益结构照不到的地方。</strong></p>
+    </article>
+
+    <!-- kp-5-6 -->
+    <article class="card" id="kp-5-6">
+        <h3>5.6 wValue/wIndex/wLength 速查表</h3>
+
+        <h4>11 种请求参数总表</h4>
+        <table>
+          <tr><th>请求</th><th>bmRequestType</th><th>wValue</th><th>wIndex</th><th>wLength</th><th>数据阶段</th></tr>
+          <tr><td>GET_STATUS (Device)</td><td>0x80</td><td>0</td><td>0</td><td>2</td><td>2B：D0 自供电, D1 远程唤醒</td></tr>
+          <tr><td>GET_STATUS (Interface)</td><td>0x81</td><td>0</td><td>接口号</td><td>2</td><td>2B：全 0</td></tr>
+          <tr><td>GET_STATUS (Endpoint)</td><td>0x82</td><td>0</td><td><strong>端点地址</strong></td><td>2</td><td>2B：D0 Halt</td></tr>
+          <tr><td>CLEAR_FEATURE (Endpoint)</td><td>0x02</td><td>0x0000 (HALT)</td><td>端点地址</td><td>0</td><td>无</td></tr>
+          <tr><td>CLEAR_FEATURE (Device)</td><td>0x00</td><td>0x0001 (WAKEUP)</td><td>0</td><td>0</td><td>无</td></tr>
+          <tr><td>SET_FEATURE (Endpoint)</td><td>0x02</td><td>0x0000 (HALT)</td><td>端点地址</td><td>0</td><td>无</td></tr>
+          <tr><td>SET_FEATURE (Device)</td><td>0x00</td><td>0x0001 (WAKEUP)</td><td>0</td><td>0</td><td>无</td></tr>
+          <tr><td>SET_FEATURE (TEST_MODE)</td><td>0x00</td><td>0x0002</td><td><strong>高字节=测试号</strong> ⚠️</td><td>0</td><td>无</td></tr>
+          <tr><td>SET_ADDRESS</td><td>0x00</td><td>新地址</td><td>0</td><td>0</td><td>无</td></tr>
+          <tr><td>GET_DESCRIPTOR</td><td>0x80</td><td>高=类型 低=索引</td><td>0 或 LANGID ⚠️</td><td>N</td><td>N 字节</td></tr>
+          <tr><td>SET_DESCRIPTOR</td><td>0x00</td><td>高=类型 低=索引</td><td>LANGID</td><td>N</td><td>N 字节</td></tr>
+          <tr><td>GET_CONFIGURATION</td><td>0x80</td><td>0</td><td>0</td><td>1</td><td>1B：当前配置号</td></tr>
+          <tr><td>SET_CONFIGURATION</td><td>0x00</td><td>配置号</td><td>0</td><td>0</td><td>无</td></tr>
+          <tr><td>GET_INTERFACE</td><td>0x81</td><td>0</td><td>接口号</td><td>1</td><td>1B：当前 Alt 号</td></tr>
+          <tr><td>SET_INTERFACE</td><td>0x01</td><td>Alt 号</td><td>接口号</td><td>0</td><td>无</td></tr>
+          <tr><td>SYNCH_FRAME</td><td>0x82</td><td>0</td><td>端点地址</td><td>2</td><td>2B：帧号</td></tr>
+        </table>
+        <p>⚠️ = 两个"参数位置不常规"的案例：TEST_MODE 的测试编号藏在 <strong>wIndex 高字节</strong>；GET_DESCRIPTOR(String) 的 wIndex 填<strong>语言 ID</strong>（其余描述符填 0）。</p>
+
+        <h4>四个记忆规律</h4>
+        <ol>
+          <li><strong>wValue 的四种角色</strong>：编号（地址/配置号/Alt 号）｜选择器（Feature Selector）｜复合编号（GET_DESCRIPTOR：类型&lt;&lt;8 | 索引）｜空（0）。</li>
+          <li><strong>wIndex 的三种角色</strong>：定位（接口号/端点地址，都在<strong>低字节</strong>）｜语言（LANGID）｜测试参数（TEST_MODE 高字节——唯一的高字节案例）。</li>
+          <li><strong>wLength 永远是数据阶段字节数</strong>：GET_ 家族 &gt;0 有数据；SET_ 家族 =0 无数据，唯一例外 SET_DESCRIPTOR（真写）。</li>
+          <li><strong>接收者决定 wIndex 填法</strong>：Device → 0；Interface → 接口号；Endpoint → 端点地址原样（0x81=IN EP1）。三把钥匙的 D4-0 先看，wIndex 才有解。</li>
+        </ol>
+
+        <h4>抓包解析决策流</h4>
+        <pre><code>① bmRequestType D7     → 方向（IN 还是 OUT）
+② bmRequestType D6-5   → 查哪张请求表（Standard/Class/Vendor）
+③ bmRequestType D4-0   → wIndex 填什么（0/接口号/端点地址）
+④ bRequest            → 查 5.2 的请求表，确定 wValue 角色
+⑤ wValue + wIndex     → 按本表读参数，wLength 即数据量</code></pre>
+        <p><strong>Phase 5 收官</strong>：逐位总表（5.1）→ 全集（5.2）→ 三个深水区（5.3 Halt 生命周期 / 5.4 三个开关 / 5.5 接口切换机制）→ 速查（5.6）。<strong>主线进度 50/67（75%）。</strong></p>
+        <p><strong>一句话总结：SETUP 8 字节是"标准快递面单"——第 0 字节是寄收方向+字典+收件人，第 1 字节是业务类型，wValue/wIndex 是两张随业务换填法的表格，wLength 永远是包裹多大；11 种标准请求是 USB 宪法基本法——设备必须"听得懂"，要么执行要么在 STATUS 明确拒绝，不能装死。</strong></p>
+    </article>
 
     <!-- ===== Phase 6 Placeholder ===== -->
     <div class="phase-header" id="phase-6"><h2>Phase 6: 设备类协议逐字节解析 (HID / CDC / UVC) <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>

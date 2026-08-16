@@ -1,9 +1,9 @@
 # HANDOFF — USB 协议学习会话交接文档
 
-> 更新时间：2026-08-15（第十一会话）
-> 主线学习进度：44/67 知识点（66%）— Phase 4 完成，下一阶段 Phase 5
-> 本会话重点：**Phase 4 收官（4.2~4.12 连讲）** + TM5X 大数据交互流程（§6.9）+ 真机抓包分析（2bdf:028a）+ HID/CDC 类概念问答 + HTML 补全 Phase 4 卡片
-> 上一会话（第十会话）：Phase 4.1 枚举开讲 + UVC 标准控制问答 + wValue 字节序真机修正
+> 更新时间：2026-08-16（第十二会话）
+> 主线学习进度：50/67 知识点（75%）— Phase 5 完成，下一阶段 Phase 6
+> 本会话重点：**Phase 5 连讲收官（5.1~5.6）** + SETUP 三类语义修正 + GET_STATUS/Feature Selector 深水区 + SET_INTERFACE 机制五问 + 知识库新增第五篇（篇章再重排）+ HTML 补全 Phase 5 卡片
+> 上一会话（第十一会话）：Phase 4 收官（4.2~4.12）+ TM5X 大数据流程 + 真机抓包分析
 
 ---
 
@@ -100,15 +100,37 @@
 7. **三种 wIndex**：VC XU = `(XU_ID<<8)|VC_IF`，VS = `VS_IF`，SET_INTERFACE = Standard bmRequestType + alt_setting
 8. **bmControls 位图**：`0xFF, 0x03` = bit 0~9 置位 → CS_ID 0x01~0x0A 存在
 
-### 第十一会话（本次）：Phase 4 收官 + TM5X 大数据流程 + 真机抓包分析
+### 第十二会话（本次）：Phase 5 收官 + SETUP 三类语义修正 + 标准请求三个深水区
 
-**本会话主线**：Phase 4 从 4.2 一路讲到 4.12，枚举篇收官（44/67，66%）。副线：解析 TM5X 开发指南的大数据交互流程（新增 §6.9）、用 Python 解析 USBPcap 抓包并逐包对照枚举教学（新增 §4.11a，三处真机勘误）、HID/CDC 类概念问答（第三篇补充问答五/六）。另：翻新分支清理（全部合并回 main，此后只在 main 开发）。
+**本会话主线**：Phase 5 从 5.1 一路讲到 5.6，标准请求篇收官（50/67，75%）。期间用户连续追问：wLength 字节数质疑（催生"三类语义"修正版）、SETUP 必 ACK 场景类比（快递回执/法庭传票）、SET_INTERFACE 机制五问（描述符选择/带宽配额/等时转批量/开流≠送流/XU 搭配）、"标准 UVC 能切帧率为什么还要 XU"、"设备可以不按参数发送呀"（解码契约 + 三层强制力 + 撒谎边界）。另：知识库篇章再重排（新增第五篇，原五/六篇后移为六/七篇，交叉引用全同步）。
 
 **本会话产出：**
 
 | 类型 | 文件 | 变更 |
 |------|------|------|
-| 知识库 | `USB-Protocol-Knowledge-Base.md` | **第四篇补齐 §4.2~§4.12**（枚举 10 步逐包 + 抓包实战 + 真机分析 + 失败排查，Phase 4 完成 12/12）；第六篇新增 **§6.9 TM5X 大数据交互流程**（64/512/65535 三层上限、分包协议、两层确认机制）；第三篇新增 **补充问答五/六**（HID/CDC 类家族、USB 虚拟串口机制） |
+| 知识库 | `USB-Protocol-Knowledge-Base.md` | **新增第五篇：标准请求与 Setup 包深度解析 §5.1~§5.6**（三类语义修正版 + 11 种请求全集 + GET_STATUS 三种响应 + Feature Selector 全集 + SET_INTERFACE 机制 + 参数速查，含三个深挖 Q&A）；**原第五篇→第六篇、原第六篇→第七篇**（5.x→6.x、6.x→7.x，交叉引用全部同步）；附录新增 **A.10 标准请求参数总表**；前言/进度更新（4,485 行） |
+| HTML | `usb-notes.html` | **Phase 5 占位符替换为 6 张真卡片**（kp-5-1 ~ kp-5-6，含三类语义表、Halt 深水区、SET_INTERFACE 机制五问、解码契约三层强制力）；侧边栏 6/6 ✓；进度条 75%（3,461 行） |
+| 交接 | `HANDOFF.md` | 更新（本会话） |
+
+**本会话建立的深层理解（已存 KB 第五篇）：**
+
+1. **SETUP 8 字节三类语义**：真正随请求换含义的只有 wValue+wIndex 这 4 字节；bmRequestType/bRequest/wLength 的"岗位职责"固定（bRequest 查哪张表由 D6-5 字典决定）
+2. **SETUP 必 ACK 的设计哲学**：程序事实 vs 实体态度两层拆开（快递回执/法庭传票双类比）；"拒收视为送达"= SETUP 必 ACK 的法律版
+3. **两种 STALL 生命周期**：EP0 一次性（下个 SETUP 自动清除）vs 数据端点粘性（CLEAR_FEATURE 才解冻）——EP0 不能锁死，数据端点锁死是事故报警机制；GET_STATUS 确认 → CLEAR_FEATURE 解冻的故障闭环
+4. **Feature Selector 三开关**：ENDPOINT_HALT（两入口一出口）/ DEVICE_REMOTE_WAKEUP（能力 vs 权限分离）/ TEST_MODE（参数藏 wIndex 高字节，唯一禁止 CLEAR）；Interface 是标准请求里最清闲的接收者
+5. **SET_INTERFACE 是"选择"不是"创造"**：Alt 索引指向描述符链里预先声明好的端点组合；UVC 主流是同一端点换 wMaxPacketSize（带宽配额），不是换通道；切 Alt 后 toggle 归零
+6. **开流≠送流**：Host 中心化铁律——SET_INTERFACE 只让管道就绪，数据从 Host 第一个 IN Token 才开始（水龙头与泵类比）；等时 FIFO 空回零长度包、批量回 NAK，空包合法
+7. **Probe/Commit 参数 = 解码契约不是命令**：三层强制力（物理带宽/标准解码器/认证与生态）；撒谎边界 = 哪里有标准验证者（2bdf:0101 的 YUYV→MJPEG 欺诈：格式层撒谎代价是解码器崩，内容层无人验证）；USB 可信度靠"遵守对厂商更有利"的利益结构
+
+### 第十一会话：Phase 4 收官 + TM5X 大数据流程 + 真机抓包分析
+
+**本会话主线**：Phase 4 从 4.2 一路讲到 4.12，枚举篇收官（44/67，66%）。副线：解析 TM5X 开发指南的大数据交互流程（新增 §7.9，当时的第六篇）、用 Python 解析 USBPcap 抓包并逐包对照枚举教学（新增 §4.11a，三处真机勘误）、HID/CDC 类概念问答（第三篇补充问答五/六）。另：翻新分支清理（全部合并回 main，此后只在 main 开发）。
+
+**本会话产出：**
+
+| 类型 | 文件 | 变更 |
+|------|------|------|
+| 知识库 | `USB-Protocol-Knowledge-Base.md` | **第四篇补齐 §4.2~§4.12**（枚举 10 步逐包 + 抓包实战 + 真机分析 + 失败排查，Phase 4 完成 12/12）；第七篇新增 **§7.9 TM5X 大数据交互流程**（64/512/65535 三层上限、分包协议、两层确认机制，当时为第六篇，2026-08-16 重排后为第七篇）；第三篇新增 **补充问答五/六**（HID/CDC 类家族、USB 虚拟串口机制） |
 | HTML | `usb-notes.html` | **Phase 4 占位符替换为 12 张真卡片**（kp-4-2 ~ kp-4-12 + kp-4-11a 真机实战）；侧边栏 12/12 ✓；进度条 66%（3,152 行） |
 | 抓包 | `capture.pcapng` | 用户真机抓包：174,032 包 / 225.7s / 6 台设备（含 TM5X 2bdf:028a 完整枚举） |
 | 抓包 | `capture-tm5x-2bdf028a.pcapng` | **从全量抓包切出的 TM5X 单设备抓包**（206 包，KB §4.11a 引用） |
@@ -133,7 +155,7 @@
 
 | 类型 | 文件 | 变更 |
 |------|------|------|
-| 知识库 | `USB-Protocol-Knowledge-Base.md` | 新增 §6.8 标准 UVC 控制（PU）完整教程（16 条控制报文全表）；新增 §5.6 bulk-vs-等时小节、§6.5 libuvc 抽象层小节；**新增第四篇：USB 枚举过程（§4.1）**；原第四/五篇重编号为第五/六篇（4.x→5.x、5.x→6.x，交叉引用全部同步） |
+| 知识库 | `USB-Protocol-Knowledge-Base.md` | 新增 §7.8 标准 UVC 控制（PU）完整教程（16 条控制报文全表）；新增 §6.6 bulk-vs-等时小节、§7.5 libuvc 抽象层小节；**新增第四篇：USB 枚举过程（§4.1）**；原第四/五篇重编号为第五/六篇（4.x→5.x、5.x→6.x，交叉引用全部同步）（编号按当时口径，2026-08-16 再重排后见现行七篇编号） |
 | 笔记 | `notes/uvc-xu-extension-protocol-design.md` | 修正 3 处示例抓包 wValue 字节序（CS_ID 改放高字节）+ 字节序说明（2026-08-13 修正） |
 | 笔记 | `notes/real-device-descriptor-analysis.md` | §3.6 从"推测"升级为"真机验证"：CS_ID 在 wValue 高字节（海康固件惯例，与 UVC 规范低字节写法不同） |
 | HTML | `usb-notes.html` | 修正 10 处抓包字节序 + wIndex 表 Interface 行错误（接口号在低字节）+ 决策流图；新增 Phase 4 章节 + kp-4-1 卡片；侧边栏 1/12 ▶、进度条 49% |
@@ -164,7 +186,7 @@
 | 设计 | `docs/superpowers/specs/2026-08-02-usb-knowledge-base-design.md` | **新建**：知识库整理设计规格 |
 | 交接 | `HANDOFF.md` | **更新**：补充第九会话记录和最新文件结构 |
 
-**文档结构（六篇 + 附录，经第十会话扩充）：**
+**文档结构（七篇 + 附录，经第十二会话扩充）：**
 
 | 篇章 | 内容 | 来源 |
 |------|------|------|
@@ -172,15 +194,16 @@
 | 第一篇 | Phase 1 — USB 概览与总线拓扑（5 节） | `phase1-usb-overview.md` |
 | 第二篇 | Phase 2 — 通信模型（16 节 + 4 篇补充问答） | `phase2-communication-model.md` |
 | 第三篇 | Phase 3 — 描述符体系（11 节 + 4 篇补充问答 + CDC 综合示例） | `phase3-descriptors.md` |
-| 第四篇 | USB 枚举过程（4.1 枚举完整时间线） | 第十会话新增（主线 Phase 4） |
-| 第五篇 | 真实设备描述符实战（5 章 + 10 FAQ） | `real-device-descriptor-analysis.md` |
-| 第六篇 | UVC XU 控制与取流实战（7 节 + 7 条踩坑记录） | `uvc-xu-extension-protocol-design.md` + `xu-new-device-setup-guide.md` |
-| 附录 | 快速参考手册（9 张速查表：SETUP、wIndex、PID、描述符、MQTT 类比等） | 全部笔记提炼 |
+| 第四篇 | USB 枚举过程（4.1~4.12 + 4.11a 真机实战） | 第十~十一会话（主线 Phase 4） |
+| 第五篇 | 标准请求与 Setup 包深度解析（5.1~5.6 + 三个深挖 Q&A） | 第十二会话新增（主线 Phase 5） |
+| 第六篇 | 真实设备描述符实战（6 章 + 10 FAQ） | `real-device-descriptor-analysis.md` |
+| 第七篇 | UVC XU 控制与取流实战（9 节 + 7 条踩坑记录） | `uvc-xu-extension-protocol-design.md` + `xu-new-device-setup-guide.md` |
+| 附录 | 快速参考手册（10 张速查表：SETUP、标准请求参数总表 A.10、wIndex、PID、描述符、MQTT 类比等） | 全部笔记提炼 |
 
 **整理策略：**
 - **只整合不删减**：所有笔记内容全部保留，不丢失任何知识点
 - **去重归并**：SETUP 包结构在第二篇详述，后续篇章用交叉引用；wIndex 三种填法归并到第二篇，附录保留速查
-- **实战紧跟理论**：描述符理论后面直接跟真实设备分析（第五篇），传输理论后面直接跟 XU 踩坑（第六篇）
+- **实战紧跟理论**：描述符理论后面直接跟真实设备分析（第六篇），传输理论后面直接跟 XU 踩坑（第七篇）
 - **保持原始深度**：逐字节解析、HEX dump、Bus Hound 抓包、MQTT 类比全部保留
 
 ### 第八会话：UVC 取流实战——libuvc + OpenCV + XU 码流切换
@@ -226,9 +249,9 @@
 ```
 D:\CC\personal-lr-notes\CCNotes\USB\
 ├── HANDOFF.md                                    ← 你正在看的这份交接文档
-├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~3,970 行，六篇 + 附录，Phase 4 已补齐）
+├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~4,485 行，七篇 + 附录，Phase 5 已补齐）
 ├── usb-protocol-learning-plan.md                 ← 完整学习计划（67知识点清单）
-├── usb-notes.html                                ← Phase 1-4 理论可视化（3,152 行，含 kp-4-1 ~ kp-4-12 + kp-4-11a）
+├── usb-notes.html                                ← Phase 1-5 理论可视化（3,461 行，含 kp-4-1 ~ kp-4-12 + kp-4-11a + kp-5-1 ~ kp-5-6）
 ├── usb-notes.css                                 ← 10 层分层样式（暗色默认 IDE 风格）
 ├── usb-notes.js                                  ← 4 模块脚本（数据/渲染/交互/初始化）
 ├── usb-notes-old.html                            ← 旧版备份（翻新前单文件版本）
@@ -264,11 +287,11 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ## 四、当前卡在哪 + 下一步计划
 
-### 主线学习：Phase 4 完成，下一阶段 Phase 5
+### 主线学习：Phase 5 完成，下一阶段 Phase 6
 
-**没有卡住。** Phase 1-4 全部完成（44/67，66%）。
+**没有卡住。** Phase 1-5 全部完成（50/67，75%）。
 
-**下一步：Phase 5.1 — SETUP 包 8 字节逐位。** 注意：用户已在第五/第十会话和整个 Phase 4 深度掌握 SETUP 结构（三把钥匙、XU 实战、枚举逐包），Phase 5 节奏可快，重点放在没系统讲过的 **5.3 GET_STATUS 响应解析、5.4 Feature Selector 全集**。
+**下一步：Phase 6.1 — ⛁ HID Descriptor 逐字节。** Phase 6 是设备类协议大章（26 个知识点：HID 7 + CDC 7 + UVC 12）。注意：用户已在第三篇补充问答五/六（第十一会话）学过 HID/CDC 类家族概念、在第八会话实战过 UVC——Phase 6 可以在类概念上快进，把时间花在**逐字节的类描述符**上（HID Descriptor / Report Descriptor Item 编码 / CDC 功能描述符链 / UVC VC/VS 描述符链）。UVC 部分是用户的主战场（SDK 三大目标），讲 UVC 类时随时可以把第五~八会话的实战认知搬回来对照。
 
 一次一个知识点。当用户说"继续"时，从这里开始。
 
@@ -299,7 +322,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ### 用户可能要求的下一步
 
-- **主线**：说"继续" → Phase 4.2（阶段 0：设备检测——D+ 上拉/ D- 上拉的电平细节）
+- **主线**：说"继续" → Phase 6.1（⛁ HID Descriptor 逐字节——bLength/bDescriptorType(0x21)/bcdHID/bCountryCode/bNumDescriptors）
 - **知识库**：在 `USB-Protocol-Knowledge-Base.md` 中补充后续学习内容（Phase 4+）
 - **取流工具**：加录制/截图/伪彩切换/全屏
 - **XU 探索**：`xu_interactive.c` 加 SET_CUR 暴力扫描未知 CS_ID
@@ -335,9 +358,16 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 19. **零字节速度宣告**：D+ 上拉=FS/HS、D- 上拉=LS；检测阶段只分 LS/非 LS，HS 身份等 Chirp；SE0 持续时间就是语义（EOP≈167ns vs 复位≥10ms） — ★ 第十一会话
 20. **8 字节保底 + 短包规则**：bMaxPacketSize0 卡在 offset 7，破解"鸡生蛋"；短包=传输结束，枚举多次兜底 — ★ 第十一会话
 21. **STATUS 签完才换牌**：Set_Address 的新地址在 STATUS 完成后生效（2ms 内须响应）——写错就是"设定地址失败" — ★ 第十一会话
-22. **三层上限 64/512/65535**：总线事务 / 海康协议帧 / wLength 字段，各管一层；TM5X 大数据走"每帧一个 SETUP"的分包链（§6.9） — ★ 第十一会话
+22. **三层上限 64/512/65535**：总线事务 / 海康协议帧 / wLength 字段，各管一层；TM5X 大数据走"每帧一个 SETUP"的分包链（§7.9） — ★ 第十一会话
 23. **枚举失败卡点定位法**：症状→10 步中的某一步→故障层；Windows 43=描述符层、设定地址失败=地址层、28=驱动层 — ★ 第十一会话
 24. **TM5X 2bdf:028a 三合一**（UVC 等时 + CDC 串口 + HID）；真机三勘误（Windows 一次读 18、String 两步读、SET_ADDRESS 设备级抓包不可见） — ★ 第十一会话
+25. **SETUP 8 字节三类语义**：只有 wValue+wIndex（4 字节）随请求换含义；bmRequestType/bRequest/wLength 岗位职责固定；bRequest 查哪张表由 D6-5 字典决定（0x01：Standard=CLEAR_FEATURE，UVC=SET_CUR） — ★ 第十二会话
+26. **SETUP 必 ACK = 程序事实 vs 实体态度两层拆开**：快递回执/法庭传票双类比；"拒收视为送达"= SETUP 必 ACK 的法律版；抓包见 SETUP 后非 ACK 即固件违规 — ★ 第十二会话
+27. **两种 STALL 生命周期**：EP0 一次性（下个 SETUP 自动清）vs 数据端点粘性（CLEAR_FEATURE 才解冻）；故障闭环 = 设备 STALL 报警 → GET_STATUS 确认 D0=1 → CLEAR_FEATURE 解冻；libusb 里就是 `libusb_clear_halt()` — ★ 第十二会话
+28. **Feature Selector 三开关**：ENDPOINT_HALT（两入口一出口）/ DEVICE_REMOTE_WAKEUP（能力 vs 权限分离，静音开关在主持人手里）/ TEST_MODE（参数藏 wIndex 高字节，唯一禁 CLEAR）；Interface 是标准请求里最清闲的接收者 — ★ 第十二会话
+29. **SET_INTERFACE 是"选择"不是"创造"**：Alt 索引指向描述符链里预先声明好的端点组合；UVC 主流是同一端点换 wMaxPacketSize（带宽配额）不换通道；切 Alt 后 toggle 归零；等时→批量协议可以但现实几乎不（传输类型由数据语义决定） — ★ 第十二会话
+30. **开流≠送流**：Host 中心化——SET_INTERFACE 只让管道就绪，数据从 Host 第一个 IN Token 才开始（水龙头与泵）；等时 FIFO 空回零长度包、批量回 NAK，空包合法；"没 XU 就没流"不成立（默认码流类型 8/6 的花屏反证） — ★ 第十二会话
+31. **Probe/Commit 参数 = 解码契约不是命令**：三层强制力（物理带宽/标准解码器/认证生态）；撒谎边界 = 哪里有标准验证者（2bdf:0101 报 YUYV 送 MJPEG）；XU 内容层没有标准验证者所以是灰色地带；USB 可信度靠"遵守对厂商更有利"的利益结构 — ★ 第十二会话
 
 ---
 
@@ -413,7 +443,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ### 知识库结构与协议事实（★ 第十会话新增）
 
-44. **★★★ 知识库篇章编号已重排（2026-08-13）！** 现在是六篇：第四篇=USB 枚举过程（新），第五篇=真实设备描述符实战（原第四篇，4.x→5.x），第六篇=UVC XU 控制与取流实战（原第五篇，5.x→6.x）。KB 与 HANDOFF 的交叉引用已全部同步，**不要再写旧编号**——"第五篇 §5.4 码流切换"现在应写"第六篇 §6.4"。
+44. **★★★ 知识库篇章编号再次重排（2026-08-16）！** 现在是七篇：第五篇=标准请求与 Setup 包深度解析（第十二会话新增，5.1~5.6），第六篇=真实设备描述符实战（原第五篇，5.x→6.x），第七篇=UVC XU 控制与取流实战（原第六篇，6.x→7.x）。KB 与 HANDOFF 交叉引用已全部同步，**不要再写旧编号**——"第六篇 §6.9 TM5X"现在应写"第七篇 §7.9"，"第五篇 FAQ Q8"现在应写"第六篇 FAQ Q8"。（这是第二次重排：2026-08-13 曾把原第四/五篇后移为五/六篇。Phase 6 完成后还会重排一次——每次落盘都要全文 grep 旧编号。）
 45. **★★★ wValue 字节序（海康惯例 vs UVC 规范）**：2bdf:0101 固件把 CS_ID 放在 wValue **高字节**（`CS_ID << 8`，如 CS_ID=0x05 → wValue=0x0500）；UVC 规范标准写法是低字节。已由真机代码验证：`code/xu_minimal_get.c`（`uint16_t wValue = (TARGET_CS_ID << 8)`）、`code/uvc_stream_viewer.cpp`（`0x0500 /* CS_ID=0x05 */`）。**工作代码 > 手绘抓包 > 推测**——本会话曾差点按手绘抓包把对的改错，改文档前先核对真机代码。
 46. **wIndex 的 Interface 接收者**：接口号在 wIndex **低字节**（0x0001=接口 1）；只有 XU 命令的高字节才是 Unit ID。usb-notes.html 的 wIndex 表和决策流图曾写反，本会话已修正。
 47. **枚举主线骨架（4.2~4.10 逐包讲解会反复用到）**：Device Descriptor 读两次（第一次只读 8 字节拿 bMaxPacketSize0）；Config 先读 9 字节头拿 wTotalLength；SET_ADDRESS 之前设备共用地址 0；枚举全走 EP0。
@@ -424,30 +454,31 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 1. **读这份交接文档** — `Read HANDOFF.md`
 2. **确认在 main 分支** — `git branch`。翻新分支已合并删除，后续全部工作在 main 上进行。
-3. **读知识库** — `Read USB-Protocol-Knowledge-Base.md`（★ 第九会话新建、第十会话扩充：~2,810 行，六篇 + 附录，读它就能获得所有上下文）
+3. **读知识库** — `Read USB-Protocol-Knowledge-Base.md`（★ 第九会话新建、第十二会话扩充：~4,485 行，七篇 + 附录，读它就能获得所有上下文）
 4. **读学习计划** — `Read usb-protocol-learning-plan.md`（如需了解后续 34 个未完成的知识点）
 5. **确定用户意图：**
-   - 如果用户说"继续" → 从 Phase 4 的 4.2（阶段 0：设备检测）开始讲，一次一个知识点
-   - 如果用户要复习/查阅某主题 → `USB-Protocol-Knowledge-Base.md`（单文件，含 9 张速查表）
+   - 如果用户说"继续" → 从 Phase 6 的 6.1（⛁ HID Descriptor 逐字节）开始讲，一次一个知识点
+   - 如果用户要复习/查阅某主题 → `USB-Protocol-Knowledge-Base.md`（单文件，含 10 张速查表）
    - 如果用户要看理论学习可视化 → 双击 `usb-notes.html`（3 文件架构）
    - 如果用户要看描述符实战 → 双击 `descriptor-viewer.html`
    - 如果用户要看 **摄像头取流+显示** → `code/uvc_stream_viewer.cpp`（libuvc+OpenCV，完整 7 步流程）
    - 如果用户要调 XU → `code/xu_interactive.c`（支持 GET_LEN 后选 GET_CUR 或 SET_CUR）
-   - 如果用户要看 **码流类型切换原理** → `USB-Protocol-Knowledge-Base.md` 第六篇 §6.4
-   - 如果用户要看新设备上手方法 → `USB-Protocol-Knowledge-Base.md` 第六篇 §6.2
+   - 如果用户要看 **标准请求参数速查** → `USB-Protocol-Knowledge-Base.md` 第五篇 §5.6 / 附录 A.10
+   - 如果用户要看 **码流类型切换原理** → `USB-Protocol-Knowledge-Base.md` 第七篇 §7.4
+   - 如果用户要看新设备上手方法 → `USB-Protocol-Knowledge-Base.md` 第七篇 §7.2
    - 如果用户要看 UVC XU 协议设计 → `notes/uvc-xu-extension-protocol-design.md`
    - 如果用户要看最小读 XU 示例 → `code/xu_minimal_get.c`
    - 如果用户要看海康 TM76 完整代码（裸 libusb 取流） → `code/HIKVISION_TM76_libusb_3.c`
-   - 如果用户问 Bus Hound 抓包 → `USB-Protocol-Knowledge-Base.md` 第五篇 FAQ Q8
+   - 如果用户问 Bus Hound 抓包 → `USB-Protocol-Knowledge-Base.md` 第六篇 FAQ Q8
    - 如果用户问 Interface vs Endpoint → `USB-Protocol-Knowledge-Base.md` §2.3a
-   - 如果用户问 **标准 UVC 取流流程** → `USB-Protocol-Knowledge-Base.md` §6.3
-   - 如果用户问 **XU 和 UVC 的先后顺序** → `USB-Protocol-Knowledge-Base.md` §6.4（★★★ 必读）
+   - 如果用户问 **标准 UVC 取流流程** → `USB-Protocol-Knowledge-Base.md` §7.3
+   - 如果用户问 **XU 和 UVC 的先后顺序** → `USB-Protocol-Knowledge-Base.md` §7.4（★★★ 必读）
    - 如果用户想继续前端翻新 → `descriptor-viewer.html` 还没翻新
    - 如果用户说提交/推送 → 直接在 main 分支上操作（不再使用功能分支）
    - 如果用户要编辑知识库 → 直接编辑 `USB-Protocol-Knowledge-Base.md`（4 空格缩进）
    - 如果用户要编辑 HTML → 改内容 `usb-notes.html`，改样式 `usb-notes.css`，改行为 `usb-notes.js`
 6. **如果用户不确定到哪了：**
-   > "Phase 1-4 全部完成（44/67，66%）。上次会话（第十一会话）把 Phase 4 从 4.2 讲到 4.12 收官，并完成 TM5X 大数据流程整理（§6.9）、真机抓包逐包分析（§4.11a，三处真机勘误）、HID/CDC 类概念问答、HTML 补全 Phase 4 卡片。准备好了说继续（Phase 5.1 SETUP 包逐位）。"
+   > "Phase 1-5 全部完成（50/67，75%）。上次会话（第十二会话）把 Phase 5 从 5.1 讲到 5.6 收官，并完成 SETUP 三类语义修正、GET_STATUS/Feature Selector 深水区、SET_INTERFACE 机制五问、知识库新增第五篇（篇章再重排为七篇）、HTML 补全 Phase 5 卡片。准备好了说继续（Phase 6.1 HID Descriptor 逐字节）。"
 7. **★ 最重要的几条规则（新会话开始务必重申）：**
    - **XU 必须在 `uvc_open` 之前发**，否则报 LIBUSB_ERROR_IO
    - **`libusb_control_transfer` 有 8 个参数**：bmRT + bReq + wVal + wIdx + data + wLen + timeout（极易漏 bRequest！）

@@ -1,8 +1,8 @@
 # USB 协议知识库
 
-> 整理日期：2026-08-02
-> 覆盖范围：Phase 1-3 理论学习 + 真实设备描述符实战 + UVC XU 控制与取流实战
-> 学习进度：44/67 知识点（66%），Phase 4 完成，下一阶段 Phase 5
+> 整理日期：2026-08-02（2026-08-16 更新）
+> 覆盖范围：Phase 1-5 理论学习 + 真实设备描述符实战 + UVC XU 控制与取流实战
+> 学习进度：50/67 知识点（75%），Phase 5 完成，下一阶段 Phase 6
 > 学习策略：自底向上 — 先把协议基础打牢，再谈开发
 > 深度要求：每个 byte 的每个 bit 含义都要讲清楚（MQTT 报文头级别精度）
 
@@ -20,16 +20,16 @@
 | Phase 2 | USB 通信模型 — 层层拆解到比特 | 16 | ✅ 完成 |
 | Phase 3 | USB 描述符体系 — 逐字节解剖 | 11 | ✅ 完成 |
 | Phase 4 | USB 枚举过程 — 逐包逐事务追踪 | 12 | ✅ 完成 12/12 |
-| Phase 5 | 标准请求与 Setup 包深度解析 | 6 | ⬜ 待开始 |
+| Phase 5 | 标准请求与 Setup 包深度解析 | 6 | ✅ 完成 6/6 |
 | Phase 6 | 设备类协议逐字节解析（HID / CDC / UVC） | 26 | ⬜ 待开始 |
 | Phase 7 | 协议分析工具与实操 | 7 | ⬜ 待开始 |
 | Phase 8 | libusb 编程衔接 | 5 | ⬜ 待开始 |
 
 ### 阅读指南
 
-- **从零开始**：按第一篇→第二篇→第三篇→第四篇→第五篇→第六篇顺序阅读
+- **从零开始**：按第一篇→第二篇→第三篇→第四篇→第五篇→第六篇→第七篇顺序阅读
 - **快速查阅**：跳转到附录的速查表
-- **实战优先**：如果你已经有理论基础，直接跳到第五篇（真实设备）和第六篇（XU 取流）
+- **实战优先**：如果你已经有理论基础，直接跳到第六篇（真实设备）和第七篇（XU 取流）
 - **MQTT 类比**：文中大量使用 MQTT/TCP/HTTP 做类比，帮助理解 USB 协议设计
 - **方向视角**：IN = Device→Host（Host "收进来"），OUT = Host→Device（Host "发出去"）
 
@@ -1780,7 +1780,7 @@ USB 2.0 规范第 9 章定义的设备状态机，是理解整个 Phase 4 的骨
 
 - **Default = 无名氏**：所有刚复位的设备都叫"地址 0"，像没领工牌的新员工。
 - **Address = 有名字了，但没上岗**：只有 EP0 能应答。
-- **Configured = 上岗**：这之后才谈得上"开流"（SET_INTERFACE）、批量/等时传输——本知识库第六篇的所有实战（XU 命令、取流）都发生在 Configured 之后。
+- **Configured = 上岗**：这之后才谈得上"开流"（SET_INTERFACE）、批量/等时传输——本知识库第七篇的所有实战（XU 命令、取流）都发生在 Configured 之后。
 
 ### 完整时间线（Host 视角，教科书主线 10 步）
 
@@ -2024,7 +2024,7 @@ Host 任何时刻都能发复位，不只枚举开头。设备在任何状态（
 
 10 步时间线的第 ③ 步。前两格（4.2 检测、4.3 复位）都是纯电气行为——没有包、没有 PID。从这一刻起，Token、SETUP 包、DATA0/DATA1 全部登场。
 
-这个包的构造方法和第六篇 XU 命令完全相同（8 字节 SETUP 骨架），只是"三把钥匙"取值不同。
+这个包的构造方法和第七篇 XU 命令完全相同（8 字节 SETUP 骨架），只是"三把钥匙"取值不同。
 
 ### SETUP 包逐字节：80 06 00 01 00 00 08 00
 
@@ -2107,7 +2107,7 @@ Default 状态的设备全叫"地址 0"，靠 **Hub 逐端口复位**（4.3）�
 
 ### 与 §2.2a 的交叉：64 vs 512 vs 65535
 
-这里只读 8 字节，是因为"不知道上限"；而 bMaxPacketSize0 本身是 EP0 单笔事务的上限（HS 固定 64）。"控制传输最大多少"有三层答案：总线事务 64B（§2.2a）、TM5X 协议帧 512B（§6.9）、wLength 字段 65535——三个数管三层，一层套一层。
+这里只读 8 字节，是因为"不知道上限"；而 bMaxPacketSize0 本身是 EP0 单笔事务的上限（HS 固定 64）。"控制传输最大多少"有三层答案：总线事务 64B（§2.2a）、TM5X 协议帧 512B（§7.9）、wLength 字段 65535——三个数管三层，一层套一层。
 
 ### 一句话总结
 
@@ -2233,7 +2233,7 @@ bMaxPacketSize0=8 的设备回 18 字节：
 | 0 | bLength | 0x12 = 18 | 确认长度（交叉验证） |
 | 1 | bDescriptorType | 0x01 | 确认类型 |
 | 2-3 | bcdUSB | 0x0200 | 协议版本 |
-| 4 | bDeviceClass | 0xEF | 类信息（§5.3：Misc，IAD 场景） |
+| 4 | bDeviceClass | 0xEF | 类信息（§6.3：Misc，IAD 场景） |
 | 5 | bDeviceSubClass | 0x02 | 通用类 |
 | 6 | bDeviceProtocol | 0x01 | 配合 IAD 使用 |
 | 7 | bMaxPacketSize0 | 0x40 = 64 | 又见一次——交叉确认 |
@@ -2285,7 +2285,7 @@ Config Descriptor (9B)
   ├─ Interface Descriptor (9B)      ← 有几个接口就接几个
   │    ├─ Endpoint Descriptor (7B)  ← 每个接口下挂 N 个端点
   │    └─ 类专用描述符 (不定长)      ← UVC 的 VC/VS 链、CDC 的 CS 链…
-  └─ ...（2bdf:0101 整条链 433 字节，§5.8 逐段验算）
+  └─ ...（2bdf:0101 整条链 433 字节，§6.8 逐段验算）
 ```
 
 规范把链的总长 `wTotalLength` 写在 Config Descriptor 头部的 offset 2~3——**"先读固定长度的头，头里写着总长，再按总长读全部"，与 Device Descriptor 的两次读同构，换了一层楼。**
@@ -2372,7 +2372,7 @@ Device Descriptor 的两次读像**试通话**（先测语速），Config 的两
 
 ### ★ 枚举里第一次出现"一个传输拆多笔事务"
 
-4.7 之前所有枚举对话数据量都 ≤64 字节，一笔事务装下。这次 433 字节 > 64，§2.2a/§6.9 反复琢磨的"拆分"现象第一次在总线上真实上演：
+4.7 之前所有枚举对话数据量都 ≤64 字节，一笔事务装下。这次 433 字节 > 64，§2.2a/§7.9 反复琢磨的"拆分"现象第一次在总线上真实上演：
 
 ```
 DATA 阶段：433 字节 = 6 × 64 + 49
@@ -2401,7 +2401,7 @@ Device Descriptor (已读)
          └─ Endpoint 0x81: Bulk IN, wMaxPacketSize=512  ← 视频数据管道
 ```
 
-Host 从链里知道三件事：**每个接口是干什么的**（bInterfaceClass 驱动匹配依据）、**每个端点的地址和能力**（将来开流的数据管道施工图）、**Alt Setting 结构**（SET_INTERFACE 切档依据，§6.3）。
+Host 从链里知道三件事：**每个接口是干什么的**（bInterfaceClass 驱动匹配依据）、**每个端点的地址和能力**（将来开流的数据管道施工图）、**Alt Setting 结构**（SET_INTERFACE 切档依据，§7.3）。
 
 ### ★ 关键认知：读回来 ≠ 激活
 
@@ -2535,7 +2535,7 @@ String #0（特例）: 04 03 09 04
 | 供电限额 | 100mA | bMaxPower 声明的值（§1.5） |
 | 你能做什么 | 只有 EP0 控制传输 | XU 命令 + SET_INTERFACE 开流 + Bulk 取流 |
 
-**第六篇的所有实战（XU 命令、取流、码流切换）全部发生在 Configured 之后。** 前八步是"面试"，这步是"签合同上岗"。
+**第七篇的所有实战（XU 命令、取流、码流切换）全部发生在 Configured 之后。** 前八步是"面试"，这步是"签合同上岗"。
 
 ### ★ 设计哲学：为什么默认不启用
 
@@ -2661,7 +2661,7 @@ SET_CONFIGURATION 之后总线枚举结束，剩下 OS 的活：按 VID:PID（4.
 
 **1. 三合一初始化**：SET_INTERFACE(IF=1/3/5, alt=0)
 
-**2. UVC"发现五件套"轮询（§6.8 的实战版）**，5ms 周期，wVal=CS_ID<<8 高字节（海康惯例再验证）：
+**2. UVC"发现五件套"轮询（§7.8 的实战版）**，5ms 周期，wVal=CS_ID<<8 高字节（海康惯例再验证）：
 
 ```
 a1 86 wVal=0400 → GET_INFO  响应 1B: 03        （CS 0x04=协议版本）
@@ -2783,11 +2783,501 @@ Ubuntu 对应物：`dmesg` 里的 `device descriptor read/64, error -71`（描�
 
 ---
 
-# 第五篇：真实设备描述符实战
+# 第五篇：标准请求与 Setup 包深度解析
+
+> 枚举（第四篇）全程只用到 11 种标准请求中的 3 种（GET_DESCRIPTOR、SET_ADDRESS、SET_CONFIGURATION），加上 UVC 实战的 SET_INTERFACE 共 4 种。本篇补齐全部 11 种标准请求的语义：SETUP 8 字节逐位（5.1）→ 请求全集（5.2）→ GET_STATUS 响应（5.3）→ Feature Selector 开关（5.4）→ SET/GET_INTERFACE（5.5）→ 参数速查（5.6）。
+
+## 5.1 ⛁ SETUP 包 8 字节逐位
+
+### 三类语义（2026-08-16 修正版）
+
+SETUP 8 字节按"语义是否随请求变化"分三类：
+
+| 类别 | 字段 | 字节数 | 语义 |
+|------|------|:---:|------|
+| ① 语义永远不变 | wLength | 2 | 永远是"DATA 阶段字节数" |
+| ② 位布局永远不变，起**路由**作用 | bmRequestType | 1 | 三把钥匙；它的**值**决定后面字节怎么读 |
+| ③ 永远是"请求号"，查哪张表由 ② 决定 | bRequest | 1 | 0x01 在 Standard 字典 = CLEAR_FEATURE，在 UVC Class 字典 = SET_CUR |
+| ④ 真正随请求换含义 | wValue + wIndex | 2+2 | 每次换填法，有时干脆不用（填 0） |
+
+只有 ④ 这 4 个字节（wValue、wIndex）随请求换含义，另外 4 字节的"岗位职责"是固定的。
+
+### 逐位总表
+
+| 字节 | 字段 | 位 | 编码全集 |
+|-----|------|----|---------|
+| 0 | bmRequestType | **D7 方向** | `0` = OUT（Host→设备），`1` = IN（设备→Host） |
+| 0 | bmRequestType | **D6-5 字典** | `00`=Standard、`01`=Class、`10`=Vendor、`11`=Reserved |
+| 0 | bmRequestType | **D4-0 接收者** | `00000`=Device、`00001`=Interface、`00010`=Endpoint、`00011`=Other、`00100~11111`=Reserved |
+| 1 | bRequest | — | 0x00~0x0C 是标准请求（**0x02、0x04 是空洞**），Class/Vendor 字典下随类/厂商定义 |
+| 2-3 | wValue (LE) | — | **每次请求换含义**（见 5.6 速查表） |
+| 4-5 | wIndex (LE) | — | **每次请求换含义**（接口号 / 端点号 / LANGID / 0） |
+| 6-7 | wLength (LE) | — | **永远 = DATA 阶段字节数**（唯一不变的字段） |
+
+三把钥匙 = 第 0 字节：D7 方向锁 + D6-5 字典 + D4-0 收件人。
+
+### 三个补课点
+
+**① D4-0 接收者全集里有 "Other"（0x03）。** 规范定义它"为未来保留"，实际三十多年没设备用过。只需知道 Device/Interface/Endpoint 之外还有个理论上存在、现实中不出现的 Other。D4-0 只有低 5 位有效——`bmRequestType & 0x1F` 一算，值 ≥4 的就是非法请求，设备会在 STATUS 回 STALL。
+
+**② bRequest 标准请求表有两个空洞。** 规范从 USB 1.0 起就定义：
+
+```
+0x00 GET_STATUS      0x01 CLEAR_FEATURE   ← 0x02 Reserved(空洞)
+0x03 SET_FEATURE     ← 0x04 Reserved(空洞)
+0x05 SET_ADDRESS     0x06 GET_DESCRIPTOR  0x07 SET_DESCRIPTOR
+0x08 GET_CONFIG      0x09 SET_CONFIG      0x0A GET_INTERFACE
+0x0B SET_INTERFACE   0x0C SYNCH_FRAME
+```
+
+13 个编号里 2 个是给未来扩展留的洞，至今未填 → 实际可用标准请求 = **11 种**。
+
+**③ SETUP 事务三条铁律：**
+
+1. **永远 8 字节。** 设备只接受恰好 8 字节的 SETUP 数据包，多一个少一个字节都直接忽略——规范硬性规定，不是惯例。抓包时认 `SETUP Token + DATA0 + 8B` 这个形状。
+2. **永远 DATA0 + toggle 归零。** 每个 SETUP 事务强制用 DATA0，同时把数据翻转计数器归零；于是 DATA 阶段第一个数据包**必然是 DATA1**（STATUS 也恒为 DATA1）。SETUP 就像重新洗牌——不管上一个事务翻转到哪，SETUP 一来全部从头数。
+3. **永远发给 EP0。** SETUP Token 的 ENDP 字段必须 = 0000。设备必须 ACK SETUP 包本身（不能 NAK/STALL），拒绝只能在 STATUS 阶段表达（"STATUS 是拒绝唯一入口"，第五会话）。
+
+### SETUP 必 ACK —— 为什么这么设计（两个类比）
+
+**快递回执类比**：快递员（Host）送文件到前台（EP0 固件）→ 前台必须扫码签收（ACK）→ 签收只代表"文件到了，CRC 没错"，还没看内容更没答应办 → 最后回执环节（STATUS）才盖章：办 = ACK（合同盖章），不办 = STALL（盖"拒"章）。前台不能拒收，因为"拒收"会让快递员分不清三种情况：文件半路丢了（CRC 错）？送到了你们不收？还是你们不做这业务？
+
+**法庭传票类比**：法警送传票 → 被告必须签收（ACK）→ 签字只确认"送达"这个程序性事实，签收≠认罪 → 拒收传票视为留置送达（法律不给"拒收"选项，否则司法第一步就死锁）→ 不服就到庭抗辩（STATUS 回 STALL："管辖权异议"/"无此业务"）。USB 与法律共享同一个设计哲学：**把交互拆成"程序事实"和"实体态度"两层，第一层强制闭环，第二层才允许拒绝。**
+
+**硬件原因**：EP0 永远预留着一个空着的 8 字节 SETUP 缓冲（§2.2a），所以设备物理上没有任何"忙到不能收 SETUP"的理由。既然不可能忙，规范就把"SETUP 必 ACK"写死。
+
+**抓包推论**：总线上一笔合法控制传输，SETUP 包后面紧跟的永远是 ACK。看到设备对 SETUP 回 NAK/STALL，不是"设备不支持"，是固件违反规范（bug）。
+
+## 5.2 11 种标准请求全集（速览）
+
+**枚举 10 步从头到尾只用了 11 种里的 3 种**（GET_DESCRIPTOR、SET_ADDRESS、SET_CONFIGURATION），加上 UVC 实战的 SET_INTERFACE 共 4 种，其余 7 种首次见面。
+
+### 总表（按 bRequest 编号）
+
+| # | bRequest | 方向 | 接收者 | wValue | wIndex | wLength | 数据阶段 |
+|---|---------|:---:|------|--------|--------|:---:|------|
+| 0x00 | GET_STATUS | IN | D/I/E | 0 | 0 / IF / EP | 2 | 2 字节状态（5.3） |
+| 0x01 | CLEAR_FEATURE | OUT | D/I/E | Feature Selector | 0 / IF / EP | 0 | 无（5.4） |
+| 0x03 | SET_FEATURE | OUT | D/I/E | Feature Selector | 0 / IF / EP | 0 | 无（5.4） |
+| 0x05 | SET_ADDRESS | OUT | D | 新地址 0~127 | 0 | 0 | 无（§4.5） |
+| 0x06 | GET_DESCRIPTOR | IN | D | `(类型<<8)\|索引` | 0 或 LANGID | N | N 字节描述符（§4.4~4.9） |
+| 0x07 | SET_DESCRIPTOR | OUT | D | `(类型<<8)\|索引` | LANGID | N | N 字节描述符（几乎没人用） |
+| 0x08 | GET_CONFIGURATION | IN | D | 0 | 0 | 1 | 1 字节：当前配置号 |
+| 0x09 | SET_CONFIGURATION | OUT | D | 配置编号 | 0 | 0 | 无（§4.10） |
+| 0x0A | GET_INTERFACE | IN | IF | 0 | 接口号 | 1 | 1 字节：当前 Alt（5.5） |
+| 0x0B | SET_INTERFACE | OUT | IF | Alt Setting | 接口号 | 0 | 无（5.5） |
+| 0x0C | SYNCH_FRAME | IN | EP | 0 | 端点号 | 2 | 2 字节帧号（几乎没人用） |
+
+### 按家族分组看规律
+
+| 家族 | 成员 | 规律 |
+|------|------|------|
+| **GET_ 读类** | GET_STATUS / GET_DESCRIPTOR / GET_CONFIGURATION / GET_INTERFACE / SYNCH_FRAME（5 个） | 全是 IN；wLength > 0；有数据阶段，数据 = 被读的那个东西 |
+| **SET_ 写类** | SET_ADDRESS / SET_CONFIGURATION / SET_INTERFACE / SET_DESCRIPTOR（4 个） | 全是 OUT；前三个 **wLength=0、无数据阶段**——"写"的内容整个塞在 wValue 里 |
+| **FEATURE 开关类** | SET_FEATURE / CLEAR_FEATURE（2 个） | OUT；wLength=0；wValue = 要开/关哪个开关 |
+
+**反直觉点**：SET_DESCRIPTOR 是 SET_ 家族里唯一的"真写"——带数据阶段，数据就是描述符内容。其余三个 SET_ 都是"参数全在 wValue 里的空手写"。
+
+### 四个值得一提的细节
+
+1. **GET_CONFIGURATION 和 GET_INTERFACE 是一对镜像**。一个读"当前配置号"（Device 级），一个读"当前 Alt Setting"（Interface 级），都返回 1 字节。SET 写进去什么，GET 读回什么——写读对称。
+2. **SET_CONFIGURATION(0) 有隐藏含义**：wValue=0 → 设备回到 Address 状态（解除配置）。既是"上岗"命令也是"下岗"命令。
+3. **规范允许个别请求 STALL**。SET_DESCRIPTOR 和 SYNCH_FRAME 是"可选实现"——设备不想支持就在 STATUS 回 STALL，**合法**。不支持≠违规，明确拒绝也是合规行为。
+4. **SYNCH_FRAME 只服务等时端点**。Host 问"你的数据模式从哪一帧开始"，只有等时传输（无握手、按帧对齐）才需要帧号。批量/中断/控制端点问这个是答非所问。
+
+### 类比：三层法律体系
+
+11 种标准请求 = **USB 宪法里的基本法**——所有设备都必须"听得懂"（要么执行，要么在 STATUS 明确拒绝，不能装死）。与 bmRequestType 三层字典对应：
+
+```
+Standard 请求 = 宪法基本法    ← 全 USB 设备必须理解（本节 11 种）
+Class 请求   = 行业规章       ← 只有同类设备才懂（UVC 的 SET_CUR，键盘不懂）
+Vendor 请求  = 公司内部规定    ← 只有自家设备认识（海康 CS_ID 那套）
+```
+
+枚举 = 基本法里 3 条的连环调用；XU 实战（第七篇）= 行业规章 + 内部规定。
+
+## 5.3 GET_STATUS 响应解析
+
+GET_STATUS 是 11 种请求里**唯一一个横跨三种接收者**的——同一个 bRequest=0x00，D4-0 填谁，就问谁的状态：
+
+```
+0x80 → Device 状态    0x81 → Interface 状态    0x82 → Endpoint 状态
+```
+
+无论问谁，响应统一 **2 字节（16 位，小端）**。三种接收者 = 三种完全不同的位图。
+
+### 一、Device Status（0x80，wIndex=0）
+
+| 位 | 名称 | 含义 |
+|:---:|------|------|
+| D0 | Self Powered | `1`=自供电（外部电源），`0`=总线供电（吃 VBUS） |
+| D1 | Remote Wakeup | `1`=远程唤醒**已使能**，`0`=禁用 |
+| D2-15 | Reserved | 永远 0 |
+
+**关键认知：描述符声明"能力"，GET_STATUS 报"现状"。**
+
+```
+bmAttributes D6 = Self-powered    ← 描述符: "我能自供电"
+bmAttributes D5 = Remote Wakeup   ← 描述符: "我支持远程唤醒"
+GET_STATUS   D0 = Self Powered    ← 状态:   "我现在真的自供电"（电源可能动态切换！）
+GET_STATUS   D1 = Remote Wakeup   ← 状态:   "该权限当前是否被打开"
+```
+
+两个 D1 尤其容易混：描述符 D5 是**能力**（出厂就有），GET_STATUS D1 是**权限**（Host 用 SET_FEATURE 开了才变 1）——开关机制见 5.4。
+
+示例字节：`0x0003`（线上: `03 00`）= 自供电 + 远程唤醒已使能；`0x0000` = 吃总线电 + 远程唤醒关闭。
+
+**Windows 里的对应物**：设备管理器 → USB 设备属性 → 电源管理 → "允许此设备唤醒计算机"勾选框——勾上 = SET_FEATURE(DEVICE_REMOTE_WAKEUP)，勾掉 = CLEAR_FEATURE；面板显示的状态源头就是 GET_STATUS 的 D1。
+
+### 二、Interface Status（0x81）——规范考古现场
+
+**全部 16 位 Reserved，设备永远回 `0x0000`。** 没有任何状态位，从 USB 1.0 至今三十多年没填进去一个 bit。
+
+它存在的原因是**对称性强迫症**：规范设计者让三种接收者都有 GET_STATUS 这一行，Interface 是那个"预留的空行"。类比：写字楼里那间"备用会议室"——平面图上必须有（对称布局），但里面从来没放过家具。
+
+**通用认知**：协议规范里"Reserved"分两种——一种是 5.1 的 0x02/0x04 编号空洞（给未来留编号），一种是这里"定义了字段但内容全是 Reserved"（给未来留位）。
+
+### 三、Endpoint Status（0x82）——重头戏：Halt
+
+| 位 | 名称 | 含义 |
+|:---:|------|------|
+| D0 | Halt | `1`=端点已暂停（Halted），`0`=正常 |
+| D1-15 | Reserved | 永远 0 |
+
+wIndex 填**端点地址原样**：`0x81`=IN EP1，`0x02`=OUT EP2（D7 方向 + D3-0 端点号，即描述符里的 bEndpointAddress）。
+
+**Halt 是什么**：一个数据端点（批量/中断）在 DATA 阶段回了 STALL → 该端点进入 Halted 状态 → **之后所有指向它的事务全部回 STALL**，整条管道冻结。
+
+**★ 深水区：两种 STALL 的生命周期完全不同**
+
+| | EP0 的 STALL | 数据端点的 STALL |
+|---|---|---|
+| 持续时间 | **一次性的** | **粘性的** |
+| 何时解除 | 下一个 SETUP 一到，**自动清除** | Host 显式发 CLEAR_FEATURE(ENDPOINT_HALT) 才解冻 |
+| 为什么 | EP0 必须永远可用（5.1 铁律三：如果 EP0 能锁死，设备就永久失联了） | 数据端点锁死是**事故报警机制**：设备在喊"这条管道出事了"，喊完停摆等你处理 |
+
+**端到端的故障处理闭环**（GET_STATUS 存在的最大理由）：
+
+```
+① 设备发现批量端点数据错误/缓冲区溢出
+② 设备在 DATA 阶段回 STALL 报警        → 端点进入 Halted
+③ Host 察觉传输异常 → 发 GET_STATUS(EP)  → 确认 D0=1，"管道确实卡了"
+④ Host 决定处理方式（丢弃数据/重置逻辑/清 Halt）
+⑤ Host 发 CLEAR_FEATURE(ENDPOINT_HALT)  → 端点解冻，管道恢复
+```
+
+**水管类比**：水管漏水（设备 STALL 报警）→ 水阀自动锁死（Halted，后续全部拒绝）→ 物业派人去问"哪条管卡了"（GET_STATUS 回 D0=1）→ 检修完重新开阀（CLEAR_FEATURE）。第③步不是多余的——Host 要先**确认**是 Halt 还是别的错误，才能决定开阀还是换管子。
+
+（Phase 8 的 libusb 里这套闭环就是 `libusb_clear_halt()`。）
+
+### 三合一速查
+
+| 接收者 | bmRequestType | wIndex | 响应内容 |
+|--------|:---:|--------|---------|
+| Device | 0x80 | 0 | D0=自供电, D1=远程唤醒权限 |
+| Interface | 0x81 | 接口号 | 全 0（占位符） |
+| Endpoint | 0x82 | 端点地址 | D0=Halt |
+
+## 5.4 SET_FEATURE / CLEAR_FEATURE —— Feature Selector 全集
+
+### 骨架：一对开关命令
+
+```
+SET_FEATURE   (bRequest=0x03, OUT, wLength=0)  ← 打开某个"功能开关"
+CLEAR_FEATURE (bRequest=0x01, OUT, wLength=0)  ← 关闭同一个开关
+```
+
+参数位置：**wValue = 开关编号（Feature Selector）**，wIndex = 装在谁身上（0=设备 / 端点地址）。名带 SET 却无数据阶段——要开哪个开关，全在 wValue 里。
+
+### Selector 全集（USB 2.0 只有 3 个）
+
+| Selector | wValue | 接收者 | SET（打开） | CLEAR（关闭） |
+|----------|:---:|:---:|------------|-------------|
+| ENDPOINT_HALT | 0x00 | Endpoint | 主动冻结端点 | **解冻**（5.3 闭环第⑤步） |
+| DEVICE_REMOTE_WAKEUP | 0x01 | Device | 授予远程唤醒权限 | 吊销权限 |
+| TEST_MODE | 0x02 | Device | 进入测试模式 | ❌ 规范禁止 CLEAR |
+
+### ① ENDPOINT_HALT——补齐 5.3 的另一半
+
+**Halt 不只设备能触发，Host 也能主动 SET。**
+
+```
+Halted 状态的两个入口:
+  ① 设备在 DATA 阶段回 STALL          ← 被动报警（常见）
+  ② Host 发 SET_FEATURE(ENDPOINT_HALT) ← 主动叫停（少见：调试/故障隔离）
+出口只有一个:
+  CLEAR_FEATURE(ENDPOINT_HALT)        ← Host 显式解冻
+```
+
+实际中 99% 是"设备报警 → Host 清除"（5.3 的水管闭环）；Host 主动 SET 主要出现在调试——比如测试固件时故意冻结一条端点，看驱动能不能正确恢复。
+
+### ② DEVICE_REMOTE_WAKEUP——权限模型
+
+串联 5.3 的伏笔：GET_STATUS 的 D1 反映的"远程唤醒已使能"，正是这个开关的状态。
+
+```
+描述符 bmAttributes D5 = 1                    → 能力："我支持远程唤醒"（出厂自带）
+Host: SET_FEATURE(DEVICE_REMOTE_WAKEUP)       → 授权："允许你用"
+GET_STATUS D1 = 1                             → 状态："权限当前生效"
+Host 挂起总线（suspend）                       → 整条总线休眠
+设备拉信号线唤醒 Host                          → 只有被授权的设备才被允许这么干
+```
+
+**能力 vs 权限的分离**是核心设计：设备天生能唤醒（硬件能力），但不授权就不许用——总线挂起是 Host 的决定，不能让任何设备随便叫醒。类比：员工有手机（能力），但开会时手机必须静音——**静音开关掌握在主持人手里**。Host 就是主持人。
+
+### ③ TEST_MODE——你永远不会发，但应该认识
+
+USB-IF 一致性测试实验室专用。SET 之后设备输出**规定的测试信号**供仪器测量（眼图、信号质量）：
+
+```
+wIndex 高字节 = 测试模式编号（参数藏在 wIndex 高字节！）
+  0x0100 = Test_J          0x0200 = Test_K
+  0x0300 = Test_SE0_NAK    0x0400 = Test_Packet
+  0x0500 = Test_Force_Enable
+```
+
+两个要点：
+
+1. **参数位置的怪例**。通常参数放 wValue，这里编号放在 **wIndex 高字节**——SETUP 8 字节里又一个"不按惯例填"的案例（5.6 速查表专门标注）。
+2. **唯一禁止 CLEAR 的开关**。测试模式把设备的正常协议行为全部打乱，只能靠**总线复位**退出——没有"关闭"按钮，只有"整机重启"。这也是日常抓包里永远看不到 wValue=0x0002 的 SET_FEATURE 的原因。
+
+### 开关面板类比
+
+设备的 Feature 就像大楼中控室的**开关面板**，Host 是大楼管理员：
+
+```
+SET_FEATURE   = 合闸        CLEAR_FEATURE = 拉闸        wValue = 哪个闸
+
+0x00 急停闸（ENDPOINT_HALT）：生产线（端点）的急停按钮。
+      机器自己会拍（设备 STALL），管理员也能远程拍（Host SET），
+      复位只能管理员按复位键（CLEAR）。
+
+0x01 门禁授权闸（REMOTE_WAKEUP）：给员工"下班后仍可刷卡进楼"的权限。
+      可授权、可吊销、随时可查状态（GET_STATUS D1）。
+
+0x02 消防测试闸（TEST_MODE）：拉下后整楼进入消防演习状态，警笛长鸣，
+      连中控台都停用——没有拉闸复位这回事，只能等总电源重启（总线复位）。
+```
+
+**对称性细节**：Interface 在 FEATURE 里又没有戏份——3 个标准 Selector 只服务 Device 和 Endpoint，发给 Interface 的 SET/CLEAR_FEATURE 没有标准开关可用。加上 5.3 的全 0 Interface Status：在标准请求体系里，**Interface 是最清闲的接收者**（它唯一的专属请求就是 5.5 的 GET/SET_INTERFACE）。
+
+## 5.5 SET_INTERFACE / GET_INTERFACE
+
+### 参数表
+
+| 字段 | SET_INTERFACE (0x0B, OUT, 0x01) | GET_INTERFACE (0x0A, IN, 0x81) |
+|------|------|------|
+| wValue | 低字节 = Alt Setting 号 | 0 |
+| wIndex | 低字节 = 接口号 | 低字节 = 接口号 |
+| wLength | 0（无数据阶段） | 1 |
+| 数据阶段 | 无 | 1 字节：当前 Alt 号 |
+
+UVC 开流抓包 `CTL 01 0B 01 00 01 00 00 00` 的解码：OUT Standard Interface，SET_INTERFACE，wValue=0x0001（切 Alt 1），wIndex=0x0001（接口 1），wLength=0。
+
+### SET_INTERFACE 触发的动作序列
+
+Host 发 SET_INTERFACE 后，设备内部要做的是一套**规定动作**（不是随便切一下）：
+
+```
+① 旧 Alt Setting 的全部端点 → 解除激活（失效）
+② 新 Alt Setting 的全部端点 → 激活
+③ 受影响端点的数据 toggle → 归零，从 DATA0 重新开始
+```
+
+第③步：**切换后 toggle 必须归零**——换到新 Alt 后管道语义变了，旧管道的 DATA0/DATA1 序列号（§2.5 翻转机制）已经作废，带着旧编号继续数会污染新通道。类比：换了一本合同，旧合同的页码必须作废，从新合同第一页开始签。
+
+另外两条规则：
+
+- **原子性**：新 Alt 号不存在 → 设备 STALL，且**保持原 Alt 不变**——不允许切一半。失败就是"什么都没发生"。
+- **前置条件**：只在 **Configured 状态**有效。设备还在 Address 状态时收到 SET_INTERFACE → STALL（§4.1 六状态机：配置态之前谈"接口切换"是无本之木）。
+
+### GET_INTERFACE：SET 的镜像
+
+读回接口**当前**的 Alt Setting 号，1 字节。与 5.2 的 GET_CONFIGURATION 完全对称：**SET 写进去什么，GET 读回什么**。
+
+实际用途：**切换后验证**。驱动发 SET_INTERFACE(Alt1) → 再 GET_INTERFACE 确认返回 0x01 → 才知道切成功。与 5.3 闭环里"先 GET_STATUS 确认 Halt 再处理"同一个思路：**改完先读回来验证，再走下一步**。
+
+### 落到 UVC 实战：双向开关
+
+```
+开流:  SET_INTERFACE(Alt1) → 旧端点(无)失效 → VS 流端点激活 → toggle 归零 → 开始取流
+关流:  SET_INTERFACE(Alt0) → 流端点失效 → 回到零带宽待机
+```
+
+"开流 = SET_INTERFACE 切通道"（第十会话认知）补全为"**切通道既是开也是关，Alt0 就是关流命令**"。
+
+**舞台类比**：Interface 是剧场舞台，Alt Setting 是灯光/布景预设。同一块舞台（接口），按一个键切换"演出模式"（Alt1：灯光道具全上）和"待机模式"（Alt0：只留一盏安全灯，零带宽）。切布景时先撤旧道具再上新道具（①→②），舞台不会出现"半场布景"（原子性）。
+
+### 深挖一：SET_INTERFACE 机制五问（Q&A 精选）
+
+**Q1 切换端点是根据描述符确定的吗？——是的，而且"早就定好了"。** 配置描述符链里同一个 `bInterfaceNumber` 会出现**多次**，每次一个 `bAlternateSetting`，各带各的端点描述符。SET_INTERFACE 的 wValue 只是**索引**——选中描述符链里预先声明好的某一套。**它不是"创造"端点，是"选择"端点。** 这也解释失败机制：Alt 号在描述符里不存在 → 索引越界 → STALL。Host 枚举时就把所有 Alt 的全部端点拉回来看过了，开流是"按图选件"。
+
+**Q2 切换后数据流在另一条通道上？——不必然。** 端点号不同 → 真的换通道；**端点号相同**（Alternate Setting 可复用端点号，第六会话）→ 同一条管道换参数。UVC 的主流是后者：**各 Alt 通常是同一个端点号，只是 wMaxPacketSize 不同**——切 Alt 换的是**带宽配额**（等时带宽按 wMaxPacketSize 静态预留，§2.13），不是管道本身。640x480 的 Alt 和 1920x1080 的 Alt 就是"同一条水管换粗细"。
+
+**Q3 有可能从等时转成批量吗？——协议可以，现实几乎不。** 每个 Alt 的端点独立声明 bmAttributes，"Alt1=等时、Alt2=批量"语法上完全合法。但**传输类型由数据语义决定**（完整性 vs 实时性，第十会话）：一个摄像头的视频数据不会因为"开流"就从"要实时"变成"要完整"。切 Alt 换的是参数，不是数据的本性。UVC 1.5 虽把 Bulk 加入规范（2bdf:0101 整个设备都是 Bulk 视频），但不是"Alt 之间等时/批量切换"。
+
+**Q4 开流 = 设备就会送流吗？——不会，只是管道就绪。** 根因是 **USB 是 Host 中心化的，设备永远不能主动发送**（§2.1）。精确时间线：
+
+```
+SET_INTERFACE(Alt1)  → 端点激活、toggle 归零、设备内部视频管线可能已开转
+                     → 数据开始灌进端点 FIFO
+                     → 但总线上：零字节
+Host 发出第一个 IN Token → 设备才把 FIFO 里的数据打上总线
+libuvc 的 uvc_start_streaming() 内部，就是在开始周期性发 IN URB
+```
+
+设备内部可能已经"开转"（FIFO 灌满后新数据直接丢弃，直到 IN Token 来抽取）。设备侧的"送流"和总线上的"有流"是两件事，中间隔着 Host 的 Token。**类比：水龙头与泵**——SET_INTERFACE = 拧开水龙头（管道接好、阀门就位），但水泵（Host 的 IN Token）不启动，管子里一滴水都不会流。
+
+**Q5 可以搭配 XU 切换码流类型吗？——可以，第七篇的 `uvc_stream_viewer.cpp` 就是。** 完整分层：
+
+```
+SET_INTERFACE = 传输层开关：管道建不建、多粗的管道（端点/带宽/传输类型）
+XU SET_CUR    = 内容层开关：帧里装什么（码流类型 2/3/6/8/9/10、伪彩）
+```
+
+两层独立、可组合（"UVC 管传输、XU 管内容"，第八会话）。但有一条踩过的约束：码流类型切换不能在取流中做（数据格式突变会崩解码器）。完整切换姿势：
+
+```
+关流 SET_INTERFACE(Alt0) → XU 切码流类型 → 再开流 SET_INTERFACE(Alt1)
+```
+
+不改数据格式的 XU（伪彩、读版本、读错误码）可以在取流中直接发。判断标准：**物理不冲突（都走 EP0），冲突在语义层**（第八会话）。
+
+### 深挖二：开流后设备送什么？（空包与默认码流）
+
+**空包是合法的，而且"一直送空包"技术上可能。**
+
+```
+等时端点：FIFO 无数据 → 回零长度包（等时不允许 NAK，"空包"就是"无数据"的合法表达）
+批量端点：FIFO 无数据 → 回 NAK（"忙，稍后再问"）
+```
+
+如果设备内部管线没启动/没配置（比如跳过 Probe/Commit 直接 SET_INTERFACE），FIFO 永远是空的 → Host 拉一次，设备回一个空包，可以一直这样。"送空包"≠协议错误，它是设备"没货"的正常信号。
+
+**"只有 XU 指定码流类型才送流"不成立（至少 2bdf:0101 上）。** 反证就是花屏踩坑：没发 XU 切类型时流照样有——机芯默认码流类型 8/6（测温+YUV 混合），所以拿到"花屏"：数据在流，但内容是混合的。如果"没 XU 就没流"，当时看到的应该是黑屏而不是花屏。
+
+**分层的正确结论**：
+
+```
+送不送流 = 传输层：SET_INTERFACE 开管道 + Host IN Token 拉    ← XU 管不着
+送哪种流 = 内容层：当前生效的码流类型配置                      ← XU 管这个
+```
+
+XU 不是"送流开关"，是**内容选择器**。开流后设备按**固件当前生效的默认配置**送流（多数设备"开流即送默认流"，个别设计"等厂商配置才送"——固件自由，规范不管，因为 UVC 规范根本不知道 XU 的存在）。
+
+**水龙头 + 净水器类比**：SET_INTERFACE 拧开水龙头、Host 的 IN Token 是泵启动——泵一转，管子里默认流的是"原水"（固件默认码流类型）。XU 是净水器档位旋钮：拨到"纯水档"（YUV_ONLY）流出纯 YUV，不拨也有水，只是水质默认（混合型）。
+
+**抓包注意**：正常取流中**也有空包**——等时带宽静态预留，传感器某一刻产出不够时，那一帧的空位就是零长度包。抓包里看到零长度包**不能**说明"设备没开流"。判断有没有真流要看数据包里的 UVC Payload Header（FID/EOF 帧边界）——这是 Phase 6（设备类协议）的内容。
+
+### 深挖三：为什么需要 XU？Probe/Commit 参数凭什么被遵守？
+
+**标准 UVC（Probe/Commit）管的三个维度**：格式（YUYV/MJPEG，怎么编码）、分辨率（wWidth/wHeight，多大）、帧率（dwFrameInterval，多快）——全是**"帧的包装与节奏"**，一个都不涉及**"帧里装的是什么内容"**。
+
+而热成像机芯的数据管线（探测器 → 测温矩阵/伪彩映射 → 码流多路复用器）里的"测温矩阵""伪彩""6 种码流类型"都是**机芯厂商的私有概念**——UVC 规范的词汇表里根本没有这些词。标准 UVC 只能说"给我 640x480 的 YUYV @ 30fps"，但说不出"给我纯 YUV 帧、别掺测温数据"。
+
+所以 USB-IF 留了 **XU 这个合法扩展点**——"Class 信封 + Vendor 内容"（第五会话）：信封保证 UVC 类驱动、通用工具都认识这个通道；内容（guidExtensionCode 签名 + CS_ID/SubFunc）随便厂商定义。**没有 XU 会怎样**：厂商只能发纯 Vendor 请求（D6-5=10），OS 类驱动不认识，通用软件无法操作，每个应用都要绕过类驱动直接谈 libusb。XU 让"私有功能"也能走 Class 通道。
+
+**快递公司类比扩展**：标准 UVC = 快递公司的标准服务条款——能定箱子大小（分辨率）、封箱方式（编码）、发货频率（帧率）。但条款里没有"红外温度矩阵"这个词条。XU = 合同里的"附加条款区"——寄什么特殊货物在这里白纸黑字写清楚，信封（Class 通道）还是同一家快递公司的。
+
+**"设备可以完全不按参数发送呀"——协议层面确实没有警察，但有三层强制力：**
+
+```
+① 物理层：等时带宽静态预留（Alt 的 wMaxPacketSize）。想发更大的帧，物理上送不出去
+② 生态层：Host 按 Commit 参数准备解码器和缓冲。乱发 → 花屏/崩溃 → 立刻现形
+③ 商业层：UVC 设备的命根子是"免驱动、即插即用"，拿 USB-IF 认证才有通行证
+```
+
+参数的性质：**不是"命令"，是"解码契约"**——目的不是命令设备，而是让 Host 一侧能正确解析。执法者不是规范条文，是**标准解码器本身**。
+
+**但撒谎确实会发生——2bdf:0101 就是活例**（描述符声称 YUYV，实际送 MJPEG，第七篇 §7.4 踩坑 3）。注意它撒谎的**精准边界**：
+
+```
+分辨率/帧率：没撒谎（120x160 实打实）   ← 一验就破，不敢
+格式：撒谎了（报 YUYV 送 MJPEG）        ← 赌你用厂商 SDK 不挑
+内容（测温掺 YUV）：随便掺              ← 标准解码器根本察觉不了
+```
+
+撒谎的成本结构：**哪里有标准验证者，哪里就没人敢乱来；哪里没有，哪里就是灰色地带。** 格式层撒谎的代价是标准解码器崩，海康敢赌是因为热成像是专业设备、用户几乎都用厂商 SDK（自家 SDK 检测 `FF D8` 头）；**内容层（XU 码流类型）没有标准验证者**——测温矩阵掺在 YUV 里，通用播放器解出来仍然是"一个画面"（花屏也是画面）。
+
+**这收束了 XU 的存在理由**：
+
+```
+Probe/Commit 参数（格式/分辨率/帧率）= 解码契约
+    → 执法者：标准解码器。乱来立刻现形 → 大家都遵守
+
+XU 内容（码流类型/测温/伪彩）        = 厂商私有词汇
+    → 执法者：不存在。只有厂商 SDK 认识 → 厂商随便定义、随便违约
+```
+
+另外，Probe 的参数本来就是**从设备自报的范围里选的**（GET_MIN/GET_MAX/GET_DEF 问"你能做什么"，SET_CUR 只在你自报的范围内选）——设备守的约是它自己定的约，不遵守等于打自己脸。
+
+**餐厅点菜类比**：菜单（GET_MIN/MAX/DEF 自报能力）→ 点菜（Probe/Commit 在菜单范围内选）→ 厨房（设备）按单出菜。厨房也可以挂羊头——菜单写"清蒸鱼"端上来的其实是别的鱼（YUYV 实为 MJPEG），你按菜单准备的蘸料餐具全废。但只有"熟客常客"（厂商 SDK）的餐厅才敢这么干；而"菜里放了什么料"（XU 内容）只有厨师知道，食客永远尝不出来。
+
+**一句话总结：USB 协议的可信度不是靠条文强制，而是靠"遵守对厂商更有利"的利益结构——即插即用生态本身就是最大的执法力量。而 XU 恰好站在这个利益结构照不到的地方。**
+
+## 5.6 wValue/wIndex/wLength 速查表
+
+### 11 种请求参数总表
+
+| 请求 | bmRequestType | wValue | wIndex | wLength | 数据阶段 |
+|------|:---:|--------|--------|:---:|------|
+| GET_STATUS (Device) | 0x80 | 0 | 0 | 2 | 2B：D0 自供电, D1 远程唤醒 |
+| GET_STATUS (Interface) | 0x81 | 0 | 接口号 | 2 | 2B：全 0 |
+| GET_STATUS (Endpoint) | 0x82 | 0 | **端点地址** | 2 | 2B：D0 Halt |
+| CLEAR_FEATURE (Endpoint) | 0x02 | 0x0000 (HALT) | 端点地址 | 0 | 无 |
+| CLEAR_FEATURE (Device) | 0x00 | 0x0001 (WAKEUP) | 0 | 0 | 无 |
+| SET_FEATURE (Endpoint) | 0x02 | 0x0000 (HALT) | 端点地址 | 0 | 无 |
+| SET_FEATURE (Device) | 0x00 | 0x0001 (WAKEUP) | 0 | 0 | 无 |
+| SET_FEATURE (TEST_MODE) | 0x00 | 0x0002 | **高字节=测试号** ⚠️ | 0 | 无 |
+| SET_ADDRESS | 0x00 | 新地址 | 0 | 0 | 无 |
+| GET_DESCRIPTOR | 0x80 | **高=类型 低=索引** | 0 或 LANGID ⚠️ | N | N 字节 |
+| SET_DESCRIPTOR | 0x00 | 高=类型 低=索引 | LANGID | N | N 字节 |
+| GET_CONFIGURATION | 0x80 | 0 | 0 | 1 | 1B：当前配置号 |
+| SET_CONFIGURATION | 0x00 | 配置号 | 0 | 0 | 无 |
+| GET_INTERFACE | 0x81 | 0 | 接口号 | 1 | 1B：当前 Alt 号 |
+| SET_INTERFACE | 0x01 | Alt 号 | 接口号 | 0 | 无 |
+| SYNCH_FRAME | 0x82 | 0 | 端点地址 | 2 | 2B：帧号 |
+
+⚠️ = 两个"参数位置不常规"的案例：TEST_MODE 的测试编号藏在 **wIndex 高字节**；GET_DESCRIPTOR(String) 的 wIndex 填**语言 ID**（其余描述符填 0）。
+
+### 四个记忆规律
+
+**① wValue 的四种角色**：编号（地址/配置号/Alt 号）｜选择器（Feature Selector）｜复合编号（GET_DESCRIPTOR：`类型<<8 | 索引`）｜空（0）。
+
+**② wIndex 的三种角色**：定位（接口号/端点地址，都在**低字节**）｜语言（LANGID）｜测试参数（TEST_MODE 高字节——唯一的高字节案例）。
+
+**③ wLength 永远是数据阶段字节数**（5.1 修正版）：GET_ 家族 >0 有数据；SET_ 家族 =0 无数据，**唯一例外 SET_DESCRIPTOR**（真写）。
+
+**④ 接收者决定 wIndex 填法**：Device → 0；Interface → 接口号；Endpoint → 端点地址原样（`0x81`=IN EP1）。三把钥匙的 D4-0 先看，wIndex 才有解。
+
+### 抓包解析决策流
+
+看到任何一个 SETUP 包，按这个顺序五步定位：
+
+```
+① bmRequestType D7     → 方向（IN 还是 OUT）
+② bmRequestType D6-5   → 查哪张请求表（Standard/Class/Vendor）
+③ bmRequestType D4-0   → wIndex 填什么（0/接口号/端点地址）
+④ bRequest            → 查 5.2 的请求表，确定 wValue 角色
+⑤ wValue + wIndex     → 按本表读参数，wLength 即数据量
+```
+
+### Phase 5 收官
+
+5.1~5.6 走完：逐位总表（5.1）→ 全集（5.2）→ 三个深水区（5.3 Halt 生命周期 / 5.4 三个开关 / 5.5 接口切换机制）→ 速查（5.6）。**主线进度 50/67（75%）。**
+
+### 一句话总结
+
+**SETUP 8 字节是"标准快递面单"：第 0 字节是寄收方向+字典+收件人，第 1 字节是业务类型，wValue/wIndex 是两张随业务换填法的表格，wLength 永远是包裹多大；而 11 种标准请求是 USB 宪法基本法——设备必须"听得懂"，要么执行要么在 STATUS 明确拒绝，不能装死。**
+
+---
+
+# 第六篇：真实设备描述符实战
 
 > 基于三台真实海康 USB 摄像头，从字节级拆解 USB 描述符。
 
-## 5.1 三台设备速览
+## 6.1 三台设备速览
 
 | 项目 | 设备 1 (HikCamera #1) | 设备 2 (HikCamera #2) | 设备 3 (2K USB Camera) |
 |---|---|---|---|
@@ -2799,7 +3289,7 @@ Ubuntu 对应物：`dmesg` 里的 `device descriptor read/64, error -71`（描�
 | 视频格式 | YUY2/MJPEG/H.264, 最高640×360@30 | 同左 | MJPG/NV12/YUY2, 最高2560×1440@30 |
 | 音频 | 无 | 无 | PCM 16kHz/16bit/单声道 |
 
-## 5.2 描述符获取流程：枚举
+## 6.2 描述符获取流程：枚举
 
 ```
  设备                       Host
@@ -2820,7 +3310,7 @@ Ubuntu 对应物：`dmesg` 里的 `device descriptor read/64, error -71`（描�
 2. 完整链一次性返回——配置+IAD+接口+类专用+端点，全在一个包里
 3. 字符串是懒加载——描述符里只放索引（iManufacturer=0x01），Host 需要显示时才单独请求
 
-## 5.3 Device Descriptor 关键字段
+## 6.3 Device Descriptor 关键字段
 
 ### bDeviceClass = 0xEF，为什么不直接写 0x0E (Video)？
 
@@ -2832,7 +3322,7 @@ Ubuntu 对应物：`dmesg` 里的 `device descriptor read/64, error -71`（描�
 
 **一句话：设备级 class 管"整台机器是不是复合的"，IAD 的 function class 才管"每个功能是什么"。**
 
-## 5.4 IAD（Interface Association Descriptor）
+## 6.4 IAD（Interface Association Descriptor）
 
 设备 1 的 IAD：
 
@@ -2845,7 +3335,7 @@ bFunctionSubClass = 0x03  ← Video Interface Collection
 
 Host 的 UVC 驱动（Windows 的 usbvideo.sys）就是看到 `bFunctionClass=0x0E, bFunctionSubClass=0x03` 才决定加载自己的。
 
-## 5.5 Interface Descriptor — VC vs VS
+## 6.5 Interface Descriptor — VC vs VS
 
 | 字段 | 接口 0 (VC) | 接口 1 (VS) |
 |------|-------------|-------------|
@@ -2855,7 +3345,7 @@ Host 的 UVC 驱动（Windows 的 usbvideo.sys）就是看到 `bFunctionClass=0x
 
 bInterfaceSubClass 是 UVC 描述符体系的第一道分叉口——Host 据此区分控制接口和流接口。
 
-## 5.6 Endpoint Descriptor
+## 6.6 Endpoint Descriptor
 
 设备 1 的两个端点：
 
@@ -2888,7 +3378,7 @@ bInterfaceSubClass 是 UVC 描述符体系的第一道分叉口——Host 据此
 
 类比：等时 = 直播（按时播放，信号不好就花屏不重放）；Bulk = 文件下载（慢点可以，一个字节都不能错）。
 
-## 5.7 UVC 类专用描述符机制（0x24 / 0x25）
+## 6.7 UVC 类专用描述符机制（0x24 / 0x25）
 
 UVC 的类专用描述符大量复用同一个 `bDescriptorType`：
 
@@ -2941,7 +3431,7 @@ bDescriptorType = 0x24 (Video Control Interface)
 | 11 | bInCollection | 0x01 | 1 个 VS 接口关联 |
 | 12 | baInterfaceNr[1] | 0x01 | VS 接口号 = 1 |
 
-## 5.8 设备 1 完整 433 字节描述符链追踪
+## 6.8 设备 1 完整 433 字节描述符链追踪
 
 ### 逐段验算
 
@@ -2981,7 +3471,7 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔
                                          合计 = 433 B = 0x01B1 ✔
 ```
 
-## 5.9 设备 1 vs 设备 2 差异分析
+## 6.9 设备 1 vs 设备 2 差异分析
 
 | 对比项 | 设备 1 | 设备 2 | 说明 |
 |---|---|---|---|
@@ -2999,7 +3489,7 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔
 
 同一字节，两种速度两种含义。
 
-## 5.10 设备 3 从 KS 数据反推描述符结构
+## 6.10 设备 3 从 KS 数据反推描述符结构
 
 设备 3 没有原始描述符 dump，但从 Windows 驱动层数据反推：
 
@@ -3035,7 +3525,7 @@ Device Descriptor          bDeviceClass = 0xEF（复合设备）
 
 ---
 
-## 第五篇 FAQ
+## 第六篇 FAQ
 
 ### Q1: 为什么 bDeviceClass 不直接写 0x0E (Video)？
 
@@ -3103,11 +3593,11 @@ STATUS: Device → STALL ← ❌ 拒绝唯一发生在这里！
 
 ---
 
-# 第六篇：UVC XU 控制与取流实战
+# 第七篇：UVC XU 控制与取流实战
 
 ---
 
-## 6.1 UVC XU 扩展协议设计
+## 7.1 UVC XU 扩展协议设计
 
 ### CS_ID + SubFunc 二级命名空间
 
@@ -3172,7 +3662,7 @@ CS_ID 在白名单内，但:
 
 ---
 
-## 6.2 新设备上手实操指南
+## 7.2 新设备上手实操指南
 
 ### 三步找到所有参数
 
@@ -3279,7 +3769,7 @@ libusb_control_transfer(
 
 ---
 
-## 6.3 标准 UVC 取流完整流程
+## 7.3 标准 UVC 取流完整流程
 
 ### 两个 wIndex 体系对比
 
@@ -3363,7 +3853,7 @@ struct uvc_probe {
 
 ---
 
-## 6.4 码流类型切换实战
+## 7.4 码流类型切换实战
 
 > 本节是 `uvc_stream_viewer.cpp` 开发过程中踩坑的总结。
 
@@ -3441,7 +3931,7 @@ GUID: YUY2              期望 38400 字节         不是 38400 字节
 
 ---
 
-## 6.5 uvc_stream_viewer 完整流程
+## 7.5 uvc_stream_viewer 完整流程
 
 ```
 ① libusb 打开 → detach 内核驱动
@@ -3478,7 +3968,7 @@ g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cf
 
 ---
 
-## 6.6 实战踩坑全记录（★★★★★ 最重要）
+## 7.6 实战踩坑全记录（★★★★★ 最重要）
 
 | # | 症状 | 根因 | 修复 | 重要度 |
 |---|------|------|------|--------|
@@ -3503,7 +3993,7 @@ g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cf
 
 ---
 
-## 6.7 Interface 和 Endpoint 区分
+## 7.7 Interface 和 Endpoint 区分
 
 **一句话总结：**
 - **控制传输 = 发命令**（"请把分辨率调到 640x480"），走 EP0
@@ -3518,7 +4008,7 @@ g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cf
 | 参数指定方式 | bmRequestType+wValue+wIndex | 端点地址 | 端点地址 |
 | 有 SETUP 包？ | 有（8 字节） | 无 | 无 |
 
-## 6.8 标准 UVC 控制：亮度/对比度/白平衡（PU）
+## 7.8 标准 UVC 控制：亮度/对比度/白平衡（PU）
 
 ### 定位：标准控制住在 Processing Unit
 
@@ -3716,11 +4206,11 @@ libusb_control_transfer(devh, 0xA1, 0x81, 0x0002, (PU_ID<<8)|VC_IF, buf, 2, 1000
 
 ### 为什么海康设备没走这条标准通道
 
-设备 1/2 的 PU `bmControls = 00 00`——标准处理控制一个都没实现，对这些 CS 发 SET_CUR 会直接 STALL（硬件拒绝）。这是产品策略：厂商把亮度/对比度/增益全塞进 XU 私有控制（第五篇 Q6 的 10 个启用 control），配合厂商 SDK 卖。标准桌面摄像头（罗技等）才会实现 PU。
+设备 1/2 的 PU `bmControls = 00 00`——标准处理控制一个都没实现，对这些 CS 发 SET_CUR 会直接 STALL（硬件拒绝）。这是产品策略：厂商把亮度/对比度/增益全塞进 XU 私有控制（第六篇 Q6 的 10 个启用 control），配合厂商 SDK 卖。标准桌面摄像头（罗技等）才会实现 PU。
 
 **但标准通道值得学**：它是 UVC 规范的"正文"，XU 是"附录"。接第三方摄像头第一步查 PU bmControls——这条是通用的，不依赖任何厂商文档。
 
-## 6.9 TM5X 大数据交互流程（EP0 上的分包传输）
+## 7.9 TM5X 大数据交互流程（EP0 上的分包传输）
 
 > 来源：海康《TM5X 工业测温机芯 UVC 功能开发指南 V2.0》（2024-02-20，文档号 UD36878B）。解答"EP0 控制传输怎么搬大文件"（§4.4 的延伸问题）。
 
@@ -3963,8 +4453,33 @@ grep -n "EXTENSION_UNIT\|bUnitID\|bInterfaceNumber" /tmp/cam.txt
 | Fixed Header 第一个字节 | `bLength + bDescriptorType` 前 2 字节铁律 |
 | Keep Alive 心跳 | bInterval 轮询间隔 |
 
+## A.10 标准请求参数总表（第五篇 §5.6）
+
+| 请求 | bmRequestType | wValue | wIndex | wLength | 数据阶段 |
+|------|:---:|--------|--------|:---:|------|
+| GET_STATUS (Device) | 0x80 | 0 | 0 | 2 | 2B：D0 自供电, D1 远程唤醒 |
+| GET_STATUS (Interface) | 0x81 | 0 | 接口号 | 2 | 2B：全 0 |
+| GET_STATUS (Endpoint) | 0x82 | 0 | 端点地址 | 2 | 2B：D0 Halt |
+| CLEAR_FEATURE (Endpoint) | 0x02 | 0x0000 (HALT) | 端点地址 | 0 | 无 |
+| CLEAR_FEATURE (Device) | 0x00 | 0x0001 (WAKEUP) | 0 | 0 | 无 |
+| SET_FEATURE (Endpoint) | 0x02 | 0x0000 (HALT) | 端点地址 | 0 | 无 |
+| SET_FEATURE (Device) | 0x00 | 0x0001 (WAKEUP) | 0 | 0 | 无 |
+| SET_FEATURE (TEST_MODE) | 0x00 | 0x0002 | **高字节=测试号** ⚠️ | 0 | 无 |
+| SET_ADDRESS | 0x00 | 新地址 | 0 | 0 | 无 |
+| GET_DESCRIPTOR | 0x80 | 高=类型 低=索引 | 0 或 LANGID ⚠️ | N | N 字节 |
+| SET_DESCRIPTOR | 0x00 | 高=类型 低=索引 | LANGID | N | N 字节 |
+| GET_CONFIGURATION | 0x80 | 0 | 0 | 1 | 1B：当前配置号 |
+| SET_CONFIGURATION | 0x00 | 配置号 | 0 | 0 | 无 |
+| GET_INTERFACE | 0x81 | 0 | 接口号 | 1 | 1B：当前 Alt 号 |
+| SET_INTERFACE | 0x01 | Alt 号 | 接口号 | 0 | 无 |
+| SYNCH_FRAME | 0x82 | 0 | 端点地址 | 2 | 2B：帧号 |
+
+**四规律**：① wValue 四角色（编号/选择器/复合编号/空）；② wIndex 三角色（定位低字节/LANGID/TEST_MODE 高字节）；③ wLength 永远是 DATA 阶段字节数（唯一例外 SET_DESCRIPTOR 带数据）；④ 接收者决定 wIndex 填法（D→0，IF→接口号，EP→端点地址）。
+
+**决策流**：D7 方向 → D6-5 字典 → D4-0 接收者 → bRequest 查表 → wValue/wIndex 读参数。
+
 ---
 
-> **创建日期**：2026-08-02
-> **覆盖范围**：Phase 1-3（32/67 知识点）+ 真实设备实战 + UVC XU 控制与取流
+> **创建日期**：2026-08-02（2026-08-16 更新）
+> **覆盖范围**：Phase 1-5（50/67 知识点）+ 真实设备实战 + UVC XU 控制与取流
 > **代码参考**：`code/xu_minimal_get.c` / `code/xu_interactive.c` / `code/uvc_stream_viewer.cpp` / `code/HIKVISION_TM76_libusb_3.c`
