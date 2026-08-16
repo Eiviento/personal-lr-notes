@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="USB SDK 最小代码示例 — 13 份 C 示例：目标 / 编译运行 / 预期 / 完整源码 / 逐段讲解，单文件零依赖。">
+<meta name="theme-color" content="#1a1a2e">
+<title>USB SDK 最小代码示例</title>
+<style>
+/* ================= usb-sdk-examples 内嵌样式（暗色 IDE 风格） ================= */
+:root {
+    --bg: #1a1a2e;
+    --card-bg: #232338;
+    --card-border: #35354f;
+    --code-bg: #14142a;
+    --text: #c9cdd6;
+    --text-head: #e9ecf5;
+    --muted: #878ba1;
+    --accent: #4da6ff;
+    --accent-dim: rgba(77, 166, 255, 0.12);
+    --hl: rgba(77, 166, 255, 0.16);
+    --hl-border: #4da6ff;
+    --star: #ffd166;
+    --green: #63e6be;
+    --purple: #b197fc;
+    --line-num: #565b75;
+    --mono: Consolas, "Cascadia Mono", "JetBrains Mono", "Courier New", monospace;
+    --sans: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ------------------------------ 侧边栏 260px 固定 ------------------------------ */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    background: #1d1d33;
+    border-right: 1px solid var(--card-border);
+    overflow-y: auto;
+    padding: 20px 16px;
+    z-index: 10;
+}
+
+.sidebar h1 {
+    font-size: 17px;
+    color: var(--text-head);
+    line-height: 1.4;
+}
+
+.sidebar .intro {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 8px 0 14px;
+}
+
+.search-wrap { margin-bottom: 14px; }
+
+#search {
+    width: 100%;
+    padding: 7px 10px;
+    background: var(--code-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+}
+
+#search:focus { border-color: var(--accent); }
+
+.sidebar details {
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.sidebar summary {
+    cursor: pointer;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-head);
+    background: rgba(255, 255, 255, 0.04);
+    list-style: none;
+    user-select: none;
+}
+
+.sidebar summary::before {
+    content: "▸ ";
+    color: var(--accent);
+}
+
+.sidebar details[open] summary::before { content: "▾ "; }
+
+.sidebar .sub-item {
+    display: block;
+    padding: 5px 10px 5px 24px;
+    font-size: 12.5px;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+}
+
+.sidebar .sub-item:hover {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: var(--accent-dim);
+}
+
+.tpl {
+    margin-top: 16px;
+    border: 1px dashed var(--card-border);
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 12px;
+}
+
+.tpl-title { font-weight: 600; color: var(--purple); margin-bottom: 6px; }
+
+.tpl code {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text);
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 4px 6px;
+    margin-bottom: 4px;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+.tpl-note { color: var(--muted); margin-top: 4px; }
+
+/* ------------------------------ 主区 ------------------------------ */
+main {
+    margin-left: 260px;
+    flex: 1;
+    padding: 28px 32px 64px;
+    max-width: 1080px;
+    min-width: 0;
+}
+
+.legend {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 22px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.legend .lg-hl {
+    background: var(--hl);
+    padding: 1px 8px;
+    border-radius: 3px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+}
+
+.legend .lg-star { color: var(--star); }
+
+/* ------------------------------ 卡片 ------------------------------ */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 26px;
+    scroll-margin-top: 20px;
+}
+
+.card h3 {
+    font-size: 16.5px;
+    color: var(--text-head);
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--card-border);
+    font-family: var(--mono);
+    font-size: 15.5px;
+}
+
+.card h3 .cnum {
+    display: inline-block;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 0 7px;
+    margin-right: 8px;
+    font-size: 13px;
+}
+
+.goal {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-dim);
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px;
+    font-size: 13.5px;
+    margin-bottom: 10px;
+}
+
+.build {
+    border-left: 3px solid var(--purple);
+    background: var(--code-bg);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.build code {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: #d5d8e6;
+    white-space: pre;
+    overflow-x: auto;
+    padding-right: 76px;
+}
+
+.build .bhint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+}
+
+.copy {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    padding: 3px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: var(--sans);
+}
+
+.copy:hover { background: rgba(77, 166, 255, 0.28); }
+
+.copy.done { color: var(--green); border-color: var(--green); background: rgba(99, 230, 190, 0.12); }
+
+.expect {
+    border-left: 3px solid var(--green);
+    background: rgba(99, 230, 190, 0.07);
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px;
+    font-size: 13.5px;
+    margin-bottom: 14px;
+}
+
+.expect code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 0 5px;
+    border-radius: 3px;
+}
+
+.star { color: var(--star); font-weight: 600; }
+
+/* ------------------------------ 代码块（CSS counter 行号） ------------------------------ */
+pre.code {
+    background: var(--code-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    counter-reset: ln;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin-bottom: 14px;
+}
+
+pre.code .ln {
+    counter-increment: ln;
+    white-space: pre;
+    display: block;
+}
+
+pre.code .ln::before {
+    content: counter(ln);
+    display: inline-block;
+    width: 2.8em;
+    margin-right: 1em;
+    color: var(--line-num);
+    text-align: right;
+    user-select: none;
+    font-size: 0.95em;
+}
+
+pre.code .hl {
+    background: var(--hl);
+    box-shadow: inset 2px 0 0 var(--hl-border);
+    display: inline-block;
+    padding-right: 10px;
+    border-radius: 0 4px 4px 0;
+}
+
+/* ------------------------------ 逐段讲解 ------------------------------ */
+.notes h4 {
+    font-size: 13px;
+    color: var(--text-head);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.notes p {
+    font-size: 13.5px;
+    margin-bottom: 8px;
+    color: var(--text);
+}
+
+.notes p:last-child { margin-bottom: 0; }
+
+.notes code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 0 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.notes table {
+    border-collapse: collapse;
+    margin: 6px 0 10px;
+    font-size: 12.5px;
+    min-width: 320px;
+}
+
+.notes th, .notes td {
+    border: 1px solid var(--card-border);
+    padding: 5px 12px;
+    text-align: left;
+}
+
+.notes th {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-head);
+    font-weight: 600;
+}
+
+.notes tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+
+.notes td code {
+    font-size: 12px;
+    background: none;
+    padding: 0;
+    color: var(--purple);
+}
+
+/* ------------------------------ 响应式 ≤900px ------------------------------ */
+@media (max-width: 900px) {
+    .sidebar { display: none; }
+    main { margin-left: 0; padding: 18px 14px 48px; }
+    .card { padding: 14px 14px; }
+}
+
+</style>
+</head>
+<body>
+<aside class="sidebar">
+    <h1>USB SDK 最小代码示例</h1>
+    <p class="intro">13 份最小 C 示例，每份 = 目标 + 编译运行 + 预期 + 完整源码 + 逐段讲解。<br>双击本文件即用，零外部依赖。</p>
+    <div class="search-wrap">
+        <input id="search" type="search" placeholder="搜索示例 / 代码..." aria-label="搜索示例或代码">
+    </div>
+    <details open>
+        <summary>设备层 01~05</summary>
+        <a class="sub-item" href="#ex-01">01 枚举设备</a>
+        <a class="sub-item" href="#ex-02">02 热插拔检测</a>
+        <a class="sub-item" href="#ex-03">03 描述符树遍历</a>
+        <a class="sub-item" href="#ex-04">04 claim + Alt 切换</a>
+        <a class="sub-item" href="#ex-05">05 Halt 恢复闭环</a>
+    </details>
+    <details open>
+        <summary>UVC 层 06~10</summary>
+        <a class="sub-item" href="#ex-06">06 UVC 亮度控制</a>
+        <a class="sub-item" href="#ex-07">07 Probe/Commit 协商</a>
+        <a class="sub-item" href="#ex-08">08 UVC 开流</a>
+        <a class="sub-item" href="#ex-09">09 XU 最小通信</a>
+        <a class="sub-item" href="#ex-10">10 信箱模式取流</a>
+    </details>
+    <details open>
+        <summary>其他类 11~12</summary>
+        <a class="sub-item" href="#ex-11">11 CDC 虚拟串口</a>
+        <a class="sub-item" href="#ex-12">12 HID 报表读取</a>
+    </details>
+    <details open>
+        <summary>综合骨架 13</summary>
+        <a class="sub-item" href="#ex-13">13 综合 SDK 骨架</a>
+    </details>
+    <div class="tpl">
+        <div class="tpl-title">编译模板</div>
+        <code>gcc -o app XX.c -lusb-1.0</code>
+        <code>sudo ./app VID PID</code>
+        <p class="tpl-note">示例 10 需 <code>-luvc</code> + OpenCV；示例 13 加 <code>-pthread</code></p>
+    </div>
+</aside>
+<main>
+    <div class="legend">
+        <span>高亮 = 关键行</span><span class="lg-hl">if (r == LIBUSB_ERROR_PIPE)</span>
+        <span><span class="lg-star">★</span> = 教学点</span>
+    </div>
+    <article class="card" id="ex-01">
+        <h3><span class="cnum">01</span>枚举设备 · 01_enum_devices.c</h3>
+        <div class="goal">目标：抄内核花名册——设备列表 ≠ 协议枚举（KB §9.2）</div>
+        <div class="build">
+            <code>gcc -o enum_devices 01_enum_devices.c -lusb-1.0</code>
+            <code>sudo ./enum_devices [VID PID]</code>
+            <div class="bhint">不带参数 = 列出全部设备；加 <code>2bdf 0101</code> = 高亮海康热成像</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：列出全部设备；带 <code>2bdf 0101</code> 时用 <code>&gt;&gt;&gt;</code> 标记目标设备</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 01_enum_devices.c —— 枚举设备（抄内核花名册）</div><div class="ln"> *</div><div class="ln"> * 学什么:  libusb_get_device_list 与协议枚举的区别——这是"抄花名册"，</div><div class="ln"> *          不是"入职面试"（面试是内核在设备插入时完成的）</div><div class="ln"> * 对应知识点: KB 第九篇 §9.2（设备列表 ≠ 协议枚举）</div><div class="ln"> * 编译:    gcc -o enum_devices 01_enum_devices.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./enum_devices [VID PID]   （不带参数 = 列出全部）</div><div class="ln"> * 预期:    列出全部设备；带 2bdf 0101 时高亮海康热成像</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device **devs;</div><div class="ln">    ssize_t cnt, i;</div><div class="ln">    int target_vid = -1, target_pid = -1;   /* -1 = 不过滤 */</div><div class="ln"></div><div class="ln">    if (argc == 3) {</div><div class="ln">        target_vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">        target_pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln">    } else if (argc != 1) {</div><div class="ln">        printf("用法: %s [VID PID]\n", argv[0]);</div><div class="ln">        return 1;</div><div class="ln">    }</div><div class="ln"></div><div class="ln">    if (libusb_init(&amp;ctx) &lt; 0) { perror("libusb_init"); return 1; }</div><div class="ln"></div><div class="ln"><span class="hl">    cnt = libusb_get_device_list(ctx, &amp;devs);   /* ★ 抄花名册（零总线流量） */</span></div><div class="ln">    if (cnt &lt; 0) { fprintf(stderr, "get_device_list: %s\n", libusb_error_name((int)cnt)); return 1; }</div><div class="ln"></div><div class="ln">    printf("共 %zd 台设备\n", cnt);</div><div class="ln">    for (i = 0; i &lt; cnt; i++) {</div><div class="ln">        struct libusb_device_descriptor desc;</div><div class="ln"><span class="hl">        if (libusb_get_device_descriptor(devs[i], &amp;desc) &lt; 0)   /* 内核缓存的副本 */</span></div><div class="ln">            continue;</div><div class="ln">        int match = (target_vid &lt; 0) ||</div><div class="ln"><span class="hl">                    (desc.idVendor == target_vid &amp;&amp; desc.idProduct == target_pid);</span></div><div class="ln">        printf("%s%04x:%04x  bus %d  address %d  %s\n",</div><div class="ln">               match ? "&gt;&gt;&gt; " : "    ",</div><div class="ln">               desc.idVendor, desc.idProduct,</div><div class="ln">               libusb_get_bus_number(devs[i]),</div><div class="ln"><span class="hl">               libusb_get_device_address(devs[i]),   /* §4.5 领的工牌号 */</span></div><div class="ln">               match ? "← 目标设备" : "");</div><div class="ln">    }</div><div class="ln"></div><div class="ln">    libusb_free_device_list(devs, 1);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p><code>libusb_get_device_list</code> = 抄花名册（零总线流量）——枚举是内核在插入时完成的“入职面试”（KB §9.2），你拿到的只是结果，不是现场。</p>
+            <p><code>libusb_get_device_descriptor</code> 读的是内核缓存的副本——设备描述符在 SET_ADDRESS 后的第一个 GET_DESCRIPTOR 就已定案，此后读取不再产生任何总线流量（§9.2）。</p>
+            <p><code>libusb_get_device_address</code> = §4.5 领的工牌号——SET_ADDRESS 分配的 7 位地址，Bus Hound 抓包里的 Addr 字段就是它。</p>
+            <p><code>idVendor:idProduct</code> = 身份证——厂商号由 USB-IF 签发、产品号厂商自定；<code>2bdf:0101</code> 是海康热成像的身份证号。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-02">
+        <h3><span class="cnum">02</span>热插拔检测 · 02_hotplug_detect.c</h3>
+        <div class="goal">目标：把 4.2 的“电平宣告存在”一路送到你的回调——内核 netlink → libusb 事件泵（KB §9.5）</div>
+        <div class="build">
+            <code>gcc -o hotplug_detect 02_hotplug_detect.c -lusb-1.0</code>
+            <code>sudo ./hotplug_detect</code>
+            <code>sudo ./hotplug_detect 2bdf 0101</code>
+            <div class="bhint">不加参数 = 监听所有设备；加 <code>2bdf 0101</code> = 只监听海康</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：启动瞬间 ENUMERATE 刷出全部现有设备；插拔实时打印 +/−</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 02_hotplug_detect.c —— 热插拔检测（ARRIVED/LEFT 回调）</div><div class="ln"> *</div><div class="ln"> * 学什么:  设备插入/拔出如何变成你的回调——4.2 的"电平宣告存在"</div><div class="ln"> *          经内核 netlink → libusb 事件 → 事件泵 → 打印，闭环到应用层</div><div class="ln"> * 对应知识点: KB 第九篇 §9.5（热插拔检测）</div><div class="ln"> * 编译:    gcc -o hotplug_detect 02_hotplug_detect.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./hotplug_detect              ← 监听所有设备</div><div class="ln"> *          sudo ./hotplug_detect 2bdf 0101    ← 只监听海康</div><div class="ln"> * 预期:    启动瞬间 ENUMERATE 刷出全部现有设备；插拔实时打印 +/-</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">static int hotplug_cb(libusb_context *ctx, libusb_device *dev,</div><div class="ln">                      libusb_hotplug_event event, void *user_data)</div><div class="ln">{</div><div class="ln">    (void)ctx;</div><div class="ln">    (void)user_data;</div><div class="ln"></div><div class="ln"><span class="hl">    if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED) {</span></div><div class="ln">        struct libusb_device_descriptor desc;</div><div class="ln">        if (libusb_get_device_descriptor(dev, &amp;desc) == 0) {</div><div class="ln">            printf("+ 设备插入: %04x:%04x  (bus %d, address %d)\n",</div><div class="ln">                   desc.idVendor, desc.idProduct,</div><div class="ln">                   libusb_get_bus_number(dev),</div><div class="ln">                   libusb_get_device_address(dev));</div><div class="ln">        }</div><div class="ln">    } else if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT) {</div><div class="ln"><span class="hl">        printf("- 设备拔出\n");   /* 设备已离线，读不到任何信息 */</span></div><div class="ln">    }</div><div class="ln">    fflush(stdout);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_hotplug_callback_handle handle;</div><div class="ln">    int vid = LIBUSB_HOTPLUG_MATCH_ANY;   /* 默认不过滤 */</div><div class="ln">    int pid = LIBUSB_HOTPLUG_MATCH_ANY;</div><div class="ln"></div><div class="ln">    if (argc == 3) {</div><div class="ln">        vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">        pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln">    }</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln"><span class="hl">    libusb_hotplug_register_callback(ctx,</span></div><div class="ln">        LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,</div><div class="ln"><span class="hl">        LIBUSB_HOTPLUG_ENUMERATE,   /* 启动时已插着的设备也报一遍 */</span></div><div class="ln">        vid, pid, LIBUSB_HOTPLUG_MATCH_ANY,</div><div class="ln">        hotplug_cb, NULL, &amp;handle);</div><div class="ln"></div><div class="ln">    printf("等待设备插拔...（Ctrl+C 退出）\n");</div><div class="ln">    while (1)</div><div class="ln"><span class="hl">        libusb_handle_events(ctx);  /* 事件泵：回调在这里被触发 */</span></div><div class="ln"></div><div class="ln">    /* 不会走到这里；正式代码中应 deregister + exit */</div><div class="ln">    libusb_hotplug_deregister_callback(ctx, handle);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>完整链条（§9.5）：D+ 上拉的“电平宣告存在”（§4.2）→ 内核完成枚举 → netlink 广播 → libusb 事件队列 → <code>libusb_hotplug_register_callback</code> 挂的回调。你写的回调是这条链的最后一站。</p>
+            <p><code>LIBUSB_HOTPLUG_ENUMERATE</code> = 回放——注册时把“已经插着的设备”当作刚刚插入再报一遍，所以启动瞬间刷出全部现有设备；不带它则只收新插拔。</p>
+            <p>LEFT 分支只打印“设备拔出”——设备已离线，任何描述符都读不到（§9.5）；正式代码里 LEFT 只做收尾（关句柄、清状态）。</p>
+            <p><code>libusb_handle_events(ctx)</code> 是事件泵——回调不会自己跑，必须有人不断泵事件队列；这里 while(1) 阻塞泵，示例 13 把它搬进独立线程。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-03">
+        <h3><span class="cnum">03</span>描述符树遍历 · 03_desc_tree_walk.c</h3>
+        <div class="goal">目标：描述符树 = §3.1 层级树的 C 版——接口/Alt/端点三层循环递归打印（lsusb -v 的 libusb 版）</div>
+        <div class="build">
+            <code>gcc -o desc_tree 03_desc_tree_walk.c -lusb-1.0</code>
+            <code>sudo ./desc_tree 2bdf 0101</code>
+            <div class="bhint">对应 KB 第九篇 §9.2（描述符结构体层级）+ 第六篇（Alt Setting 数组形态）</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：打印 433 字节配置链的树形结构——接口/Alt/端点/传输类型/包大小</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 03_desc_tree_walk.c —— 遍历描述符树</div><div class="ln"> *</div><div class="ln"> * 学什么:  描述符结构体 = §3.1 层级树的 C 版——</div><div class="ln"> *          cfg.interface[i].altsetting[j].endpoint[k] 递归打印，</div><div class="ln"> *          就是 lsusb -v 的 libusb 版</div><div class="ln"> * 对应知识点: KB 第九篇 §9.2（描述符结构体层级）+ 第六篇（Alt Setting 数组形态）</div><div class="ln"> * 编译:    gcc -o desc_tree 03_desc_tree_walk.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./desc_tree 2bdf 0101</div><div class="ln"> * 预期:    打印 433 字节链的树形结构（接口/Alt/端点/传输类型/包大小）</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">static void indent(int n) { while (n--) printf("  "); }</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device_handle *devh = NULL;</div><div class="ln">    struct libusb_config_descriptor *cfg;</div><div class="ln">    int vid, pid, i, j, k;</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln">    devh = libusb_open_device_with_vid_pid(ctx, vid, pid);</div><div class="ln">    if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }</div><div class="ln"></div><div class="ln">    if (libusb_get_active_config_descriptor(libusb_get_device(devh), &amp;cfg) &lt; 0) {</div><div class="ln">        fprintf(stderr, "读配置链失败\n"); return 1;</div><div class="ln">    }</div><div class="ln"></div><div class="ln">    printf("设备 %04x:%04x — 配置链（wTotalLength=%d）\n",</div><div class="ln">           vid, pid, cfg-&gt;wTotalLength);</div><div class="ln"><span class="hl">    for (i = 0; i &lt; cfg-&gt;bNumInterfaces; i++) {              /* 接口 */</span></div><div class="ln">        const struct libusb_interface *iface = &amp;cfg-&gt;interface[i];</div><div class="ln">        indent(1); printf("Interface %d (class 0x%02x)\n",</div><div class="ln">                          i, iface-&gt;altsetting[0].bInterfaceClass);</div><div class="ln"><span class="hl">        for (j = 0; j &lt; iface-&gt;num_altsetting; j++) {        /* Alt Setting */</span></div><div class="ln">            const struct libusb_interface_descriptor *alt = &amp;iface-&gt;altsetting[j];</div><div class="ln">            indent(2); printf("Alt %d: %d 个端点%s\n", alt-&gt;bAlternateSetting,</div><div class="ln">                              alt-&gt;bNumEndpoints,</div><div class="ln">                              alt-&gt;bNumEndpoints == 0 ? "（零带宽）" : "");</div><div class="ln"><span class="hl">            for (k = 0; k &lt; alt-&gt;bNumEndpoints; k++) {       /* 端点 */</span></div><div class="ln">                const struct libusb_endpoint_descriptor *ep = &amp;alt-&gt;endpoint[k];</div><div class="ln">                const char *type =</div><div class="ln"><span class="hl">                    (ep-&gt;bmAttributes &amp; 0x03) == 0 ? "控制" :</span></div><div class="ln">                    (ep-&gt;bmAttributes &amp; 0x03) == 1 ? "等时" :</div><div class="ln">                    (ep-&gt;bmAttributes &amp; 0x03) == 2 ? "批量" : "中断";</div><div class="ln">                indent(3);</div><div class="ln"><span class="hl">                printf("EP 0x%02x (%s) %s wMaxPacketSize=%d bInterval=%d\n",</span></div><div class="ln">                       ep-&gt;bEndpointAddress,</div><div class="ln">                       ep-&gt;bEndpointAddress &amp; 0x80 ? "IN" : "OUT",</div><div class="ln">                       type, ep-&gt;wMaxPacketSize, ep-&gt;bInterval);</div><div class="ln">            }</div><div class="ln">        }</div><div class="ln">    }</div><div class="ln"></div><div class="ln">    libusb_free_config_descriptor(cfg);</div><div class="ln">    libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>三层 for 循环 = §3.1 层级树的 C 版：<code>cfg-&gt;interface[i].altsetting[j].endpoint[k]</code>——配置→接口→Alt→端点，缩进打印出来就是 lsusb -v 的 libusb 版。</p>
+            <p><code>iface-&gt;num_altsetting</code> 是数组形态（第六篇深挖过）——同一接口的多个 Alt Setting 是并列数组而不是树的孩子，当前生效的是哪个由 SET_INTERFACE 决定。</p>
+            <p><code>ep-&gt;bmAttributes &amp; 0x03</code> 低 2 位编码传输类型（§2.4）：00 控制 / 01 等时 / 10 批量 / 11 中断——一个掩码分辨管道种类。</p>
+            <p><code>wMaxPacketSize</code> 是带宽配额（全速 64B / 高速 512B）；<code>bInterval</code> 只对中断/等时端点有意义——批量端点读这两个字段基本无价值。</p>
+            <p><code>libusb_get_active_config_descriptor</code> 只读“当前激活”的配置——设备可有多个配置（SET_CONFIGURATION 切换），同一时刻只有一个生效。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-04">
+        <h3><span class="cnum">04</span>claim + Alt 切换 · 04_claim_alt_setting.c</h3>
+        <div class="goal">目标：四层动作的后两层——claim 所有权登记（零总线流量）+ SET_INTERFACE 切 Alt（设备固件执行旧端点失效→新端点激活→toggle 归零）</div>
+        <div class="build">
+            <code>gcc -o claim_alt 04_claim_alt_setting.c -lusb-1.0</code>
+            <code>sudo ./claim_alt 2bdf 0101</code>
+            <div class="bhint">对应 KB 第九篇 §9.2 深挖（open ≠ 开流 / claim 与 detach）</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：detach+claim 成功 → VS 接口 Alt1 激活 → 打印端点 → 三步还原（司机复工）</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 04_claim_alt_setting.c —— claim 接口 + 切换 Alt Setting</div><div class="ln"> *</div><div class="ln"> * 学什么:  四层动作的后两层——claim（所有权登记，零总线流量）与</div><div class="ln"> *          set_interface_alt_setting（SET_INTERFACE 的代码版，设备</div><div class="ln"> *          固件执行"旧端点失效→新端点激活→toggle 归零"）</div><div class="ln"> * 对应知识点: KB 第九篇 §9.2 深挖（open ≠ 开流 / claim 与 detach）</div><div class="ln"> * 编译:    gcc -o claim_alt 04_claim_alt_setting.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./claim_alt 2bdf 0101</div><div class="ln"> * 预期:    detach+claim 成功 → VS 接口 Alt1 激活 → 打印端点 → 还原</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device_handle *devh = NULL;</div><div class="ln">    int vid, pid, r;</div><div class="ln">    int vs_if = 1, vs_alt1 = 1;   /* 2bdf:0101: VS 接口 1，Alt1 有流端点 */</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln">    devh = libusb_open_device_with_vid_pid(ctx, vid, pid);</div><div class="ln">    if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }</div><div class="ln"></div><div class="ln">    /* 【内核层】detach 司机（video0 消失）+ claim 登记（零总线流量） */</div><div class="ln">    if ((r = libusb_kernel_driver_active(devh, vs_if)) == 1) {</div><div class="ln"><span class="hl">        libusb_detach_kernel_driver(devh, vs_if);</span></div><div class="ln">        printf("[内核层] 已请内核司机下车（/dev/video0 消失）\n");</div><div class="ln">    }</div><div class="ln"><span class="hl">    if ((r = libusb_claim_interface(devh, vs_if)) &lt; 0) {</span></div><div class="ln">        fprintf(stderr, "claim 失败: %s\n", libusb_error_name(r)); return 1;</div><div class="ln">    }</div><div class="ln">    printf("[内核层] claim 接口 %d 成功（所有权登记，无总线流量）\n", vs_if);</div><div class="ln"></div><div class="ln">    /* 【协议层】SET_INTERFACE = 开流开关 */</div><div class="ln"><span class="hl">    r = libusb_set_interface_alt_setting(devh, vs_if, vs_alt1);</span></div><div class="ln">    if (r &lt; 0) { fprintf(stderr, "切 Alt 失败: %s\n", libusb_error_name(r)); return 1; }</div><div class="ln">    printf("[协议层] SET_INTERFACE(Alt%d) 成功——流端点已激活，toggle 归零\n", vs_alt1);</div><div class="ln"></div><div class="ln">    /* 查看 Alt1 的端点 */</div><div class="ln">    struct libusb_config_descriptor *cfg;</div><div class="ln">    libusb_get_active_config_descriptor(libusb_get_device(devh), &amp;cfg);</div><div class="ln">    const struct libusb_interface_descriptor *alt = &amp;cfg-&gt;interface[vs_if].altsetting[vs_alt1];</div><div class="ln">    printf("[查看]   Alt%d 有 %d 个端点:", vs_alt1, alt-&gt;bNumEndpoints);</div><div class="ln">    for (int i = 0; i &lt; alt-&gt;bNumEndpoints; i++)</div><div class="ln">        printf(" 0x%02x", alt-&gt;endpoint[i].bEndpointAddress);</div><div class="ln">    printf("\n");</div><div class="ln">    libusb_free_config_descriptor(cfg);</div><div class="ln"></div><div class="ln">    /* 还原：切回 Alt0（关流）+ 还车 + 司机复工 */</div><div class="ln"><span class="hl">    libusb_set_interface_alt_setting(devh, vs_if, 0);</span></div><div class="ln"><span class="hl">    libusb_release_interface(devh, vs_if);</span></div><div class="ln"><span class="hl">    libusb_attach_kernel_driver(devh, vs_if);</span></div><div class="ln">    printf("[还原]  Alt0 + release + attach 完成（司机复工）\n");</div><div class="ln"></div><div class="ln">    libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>四层动作的后两层（§9.2 深挖）：open（前两层见 03）之后，<code>libusb_claim_interface</code> 是所有权登记——零总线流量，纯粹是内核的“此接口已有人用”登记簿。</p>
+            <p><code>libusb_detach_kernel_driver</code> = 请内核司机下车——uvcvideo 占着 /dev/video0 不撒手，先 detach 才能 claim（detach 后 /dev/video0 消失）。</p>
+            <p><code>libusb_set_interface_alt_setting</code> 是 SET_INTERFACE 的代码版（§5.5）——设备固件执行“旧端点失效 → 新端点激活 → toggle 归零”，Alt0 零带宽、Alt1 才有流端点。</p>
+            <p>结尾还原三件套（切回 Alt0 + release + attach）不是客套——不还原，下次打开设备会撞上“司机已下车”的脏状态。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-05">
+        <h3><span class="cnum">05</span>Halt 恢复闭环 · 05_clear_halt.c</h3>
+        <div class="goal">目标：5.3 的故障闭环写成代码——STALL 现形为 PIPE → GET_STATUS 确认 → clear_halt 解冻 → 重试</div>
+        <div class="build">
+            <code>gcc -o clear_halt 05_clear_halt.c -lusb-1.0</code>
+            <code>sudo ./clear_halt 2bdf 0101</code>
+            <div class="bhint">对应 KB 第五篇 §5.3（两种 STALL 生命周期）+ 第九篇 §9.4</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：故意发错 wIndex 高字节 → PIPE（STATUS 回 STALL 现形）→ 演示闭环三步</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 05_clear_halt.c —— 端点 Halt 恢复闭环</div><div class="ln"> *</div><div class="ln"> * 学什么:  5.3 的故障闭环写成代码——STALL 现形为 PIPE →</div><div class="ln"> *          GET_STATUS 确认 → libusb_clear_halt 解冻 → 重试</div><div class="ln"> * 对应知识点: KB 第五篇 §5.3（两种 STALL 生命周期）+ 第九篇 §9.4</div><div class="ln"> * 编译:    gcc -o clear_halt 05_clear_halt.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./clear_halt 2bdf 0101</div><div class="ln"> * 预期:    故意发错 wIndex 高字节 → PIPE（STATUS 回 STALL 现形）→</div><div class="ln"> *          演示闭环三步（GET_STATUS → clear_halt → 重试恢复）</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device_handle *devh = NULL;</div><div class="ln">    int vid, pid, r;</div><div class="ln">    unsigned char buf[16];</div><div class="ln">    int vc_if = 0;</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln">    devh = libusb_open_device_with_vid_pid(ctx, vid, pid);</div><div class="ln">    if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }</div><div class="ln"></div><div class="ln">    /* ① 故意发错 wIndex 高字节（XU ID=0xFF 不存在）→ 设备 STATUS 回 STALL */</div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0xA1, 0x85, 0x0400, 0xFF00, buf, 2, 1000);</span></div><div class="ln"><span class="hl">    if (r == LIBUSB_ERROR_PIPE)</span></div><div class="ln">        printf("① 故意错发: PIPE —— 这就是 STATUS 阶段的 STALL（§5.1 拒绝唯一入口）\n");</div><div class="ln">    else</div><div class="ln">        printf("① 意外: %s\n", libusb_error_name(r));</div><div class="ln"></div><div class="ln">    /* ② 闭环演示：GET_STATUS 确认 → clear_halt 解冻 → 重试 */</div><div class="ln">    /*    （注：EP0 的 STALL 是一次性的——下个 SETUP 自动清除；数据端点才需要本闭环。</div><div class="ln">     *     这里演示的是数据端点故障时的标准处理路径。） */</div><div class="ln">    int ep = 0x81;   /* VS 批量 IN 端点 */</div><div class="ln">    unsigned char status[2];</div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0x82, 0x00, 0, ep, status, 2, 1000);</span></div><div class="ln">    printf("② GET_STATUS(EP 0x%02x) = %02x %02x（D0=Halt:%d）\n",</div><div class="ln"><span class="hl">           ep, status[0], status[1], status[0] &amp; 1);</span></div><div class="ln"></div><div class="ln"><span class="hl">    r = libusb_clear_halt(devh, ep);   /* = CLEAR_FEATURE(ENDPOINT_HALT) 的封装 */</span></div><div class="ln">    printf("③ libusb_clear_halt(0x%02x): %s（解冻，管道恢复可重试）\n",</div><div class="ln">           ep, r &lt; 0 ? libusb_error_name(r) : "成功");</div><div class="ln"></div><div class="ln">    libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p><code>0xFF00</code> 的 wIndex 高字节是个不存在的 XU ID——设备在 STATUS 阶段回 STALL，libusb 里现形为 <code>LIBUSB_ERROR_PIPE</code>（§5.1 拒绝唯一入口）。</p>
+            <p>闭环第二步：GET_STATUS(EP) 读回 2 字节，<code>status[0] &amp; 1</code> = Halt 位——确认端点真的停摆而不是超时（§5.3）。</p>
+            <p><code>libusb_clear_halt</code> = CLEAR_FEATURE(ENDPOINT_HALT) 的封装——数据端点的 STALL 是“粘性”的，必须显式解冻；EP0 的 STALL 是一次性的（§5.3），下一个 SETUP 自动清除。</p>
+            <p>代码注释里的提醒是重点：本闭环只属于数据端点——EP0 出错不走这条路，别把两套生命周期搞混（§5.3 两种 STALL）。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-06">
+        <h3><span class="cnum">06</span>UVC 亮度控制 · 06_uvc_brightness.c</h3>
+        <div class="goal">目标：标准 UVC 类请求的形状（0x21/0xA1 + wValue 高字节=CS_ID）；<span class="star">★ 教学点：专业设备 PU 是空壳（bmControls=00 00）</span></div>
+        <div class="build">
+            <code>gcc -o uvc_brightness 06_uvc_brightness.c -lusb-1.0</code>
+            <code>sudo ./uvc_brightness 2bdf 0101</code>
+            <div class="bhint">对应 KB 第六篇 §6.20（bmControls 位图）+ 第八篇 §8.8</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：GET_CUR(Brightness) → <span class="star">PIPE（STALL 教学点）</span>，程序打印解释并退出；换标准摄像头则返回亮度值并成功 SET_CUR</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 06_uvc_brightness.c —— 标准 UVC 亮度控制（PU GET_CUR/SET_CUR）</div><div class="ln"> *</div><div class="ln"> * 学什么:  标准 UVC 类请求的形状（0x21/0xA1 + wValue 高字节=CS_ID）</div><div class="ln"> *          与"专业设备 PU 是空壳"的现实——2bdf:0101 的 PU</div><div class="ln"> *          bmControls=00 00，GET_CUR 必然 STALL（预期失败=教学点）</div><div class="ln"> * 对应知识点: KB 第六篇 §6.20（bmControls 位图）+ 第八篇 §8.8</div><div class="ln"> * 编译:    gcc -o uvc_brightness 06_uvc_brightness.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./uvc_brightness 2bdf 0101</div><div class="ln"> * 预期:    GET_CUR(Brightness) → PIPE；程序打印解释并退出</div><div class="ln"> *          （换罗技等标准摄像头，同一份代码会返回亮度值并成功 SET_CUR）</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln"><span class="hl">#define CS_BRIGHTNESS  0x01   /* PU 控制选择子（§6.20 位图表） */</span></div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device_handle *devh = NULL;</div><div class="ln">    int vid, pid, r;</div><div class="ln">    unsigned char val[2];</div><div class="ln">    int vc_if = 0;   /* 2bdf:0101 的 VC 接口号（lsusb -v 确认） */</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln">    devh = libusb_open_device_with_vid_pid(ctx, vid, pid);</div><div class="ln">    if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }</div><div class="ln">    libusb_claim_interface(devh, vc_if);   /* PU 控制走 EP0，其实不 claim 也行 */</div><div class="ln"></div><div class="ln">    /* 读亮度: IN Class Interface, GET_CUR, wValue 高字节=CS_BRIGHTNESS,</div><div class="ln">     * wIndex=VC 接口号（PU 没有 Unit ID——那是 XU 的专利） */</div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0xA1, 0x81, CS_BRIGHTNESS &lt;&lt; 8,</span></div><div class="ln">                                vc_if, val, 2, 1000);</div><div class="ln"><span class="hl">    if (r == LIBUSB_ERROR_PIPE) {</span></div><div class="ln">        printf("GET_CUR(Brightness) → PIPE（STATUS 回 STALL）\n");</div><div class="ln"><span class="hl">        printf("★ 预期内：本设备 PU bmControls=00 00，标准控制是空壳\n");</span></div><div class="ln">        printf("  （第六篇 §6.20 的专业设备常态——亮度/对比度全塞进 XU，\n");</div><div class="ln">        printf("   见示例 09。换标准摄像头则本代码直接返回亮度值。）\n");</div><div class="ln">    } else if (r &gt;= 0) {</div><div class="ln">        int brightness = val[0] | (val[1] &lt;&lt; 8);</div><div class="ln">        printf("当前亮度 = %d（小端 %02x %02x）\n", brightness, val[0], val[1]);</div><div class="ln"></div><div class="ln">        /* 设亮度 = 当前值（标准设备上可改任意 0~100 试试） */</div><div class="ln"><span class="hl">        r = libusb_control_transfer(devh, 0x21, 0x01, CS_BRIGHTNESS &lt;&lt; 8,</span></div><div class="ln">                                    vc_if, val, 2, 1000);</div><div class="ln">        printf("SET_CUR(Brightness=%d): %s\n", brightness,</div><div class="ln">               r &lt; 0 ? libusb_error_name(r) : "成功");</div><div class="ln">    } else {</div><div class="ln">        printf("意外: %s\n", libusb_error_name(r));</div><div class="ln">    }</div><div class="ln"></div><div class="ln">    libusb_release_interface(devh, vc_if);</div><div class="ln">    libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p><code>0xA1 0x81 CS_BRIGHTNESS&lt;&lt;8</code> 是类请求的三层法律（§5.2）：bmRequestType=0xA1（IN|Class|Interface）、bRequest=0x81（GET_CUR）、wValue 高字节=控制选择子——每个字节都有协议依据。</p>
+            <p>wIndex = VC 接口号，没有 Unit ID——PU 在接口层，只有 XU 才需要 Unit ID（那是示例 09 的事，§6.20）。</p>
+            <p><span class="star">★ STALL 是教学点</span>：本设备 PU 的 bmControls=00 00（§6.20 位图），标准控制是空壳——专业设备把亮度/对比度全塞进 XU，示例 09 就是那条路。</p>
+            <p>换罗技等标准摄像头，同一份代码 GET_CUR 直接返回亮度值并可 SET_CUR——请求形状没错，错的是设备。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-07">
+        <h3><span class="cnum">07</span>Probe/Commit 协商 · 07_uvc_probe_commit.c</h3>
+        <div class="goal">目标：6.25 的协商机制——GET_MIN/MAX/DEF 问范围 → SET_CUR 试问 → GET_CUR 看设备敲定；26 字节负载字段解析</div>
+        <div class="build">
+            <code>gcc -o uvc_probe 07_uvc_probe_commit.c -lusb-1.0</code>
+            <code>sudo ./uvc_probe 2bdf 0101</code>
+            <div class="bhint">对应 KB 第六篇 §6.25 + 第十会话（UVC 请求码全家桶）</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：打印设备自报的格式索引/帧索引/帧率/单帧最大字节数（未发 Commit、未开流——纯协商对话）</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 07_uvc_probe_commit.c —— Probe/Commit 协商（不取流只看对话）</div><div class="ln"> *</div><div class="ln"> * 学什么:  6.25 的协商机制——GET_MIN/MAX/DEF 问范围 → SET_CUR Probe</div><div class="ln"> *          试问 → GET_CUR 看设备敲定的参数；26 字节负载的字段解析</div><div class="ln"> * 对应知识点: KB 第六篇 §6.25 + 第十会话（UVC 请求码全家桶）</div><div class="ln"> * 编译:    gcc -o uvc_probe 07_uvc_probe_commit.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./uvc_probe 2bdf 0101</div><div class="ln"> * 预期:    打印设备自报的格式索引/帧索引/帧率/单帧最大字节数</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;string.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">/* VS Probe 26 字节负载的字段偏移（UVC 1.1） */</div><div class="ln">#define OFF_FORMAT_IDX     1</div><div class="ln">#define OFF_FRAME_IDX      2</div><div class="ln">#define OFF_FRAME_INTERVAL 3</div><div class="ln">#define OFF_MAX_FRAME_SIZE 17</div><div class="ln">#define OFF_MAX_PAYLOAD    21</div><div class="ln">#define PROBE_LEN          26</div><div class="ln"></div><div class="ln">static void print_probe(const char *tag, unsigned char *p)</div><div class="ln">{</div><div class="ln">    printf("%s: Format=%d Frame=%d interval=%.1fms MaxFrameSize=%d Payload=%d\n",</div><div class="ln">           tag, p[OFF_FORMAT_IDX], p[OFF_FRAME_IDX],</div><div class="ln"><span class="hl">           (p[OFF_FRAME_INTERVAL] | p[OFF_FRAME_INTERVAL+1]&lt;&lt;8 |</span></div><div class="ln">            p[OFF_FRAME_INTERVAL+2]&lt;&lt;16 | p[OFF_FRAME_INTERVAL+3]&lt;&lt;24) / 10000.0,</div><div class="ln">           p[OFF_MAX_FRAME_SIZE] | p[OFF_MAX_FRAME_SIZE+1]&lt;&lt;8 |</div><div class="ln">           p[OFF_MAX_FRAME_SIZE+2]&lt;&lt;16 | p[OFF_MAX_FRAME_SIZE+3]&lt;&lt;24,</div><div class="ln">           p[OFF_MAX_PAYLOAD] | p[OFF_MAX_PAYLOAD+1]&lt;&lt;8 |</div><div class="ln">           p[OFF_MAX_PAYLOAD+2]&lt;&lt;16 | p[OFF_MAX_PAYLOAD+3]&lt;&lt;24);</div><div class="ln">}</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device_handle *devh = NULL;</div><div class="ln">    unsigned char buf[PROBE_LEN];</div><div class="ln">    int vid, pid, r;</div><div class="ln">    int vs_if = 1;   /* 2bdf:0101 的 VS 接口号 */</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln">    devh = libusb_open_device_with_vid_pid(ctx, vid, pid);</div><div class="ln">    if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }</div><div class="ln">    libusb_claim_interface(devh, vs_if);</div><div class="ln"></div><div class="ln">    /* 问范围: VS Probe 的 CS_ID=0x01，wIndex=VS 接口号（没有 Unit ID！） */</div><div class="ln">    memset(buf, 0, sizeof(buf));</div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0xA1, 0x82, 0x0100, vs_if, buf, PROBE_LEN, 1000);</span></div><div class="ln">    if (r &gt;= 0) print_probe("GET_MIN", buf); else printf("GET_MIN: %s\n", libusb_error_name(r));</div><div class="ln"></div><div class="ln">    memset(buf, 0, sizeof(buf));</div><div class="ln">    r = libusb_control_transfer(devh, 0xA1, 0x83, 0x0100, vs_if, buf, PROBE_LEN, 1000);</div><div class="ln">    if (r &gt;= 0) print_probe("GET_MAX", buf); else printf("GET_MAX: %s\n", libusb_error_name(r));</div><div class="ln"></div><div class="ln">    memset(buf, 0, sizeof(buf));</div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0xA1, 0x87, 0x0100, vs_if, buf, PROBE_LEN, 1000);</span></div><div class="ln">    if (r &gt;= 0) print_probe("GET_DEF", buf); else printf("GET_DEF: %s\n", libusb_error_name(r));</div><div class="ln"></div><div class="ln">    /* 试问: 用默认值 Probe */</div><div class="ln">    memset(buf, 0, sizeof(buf));</div><div class="ln"><span class="hl">    buf[OFF_FORMAT_IDX] = 1;</span></div><div class="ln">    buf[OFF_FRAME_IDX]  = 1;</div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0x21, 0x01, 0x0100, vs_if, buf, PROBE_LEN, 1000);</span></div><div class="ln">    if (r &gt;= 0) print_probe("SET_CUR Probe", buf); else printf("Probe: %s\n", libusb_error_name(r));</div><div class="ln"></div><div class="ln">    memset(buf, 0, sizeof(buf));</div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0xA1, 0x81, 0x0100, vs_if, buf, PROBE_LEN, 1000);</span></div><div class="ln">    if (r &gt;= 0) print_probe("GET_CUR 设备敲定", buf); else printf("GET_CUR: %s\n", libusb_error_name(r));</div><div class="ln">    printf("（未发 Commit、未开流——纯协商对话到此为止）\n");</div><div class="ln"></div><div class="ln">    libusb_release_interface(devh, vs_if);</div><div class="ln">    libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>请求码全家桶（第十会话）——五连问构成 §6.25 协商机制的骨架：</p>
+            <p>26 字节负载按偏移解析：Format(1)、Frame(2)、FrameInterval(3~6，100ns 单位)、MaxFrameSize(17~20)、MaxPayload(21~24)——<code>print_probe</code> 取 4 字节小端，帧率 ÷10000 转毫秒。</p>
+            <p>wIndex = VS 接口号、无 Unit ID——与 06 同理：VS 的 Probe/Commit 是接口级功能。</p>
+            <p>对话流程：先问范围（MIN/MAX/DEF）→ SET_CUR 拿默认值“试问” → GET_CUR 看设备敲定的参数。结尾“未发 Commit、未开流”——协商与开流是两件事（§6.25）。</p>
+            <table>
+                                <thead><tr><th>bRequest</th><th>含义</th><th>方向</th></tr></thead>
+                                <tbody>
+                                    <tr><td>0x82</td><td>GET_MIN（问最小）</td><td>IN</td></tr>
+                                    <tr><td>0x83</td><td>GET_MAX（问最大）</td><td>IN</td></tr>
+                                    <tr><td>0x87</td><td>GET_DEF（问默认）</td><td>IN</td></tr>
+                                    <tr><td>0x01</td><td>SET_CUR（试问 Probe）</td><td>OUT</td></tr>
+                                    <tr><td>0x81</td><td>GET_CUR（设备敲定）</td><td>IN</td></tr>
+                                </tbody>
+                            </table>
+        </div>
+    </article>
+    <article class="card" id="ex-08">
+        <h3><span class="cnum">08</span>UVC 开流 · 08_uvc_open_stream.c</h3>
+        <div class="goal">目标：开流全流程——自动选 Alt（跳过零带宽）→ SET_INTERFACE 开流 → 批量收 1 秒统计字节数（不拼帧，证明管道通）</div>
+        <div class="build">
+            <code>gcc -o uvc_open_stream 08_uvc_open_stream.c -lusb-1.0</code>
+            <code>sudo ./uvc_open_stream 2bdf 0101</code>
+            <div class="bhint">对应 KB 第九篇 §9.2 深挖（open ≠ 开流）+ 第十会话（开流=切通道）</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：打印选中的 Alt 与端点 → 收 1 秒 → 字节数（每秒约几十万字节）</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 08_uvc_open_stream.c —— 标准 UVC 开流（SET_INTERFACE + 收 1 秒统计）</div><div class="ln"> *</div><div class="ln"> * 学什么:  开流全流程——找 Alt（自动选第一个有端点的）→ SET_INTERFACE</div><div class="ln"> *          → 批量收 1 秒裸数据统计字节数（不拼帧，证明管道通即可）</div><div class="ln"> * 对应知识点: KB 第九篇 §9.2 深挖（open ≠ 开流）+ 第十会话（开流=切通道）</div><div class="ln"> * 编译:    gcc -o uvc_open_stream 08_uvc_open_stream.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./uvc_open_stream 2bdf 0101</div><div class="ln"> * 预期:    打印选中的 Alt 与端点 → 收 1 秒 → 字节数（每秒约几十万字节）</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;time.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device_handle *devh = NULL;</div><div class="ln">    struct libusb_config_descriptor *cfg;</div><div class="ln">    int vid, pid, r;</div><div class="ln">    int vs_if = 1, alt_num = -1, ep_in = -1, ep_pkt = 0;</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln">    devh = libusb_open_device_with_vid_pid(ctx, vid, pid);</div><div class="ln">    if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }</div><div class="ln"></div><div class="ln">    /* 自动找第一个"有端点的 Alt"（跳过 Alt0 零带宽） */</div><div class="ln">    libusb_get_active_config_descriptor(libusb_get_device(devh), &amp;cfg);</div><div class="ln">    const struct libusb_interface *iface = &amp;cfg-&gt;interface[vs_if];</div><div class="ln">    for (int j = 0; j &lt; iface-&gt;num_altsetting; j++) {</div><div class="ln">        const struct libusb_interface_descriptor *alt = &amp;iface-&gt;altsetting[j];</div><div class="ln">        for (int k = 0; k &lt; alt-&gt;bNumEndpoints; k++) {</div><div class="ln"><span class="hl">            if (alt-&gt;endpoint[k].bEndpointAddress &amp; 0x80) {  /* IN 端点 */</span></div><div class="ln">                alt_num = alt-&gt;bAlternateSetting;</div><div class="ln">                ep_in = alt-&gt;endpoint[k].bEndpointAddress;</div><div class="ln">                ep_pkt = alt-&gt;endpoint[k].wMaxPacketSize;</div><div class="ln">                break;</div><div class="ln">            }</div><div class="ln">        }</div><div class="ln">        if (ep_in &gt;= 0) break;</div><div class="ln">    }</div><div class="ln">    libusb_free_config_descriptor(cfg);</div><div class="ln">    if (ep_in &lt; 0) { fprintf(stderr, "没找到流端点\n"); return 1; }</div><div class="ln">    printf("选中的流管道: Alt%d, EP 0x%02x, wMaxPacketSize=%d（带宽配额）\n",</div><div class="ln">           alt_num, ep_in, ep_pkt);</div><div class="ln"></div><div class="ln">    /* 接管 + 开流（SET_INTERFACE 的代码版） */</div><div class="ln">    if (libusb_kernel_driver_active(devh, vs_if) == 1)</div><div class="ln">        libusb_detach_kernel_driver(devh, vs_if);</div><div class="ln"><span class="hl">    libusb_claim_interface(devh, vs_if);</span></div><div class="ln"><span class="hl">    r = libusb_set_interface_alt_setting(devh, vs_if, alt_num);</span></div><div class="ln">    if (r &lt; 0) { fprintf(stderr, "开流失败: %s\n", libusb_error_name(r)); return 1; }</div><div class="ln"><span class="hl">    printf("★ 开流成功——设备已激活流端点；数据要等 Host 的 IN Token（现在开始收 1 秒）\n");</span></div><div class="ln"></div><div class="ln">    /* 收 1 秒裸数据（不拼帧，只统计——拼帧见示例 10 由 libuvc 代劳） */</div><div class="ln">    unsigned char buf[512 * 64];</div><div class="ln">    long long total = 0;</div><div class="ln">    time_t t0 = time(NULL);</div><div class="ln">    while (time(NULL) - t0 &lt; 1) {</div><div class="ln">        int got = 0;</div><div class="ln"><span class="hl">        r = libusb_bulk_transfer(devh, ep_in, buf, sizeof(buf), &amp;got, 100);</span></div><div class="ln">        if (r == 0) total += got;</div><div class="ln">        else if (r != LIBUSB_ERROR_TIMEOUT) { printf("传输: %s\n", libusb_error_name(r)); break; }</div><div class="ln">    }</div><div class="ln">    printf("1 秒收到 %lld 字节（约 %lld KB/s）——管道已通\n", total, total / 1024);</div><div class="ln"></div><div class="ln">    /* 关流 + 还车 + 司机复工 */</div><div class="ln"><span class="hl">    libusb_set_interface_alt_setting(devh, vs_if, 0);</span></div><div class="ln">    libusb_release_interface(devh, vs_if);</div><div class="ln">    libusb_attach_kernel_driver(devh, vs_if);</div><div class="ln">    printf("已关流（Alt0）+ release + attach\n");</div><div class="ln"></div><div class="ln">    libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>自动选 Alt：遍历找第一个带 IN 端点的 Alt，跳过 Alt0 零带宽（§9.2 深挖）——把“哪个 Alt 有流”的决策交给代码而不是人。</p>
+            <p><code>libusb_set_interface_alt_setting</code> 是开流开关——SET_INTERFACE 之后设备固件才激活流端点（toggle 归零），此前的 bulk 读只会超时。</p>
+            <p>收数阶段是 Host 中心化：数据不会自己来，每个 <code>libusb_bulk_transfer</code> 都是 Host 发 IN Token 把数据拉回来——设备永远不会主动发。</p>
+            <p><code>LIBUSB_ERROR_TIMEOUT</code> 必须吞掉——视频流不是节拍器，100ms 内无数据是常态，不算错误。</p>
+            <p>关流 = 切回 Alt0 + release + attach（与 04 同款还原三件套）——不还原，下次开流会失败。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-09">
+        <h3><span class="cnum">09</span>XU 最小通信 · 09_xu_minimal.c</h3>
+        <div class="goal">目标：XU 三把钥匙的填法——wValue 高字节=CS_ID（海康惯例）、wIndex 高字节=XU Unit ID（换设备只改这里）；GET_LEN 试通</div>
+        <div class="build">
+            <code>gcc -o xu_minimal 09_xu_minimal.c -lusb-1.0</code>
+            <code>sudo ./xu_minimal 2bdf 0101 <VC_IF> <XU_ID></code>
+            <div class="bhint">XU_ID 查法：<code>sudo lsusb -v -d 2bdf:0101 | grep bUnitID</code>；对应 KB 第八篇 §8.1（XU 协议设计）+ 第六会话方法论</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：GET_LEN 返回 2 字节协议版本号</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 09_xu_minimal.c —— 最小 XU 扩展单元通信（读协议版本）</div><div class="ln"> *</div><div class="ln"> * 学什么:  XU 三把钥匙的填法——wValue 高字节=CS_ID（海康惯例）、</div><div class="ln"> *          wIndex 高字节=XU Unit ID（换设备只改这里）；GET_LEN 试通</div><div class="ln"> * 对应知识点: KB 第八篇 §8.1（XU 协议设计）+ 第六会话方法论</div><div class="ln"> * 编译:    gcc -o xu_minimal 09_xu_minimal.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./xu_minimal 2bdf 0101 &lt;VC_IF&gt; &lt;XU_ID&gt;</div><div class="ln"> *          （XU_ID 从 sudo lsusb -v -d 2bdf:0101 的 bUnitID 查）</div><div class="ln"> * 预期:    GET_LEN 返回 2 字节协议版本号</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln"><span class="hl">#define CS_PROTOCOL_VERSION 0x04   /* 本设备 CS_ID=0x04 是协议版本（第六会话验证） */</span></div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device_handle *devh = NULL;</div><div class="ln">    unsigned char len[2], ver[8];</div><div class="ln">    int vid, pid, vc_if, xu_id, r, got;</div><div class="ln"></div><div class="ln">    if (argc != 5) {</div><div class="ln">        printf("用法: %s VID PID VC_IF XU_ID\n", argv[0]);</div><div class="ln">        printf("  XU_ID 查法: sudo lsusb -v -d VID:PID | grep bUnitID\n");</div><div class="ln">        return 1;</div><div class="ln">    }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln">    vc_if = atoi(argv[3]);</div><div class="ln">    xu_id = atoi(argv[4]);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln">    devh = libusb_open_device_with_vid_pid(ctx, vid, pid);</div><div class="ln">    if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }</div><div class="ln"></div><div class="ln">    /* 三阶段: GET_LEN → GET_CUR（FUNC_SWITCH 对只读 CS 可省略） */</div><div class="ln">    /* bmRequestType=0xA1(IN Class IF), wValue=CS_ID&lt;&lt;8（海康惯例）,</div><div class="ln">     * wIndex=(XU_ID&lt;&lt;8)|VC_IF —— 换设备只改 XU_ID！ */</div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0xA1, 0x85, CS_PROTOCOL_VERSION &lt;&lt; 8,</span></div><div class="ln"><span class="hl">                                (xu_id &lt;&lt; 8) | vc_if, len, 2, 1000);</span></div><div class="ln">    if (r &lt; 0) { fprintf(stderr, "GET_LEN: %s（XU_ID 填对了吗？）\n", libusb_error_name(r)); return 1; }</div><div class="ln">    int len_val = len[0] | (len[1] &lt;&lt; 8);</div><div class="ln">    printf("GET_LEN(CS=0x%02x) → 应答长度 %d 字节\n", CS_PROTOCOL_VERSION, len_val);</div><div class="ln"><span class="hl">    if (len_val == 0) { printf("（长度 0 = 该 CS 无参数或为触发型命令，正常）\n"); return 0; }</span></div><div class="ln">    if (len_val &gt; (int)sizeof(ver)) len_val = sizeof(ver);</div><div class="ln"></div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0xA1, 0x81, CS_PROTOCOL_VERSION &lt;&lt; 8,</span></div><div class="ln">                                (xu_id &lt;&lt; 8) | vc_if, ver, len_val, 1000);</div><div class="ln">    if (r &lt; 0) { fprintf(stderr, "GET_CUR: %s\n", libusb_error_name(r)); return 1; }</div><div class="ln">    printf("GET_CUR → %d 字节:", r);</div><div class="ln">    for (int i = 0; i &lt; r; i++) printf(" %02x", ver[i]);</div><div class="ln">    printf("\n");</div><div class="ln"></div><div class="ln">    libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>XU 三把钥匙（第六会话方法论）：wValue 高字节 = CS_ID（本设备 0x04 = 协议版本）、wIndex = (XU_ID&lt;&lt;8)|VC_IF、bRequest 用 XU 专属请求码（GET_LEN=0x85 / GET_CUR=0x81）。</p>
+            <p>换设备只改 XU_ID——同一套代码结构复用；XU_ID 从 <code>sudo lsusb -v -d VID:PID</code> 的 bUnitID 查（§8.1）。</p>
+            <p>GET_LEN 是试通手段：先问“该 CS 有多少字节”，再按长度 GET_CUR——<span class="star">★ 长度 0 是合法应答</span>（触发型命令无参数，§8.1），代码专门处理了。</p>
+            <p>与 06 对照：PU 走 wIndex=接口号，XU 走 wIndex=XU_ID&lt;&lt;8|接口号——这正是专业设备“功能全在 XU”的原因（§8.1）。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-10">
+        <h3><span class="cnum">10</span>信箱模式取流 · 10_frame_mailbox.c</h3>
+        <div class="goal">目标：“两方 + 一个信箱”——回调只做转换+投放（信箱满就丢新帧，绝不阻塞事件泵）；主线程有空才取走渲染</div>
+        <div class="build">
+            <code>gcc -o frame_mailbox 10_frame_mailbox.c -luvc -lusb-1.0 \</code>
+            <code>    $(pkg-config --cflags --libs opencv4)</code>
+            <code>sudo ./frame_mailbox 2bdf 0101</code>
+            <div class="bhint">需要 libuvc + OpenCV（pkg-config opencv4）；对应 KB 第九篇 §9.4 深挖 + 第八会话踩坑 1/36</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：窗口显示画面；主线程跟不上时丢帧变慢动作但绝不卡死</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 10_frame_mailbox.c —— 信箱模式取流（libuvc 帧回调 + 主线程渲染）</div><div class="ln"> *</div><div class="ln"> * 学什么:  "两方 + 一个信箱"的协调——回调只做转换+投放（信箱满就丢</div><div class="ln"> *          新帧，绝不阻塞事件泵）；主线程有空才取走渲染</div><div class="ln"> * 对应知识点: KB 第九篇 §9.4 深挖（信箱模式简版）+ 第八会话踩坑 1/36</div><div class="ln"> * 编译:    gcc -o frame_mailbox 10_frame_mailbox.c -luvc -lusb-1.0 \</div><div class="ln"> *              $(pkg-config --cflags --libs opencv4)</div><div class="ln"> * 运行:    sudo ./frame_mailbox 2bdf 0101</div><div class="ln"> * 预期:    窗口显示画面；主线程跟不上时丢帧变慢动作但绝不卡死</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;string.h&gt;</div><div class="ln">#include &lt;pthread.h&gt;</div><div class="ln">#include &lt;libuvc/libuvc.h&gt;</div><div class="ln">#include &lt;opencv2/opencv.hpp&gt;</div><div class="ln"></div><div class="ln">/* 信箱（共享缓冲 + 标志位 + 锁） */</div><div class="ln">static pthread_mutex_t mbox_mutex = PTHREAD_MUTEX_INITIALIZER;</div><div class="ln">static unsigned char mbox_buf[640 * 480 * 3];</div><div class="ln">static int mbox_len = 0;</div><div class="ln">static int mbox_ready = 0;</div><div class="ln"></div><div class="ln">/* 帧回调：跑在 libuvc 事件线程（与拼帧回调同一线程） */</div><div class="ln"><span class="hl">static void frame_cb(uvc_frame_t *frame, void *ptr)</span></div><div class="ln">{</div><div class="ln">    (void)ptr;</div><div class="ln">    /* 快解码：本设备撒谎报 YUYV 实发 MJPEG（第八会话踩坑 3）——检测 FF D8 */</div><div class="ln">    cv::Mat img;</div><div class="ln"><span class="hl">    if (frame-&gt;data[0] == 0xFF &amp;&amp; frame-&gt;data[1] == 0xD8) {</span></div><div class="ln">        img = cv::imdecode(cv::Mat(1, frame-&gt;data_bytes, CV_8UC1, frame-&gt;data),</div><div class="ln">                           cv::IMREAD_COLOR);</div><div class="ln">    } else {</div><div class="ln">        img = cv::Mat(frame-&gt;height, frame-&gt;width, CV_8UC2, frame-&gt;data);</div><div class="ln">        cv::cvtColor(img, img, cv::COLOR_YUV2BGR_YUYV);</div><div class="ln">    }</div><div class="ln">    if (img.empty()) return;</div><div class="ln"></div><div class="ln">    /* 信箱规则：满就丢新帧，绝不等待（不阻塞事件泵） */</div><div class="ln">    pthread_mutex_lock(&amp;mbox_mutex);</div><div class="ln"><span class="hl">    if (!mbox_ready) {</span></div><div class="ln">        memcpy(mbox_buf, img.data, img.total() * img.elemSize());</div><div class="ln">        mbox_len = (int)(img.total() * img.elemSize());</div><div class="ln">        mbox_ready = 1;</div><div class="ln">    }</div><div class="ln">    pthread_mutex_unlock(&amp;mbox_mutex);</div><div class="ln">}</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    uvc_context_t *ctx; uvc_device_t *dev; uvc_device_handle_t *devh;</div><div class="ln">    uvc_stream_ctrl_t ctrl;</div><div class="ln">    int vid, pid;</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    if (uvc_init(&amp;ctx, NULL) &lt; 0) { fprintf(stderr, "uvc_init 失败\n"); return 1; }</div><div class="ln">    if (uvc_find_device(ctx, &amp;dev, vid, pid, NULL) &lt; 0) { fprintf(stderr, "找不到设备\n"); return 1; }</div><div class="ln">    if (uvc_open(dev, &amp;devh) &lt; 0) { fprintf(stderr, "uvc_open 失败\n"); return 1; }</div><div class="ln">    /* 标准取流流程: Probe/Commit 协商 + SET_INTERFACE 开流由 libuvc 代劳 */</div><div class="ln">    if (uvc_get_stream_ctrl_format_size(devh, &amp;ctrl, UVC_FRAME_FORMAT_ANY,</div><div class="ln">                                        120, 160, 30) &lt; 0) {</div><div class="ln">        fprintf(stderr, "协商失败\n"); return 1;</div><div class="ln">    }</div><div class="ln"><span class="hl">    if (uvc_start_streaming(devh, &amp;ctrl, frame_cb, NULL, 0) &lt; 0) {</span></div><div class="ln">        fprintf(stderr, "开流失败\n"); return 1;</div><div class="ln">    }</div><div class="ln">    puts("取流中... 按 ESC 退出");</div><div class="ln"></div><div class="ln">    /* 主线程：信箱里有帧才取（渲染在锁外） */</div><div class="ln">    while (1) {</div><div class="ln">        unsigned char local[640 * 480 * 3];</div><div class="ln">        int len = 0;</div><div class="ln">        pthread_mutex_lock(&amp;mbox_mutex);</div><div class="ln">        if (mbox_ready) {</div><div class="ln"><span class="hl">            memcpy(local, mbox_buf, mbox_len);</span></div><div class="ln">            len = mbox_len;</div><div class="ln">            mbox_ready = 0;</div><div class="ln">        }</div><div class="ln">        pthread_mutex_unlock(&amp;mbox_mutex);</div><div class="ln"></div><div class="ln">        if (len) {</div><div class="ln">            cv::Mat img = cv::imdecode(cv::Mat(1, len, CV_8UC1, local), cv::IMREAD_COLOR);</div><div class="ln">            if (!img.empty()) { cv::imshow("frame_mailbox", img); }</div><div class="ln">        }</div><div class="ln"><span class="hl">        if (cv::waitKey(10) == 27) break;   /* ESC */</span></div><div class="ln">    }</div><div class="ln"></div><div class="ln">    uvc_stop_streaming(devh);</div><div class="ln">    uvc_close(devh);</div><div class="ln">    uvc_unref_device(dev);</div><div class="ln">    uvc_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>两方一信箱（§9.4 深挖）：libuvc 事件线程跑拼帧+回调（生产者），主线程取帧渲染（消费者），信箱 = 互斥锁保护的共享缓冲。</p>
+            <p>回调绝不阻塞事件泵：<code>if (!mbox_ready)</code> 满就丢新帧——回调里 sleep/等待 = 事件泵停摆，后面所有传输全卡死（第八会话踩坑 1）。</p>
+            <p>MJPEG 欺诈检测：本设备撒谎报 YUYV 实发 MJPEG（第八会话踩坑 3）——用 <code>FF D8</code> 魔数判断真实格式，两条解码路径都写了。</p>
+            <p>渲染在锁外：主线程锁内只 <code>memcpy</code> 拷贝，锁外才 imshow——锁内做耗时渲染会拖住下一帧的取走。</p>
+            <p>主线程跟不上时丢帧 = 慢动作但绝不卡死——这就是信箱模式存在的全部意义。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-11">
+        <h3><span class="cnum">11</span>CDC 虚拟串口 · 11_cdc_serial.c</h3>
+        <div class="goal">目标：6.13 的 SET_LINE_CODING 7 字节在代码里的完整形态——“打开串口”= 行编码 + 控制线状态 + 批量传输三件事</div>
+        <div class="build">
+            <code>gcc -o cdc_serial 11_cdc_serial.c -lusb-1.0</code>
+            <code>sudo ./cdc_serial 2bdf 028a</code>
+            <div class="bhint">对应 KB 第六篇 §6.13/§6.14（CDC 类请求与数据流）</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：打印 line coding 设置 → 收 1 秒数据统计字节数（串口无数据时通常为 0）；<span class="star">★ 设备前提：TM5X（2bdf:028a）才有 CDC 接口</span></div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 11_cdc_serial.c —— CDC 虚拟串口收发（SET_LINE_CODING + 批量）</div><div class="ln"> *</div><div class="ln"> * 学什么:  6.13 的 SET_LINE_CODING 7 字节在代码里的完整形态；</div><div class="ln"> *          "打开串口"= 行编码 + 控制线状态 + 批量传输三件事</div><div class="ln"> * 对应知识点: KB 第六篇 §6.13/§6.14（CDC 类请求与数据流）</div><div class="ln"> * 编译:    gcc -o cdc_serial 11_cdc_serial.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./cdc_serial 2bdf 028a    （TM5X 的 CDC 接口）</div><div class="ln"> * 预期:    打印 line coding 设置 → 收 1 秒数据统计字节数</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;time.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device_handle *devh = NULL;</div><div class="ln">    struct libusb_config_descriptor *cfg;</div><div class="ln">    int vid, pid, r;</div><div class="ln">    int ctrl_if = -1, data_if = -1, ep_in = -1;</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln">    devh = libusb_open_device_with_vid_pid(ctx, vid, pid);</div><div class="ln">    if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }</div><div class="ln"></div><div class="ln">    /* 按 bInterfaceClass 找 CDC 控制接口(0x02)与数据接口(0x0A) */</div><div class="ln">    libusb_get_active_config_descriptor(libusb_get_device(devh), &amp;cfg);</div><div class="ln">    for (int i = 0; i &lt; cfg-&gt;bNumInterfaces; i++) {</div><div class="ln">        int cls = cfg-&gt;interface[i].altsetting[0].bInterfaceClass;</div><div class="ln"><span class="hl">        if (cls == 0x02) ctrl_if = i;</span></div><div class="ln"><span class="hl">        if (cls == 0x0A) {</span></div><div class="ln">            data_if = i;</div><div class="ln">            for (int k = 0; k &lt; cfg-&gt;interface[i].altsetting[0].bNumEndpoints; k++)</div><div class="ln">                if (cfg-&gt;interface[i].altsetting[0].endpoint[k].bEndpointAddress &amp; 0x80)</div><div class="ln">                    ep_in = cfg-&gt;interface[i].altsetting[0].endpoint[k].bEndpointAddress;</div><div class="ln">        }</div><div class="ln">    }</div><div class="ln">    libusb_free_config_descriptor(cfg);</div><div class="ln">    if (ctrl_if &lt; 0 || data_if &lt; 0) { fprintf(stderr, "没找到 CDC 接口\n"); return 1; }</div><div class="ln">    printf("CDC: 控制接口 %d, 数据接口 %d (EP IN 0x%02x)\n", ctrl_if, data_if, ep_in);</div><div class="ln"></div><div class="ln">    /* 打开串口 = SET_LINE_CODING（7 字节）+ SET_CONTROL_LINE_STATE */</div><div class="ln"><span class="hl">    uint8_t line_coding[7] = {0x00, 0xC2, 0x01, 0x00, 0x00, 0x00, 0x08};</span></div><div class="ln">    /*                       115200 LE        停止位  校验  数据位 */</div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0x21, 0x20, 0, ctrl_if, line_coding, 7, 1000);</span></div><div class="ln">    if (r &lt; 0) { fprintf(stderr, "SET_LINE_CODING: %s\n", libusb_error_name(r)); return 1; }</div><div class="ln">    printf("SET_LINE_CODING: 115200 8N1 已发送\n");</div><div class="ln"></div><div class="ln"><span class="hl">    r = libusb_control_transfer(devh, 0x21, 0x22, 0x0003, ctrl_if, NULL, 0, 1000);</span></div><div class="ln">    if (r &lt; 0) { fprintf(stderr, "SET_CONTROL_LINE_STATE: %s\n", libusb_error_name(r)); return 1; }</div><div class="ln">    printf("SET_CONTROL_LINE_STATE: DTR|RTS 已拉起\n");</div><div class="ln"></div><div class="ln">    /* 数据层：claim 数据接口，批量收 1 秒 */</div><div class="ln">    if (libusb_kernel_driver_active(devh, data_if) == 1)</div><div class="ln">        libusb_detach_kernel_driver(devh, data_if);</div><div class="ln">    libusb_claim_interface(devh, data_if);</div><div class="ln"></div><div class="ln">    unsigned char buf[4096];</div><div class="ln">    long long total = 0;</div><div class="ln">    time_t t0 = time(NULL);</div><div class="ln">    while (time(NULL) - t0 &lt; 1) {</div><div class="ln">        int got = 0;</div><div class="ln"><span class="hl">        r = libusb_bulk_transfer(devh, ep_in, buf, sizeof(buf), &amp;got, 100);</span></div><div class="ln">        if (r == 0) total += got;</div><div class="ln">        else if (r != LIBUSB_ERROR_TIMEOUT) { printf("传输: %s\n", libusb_error_name(r)); break; }</div><div class="ln">    }</div><div class="ln">    printf("1 秒收到 %lld 字节（串口无数据时通常为 0——发数据才有流）\n", total);</div><div class="ln"></div><div class="ln">    libusb_release_interface(devh, data_if);</div><div class="ln">    libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>“打开串口”三件事（§6.13）：SET_LINE_CODING（7 字节）+ SET_CONTROL_LINE_STATE（DTR|RTS）+ 数据接口批量传输——少一件都不是串口。</p>
+            <p><code>line_coding[7]</code> 逐位对照（§6.13）：</p>
+            <p>接口按 class 自动发现：0x02 = CDC 控制接口、0x0A = 数据接口（§6.14）——不硬编码接口号，换个 CDC 设备也能跑。</p>
+            <p>SET_CONTROL_LINE_STATE 的 wValue = 0x0003（DTR|RTS 都拉起）——主机向设备宣告“我准备好了”。</p>
+            <table>
+                                <thead><tr><th>字节</th><th>值</th><th>含义</th></tr></thead>
+                                <tbody>
+                                    <tr><td>0~3</td><td>00 C2 01 00</td><td>波特率 115200（小端，0x0001C200）</td></tr>
+                                    <tr><td>4</td><td>00</td><td>停止位：00 = 1 位</td></tr>
+                                    <tr><td>5</td><td>00</td><td>校验：00 = 无</td></tr>
+                                    <tr><td>6</td><td>08</td><td>数据位：8 位 → “8N1”就长这样</td></tr>
+                                </tbody>
+                            </table>
+        </div>
+    </article>
+    <article class="card" id="ex-12">
+        <h3><span class="cnum">12</span>HID 报表读取 · 12_hid_report.c</h3>
+        <div class="goal">目标：6.7 的“中断管道 = 设备主动汇报”——interrupt_transfer 周期轮询；报表字节原样打印（对照 6.6 的报表结构）</div>
+        <div class="build">
+            <code>gcc -o hid_report 12_hid_report.c -lusb-1.0</code>
+            <code>sudo ./hid_report 2bdf 028a</code>
+            <div class="bhint">对应 KB 第六篇 §6.7（HID Report 协议）+ 第九篇 §9.4</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：每 100ms 读一次报表，打印前 32 字节 hex（1023B 报表的头部）；<span class="star">★ 设备前提：TM5X（2bdf:028a）的厂商 HID 接口</span></div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 12_hid_report.c —— HID 中断报表读取</div><div class="ln"> *</div><div class="ln"> * 学什么:  6.7 的"中断管道 = 设备主动汇报"——interrupt_transfer</div><div class="ln"> *          周期轮询；报表字节原样打印（对照 6.6 的报表结构）</div><div class="ln"> * 对应知识点: KB 第六篇 §6.7（HID Report 协议）+ 第九篇 §9.4</div><div class="ln"> * 编译:    gcc -o hid_report 12_hid_report.c -lusb-1.0</div><div class="ln"> * 运行:    sudo ./hid_report 2bdf 028a    （TM5X 的厂商 HID 接口）</div><div class="ln"> * 预期:    每 100ms 读一次报表，打印前 32 字节 hex（1023B 报表的头部）</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_context *ctx = NULL;</div><div class="ln">    libusb_device_handle *devh = NULL;</div><div class="ln">    struct libusb_config_descriptor *cfg;</div><div class="ln">    int vid, pid, r;</div><div class="ln">    int hid_if = -1, ep_in = -1, ep_interval = 0;</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln">    devh = libusb_open_device_with_vid_pid(ctx, vid, pid);</div><div class="ln">    if (!devh) { fprintf(stderr, "打开失败\n"); return 1; }</div><div class="ln"></div><div class="ln">    /* 按 bInterfaceClass=0x03 找 HID 接口 + 中断 IN 端点 */</div><div class="ln">    libusb_get_active_config_descriptor(libusb_get_device(devh), &amp;cfg);</div><div class="ln">    for (int i = 0; i &lt; cfg-&gt;bNumInterfaces; i++) {</div><div class="ln"><span class="hl">        if (cfg-&gt;interface[i].altsetting[0].bInterfaceClass == 0x03) {</span></div><div class="ln">            hid_if = i;</div><div class="ln">            for (int k = 0; k &lt; cfg-&gt;interface[i].altsetting[0].bNumEndpoints; k++) {</div><div class="ln">                const struct libusb_endpoint_descriptor *ep =</div><div class="ln">                    &amp;cfg-&gt;interface[i].altsetting[0].endpoint[k];</div><div class="ln"><span class="hl">                if ((ep-&gt;bmAttributes &amp; 0x03) == 3 &amp;&amp; (ep-&gt;bEndpointAddress &amp; 0x80)) {</span></div><div class="ln">                    ep_in = ep-&gt;bEndpointAddress;</div><div class="ln">                    ep_interval = ep-&gt;bInterval;</div><div class="ln">                }</div><div class="ln">            }</div><div class="ln">        }</div><div class="ln">    }</div><div class="ln">    libusb_free_config_descriptor(cfg);</div><div class="ln">    if (hid_if &lt; 0) { fprintf(stderr, "没找到 HID 接口\n"); return 1; }</div><div class="ln">    printf("HID 接口 %d, 中断 IN EP 0x%02x, bInterval=%d\n", hid_if, ep_in, ep_interval);</div><div class="ln"></div><div class="ln">    if (libusb_kernel_driver_active(devh, hid_if) == 1)</div><div class="ln">        libusb_detach_kernel_driver(devh, hid_if);</div><div class="ln">    libusb_claim_interface(devh, hid_if);</div><div class="ln"></div><div class="ln">    /* 中断传输循环：Host 周期发 IN Token（bInterval 节奏），设备有数据就回 */</div><div class="ln">    unsigned char buf[1024];</div><div class="ln">    for (int n = 0; n &lt; 10; n++) {</div><div class="ln">        int got = 0;</div><div class="ln"><span class="hl">        r = libusb_interrupt_transfer(devh, ep_in, buf, sizeof(buf), &amp;got, 1000);</span></div><div class="ln">        if (r == 0 &amp;&amp; got &gt; 0) {</div><div class="ln"><span class="hl">            printf("报表 #%d (%d 字节):", n, got);</span></div><div class="ln">            for (int i = 0; i &lt; got &amp;&amp; i &lt; 32; i++) printf(" %02x", buf[i]);</div><div class="ln">            printf("%s\n", got &gt; 32 ? " ..." : "");</div><div class="ln"><span class="hl">        } else if (r == LIBUSB_ERROR_TIMEOUT) {</span></div><div class="ln">            printf("报表 #%d: （无数据，设备 NAK）\n", n);</div><div class="ln">        } else {</div><div class="ln">            printf("报表 #%d: %s\n", n, libusb_error_name(r)); break;</div><div class="ln">        }</div><div class="ln">    }</div><div class="ln"></div><div class="ln">    libusb_release_interface(devh, hid_if);</div><div class="ln">    libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>中断传输 = 设备主动汇报（§6.7）：<code>libusb_interrupt_transfer</code> 每次都是 Host 发 IN Token（按 bInterval 节奏轮询），设备有数据就回、没数据 NAK。</p>
+            <p>NAK → TIMEOUT：设备 NAK 时 libusb 最终报 <code>LIBUSB_ERROR_TIMEOUT</code>——代码把它当“无数据”打印而不是错误退出（§9.4）。</p>
+            <p>报表字节原样 hex 打印——对照 §6.6 的报表结构：1023B 报表只打印前 32 字节头部，字段布局由 Report Descriptor 定义。</p>
+            <p>端点识别靠 <code>(bmAttributes &amp; 0x03) == 3</code>（中断类型）+ 方向位——不能只凭 bEndpointAddress 猜传输类型。</p>
+        </div>
+    </article>
+    <article class="card" id="ex-13">
+        <h3><span class="cnum">13</span>综合 SDK 骨架 · 13_sdk_skeleton.c</h3>
+        <div class="goal">目标：最小 SDK 外壳——热插拔回调 + 事件泵线程 + ARRIVED 自动打开 + LEFT 自动收尾；第九篇知识的汇合点</div>
+        <div class="build">
+            <code>gcc -o sdk_skeleton 13_sdk_skeleton.c -lusb-1.0 -pthread</code>
+            <code>sudo ./sdk_skeleton 2bdf 0101</code>
+            <div class="bhint">对应 KB 第九篇 §9.5（全 Phase 8 汇成 SDK 骨架）</div>
+            <button class="copy" type="button">复制</button>
+        </div>
+        <div class="expect">预期：启动打印现有设备 → 拔插摄像头自动响应 → 回车退出</div>
+        <pre class="code"><div class="ln">/* ============================================================</div><div class="ln"> * 13_sdk_skeleton.c —— 综合骨架（热插拔 + 枚举 + 打开 + 开流串联）</div><div class="ln"> *</div><div class="ln"> * 学什么:  一个最小 SDK 外壳——热插拔回调 + 事件泵线程 + ARRIVED 自动</div><div class="ln"> *          打开 + LEFT 自动收尾；全部第九篇知识的汇合点</div><div class="ln"> * 对应知识点: KB 第九篇 §9.5（全 Phase 8 汇成 SDK 骨架）</div><div class="ln"> * 编译:    gcc -o sdk_skeleton 13_sdk_skeleton.c -lusb-1.0 -pthread</div><div class="ln"> * 运行:    sudo ./sdk_skeleton 2bdf 0101</div><div class="ln"> * 预期:    启动打印现有设备 → 拔插摄像头自动响应 → 回车退出</div><div class="ln"> * ============================================================ */</div><div class="ln"></div><div class="ln">#include &lt;stdio.h&gt;</div><div class="ln">#include &lt;stdlib.h&gt;</div><div class="ln">#include &lt;pthread.h&gt;</div><div class="ln">#include &lt;libusb-1.0/libusb.h&gt;</div><div class="ln"></div><div class="ln">static libusb_context *ctx = NULL;</div><div class="ln">static libusb_device_handle *devh = NULL;</div><div class="ln">static int g_vid, g_pid;</div><div class="ln"></div><div class="ln">static int hotplug_cb(libusb_context *c, libusb_device *dev,</div><div class="ln">                      libusb_hotplug_event event, void *user_data)</div><div class="ln">{</div><div class="ln">    (void)c; (void)user_data;</div><div class="ln">    if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED) {</div><div class="ln">        printf("＋ 设备插入 → 自动打开...\n");</div><div class="ln">        if (!devh) {</div><div class="ln"><span class="hl">            if (libusb_open(dev, &amp;devh) == 0)</span></div><div class="ln">                printf("  打开成功（此处可接 claim + 开流 + 取流）\n");</div><div class="ln">        }</div><div class="ln">    } else if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT) {</div><div class="ln">        printf("－ 设备拔出 → 自动收尾\n");</div><div class="ln"><span class="hl">        if (devh) { libusb_close(devh); devh = NULL; }</span></div><div class="ln">    }</div><div class="ln">    fflush(stdout);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div><div class="ln">static void *event_thread(void *arg)</div><div class="ln">{</div><div class="ln">    (void)arg;</div><div class="ln"><span class="hl">    while (1) libusb_handle_events(ctx);   /* ★ 事件泵：传输完成 + 热插拔都靠它 */</span></div><div class="ln">    return NULL;</div><div class="ln">}</div><div class="ln"></div><div class="ln">int main(int argc, char **argv)</div><div class="ln">{</div><div class="ln">    libusb_hotplug_callback_handle handle;</div><div class="ln">    pthread_t tid;</div><div class="ln"></div><div class="ln">    if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }</div><div class="ln">    g_vid = (int)strtol(argv[1], NULL, 16);</div><div class="ln">    g_pid = (int)strtol(argv[2], NULL, 16);</div><div class="ln"></div><div class="ln">    libusb_init(&amp;ctx);</div><div class="ln"><span class="hl">    libusb_hotplug_register_callback(ctx,</span></div><div class="ln">        LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,</div><div class="ln">        LIBUSB_HOTPLUG_ENUMERATE,      /* 启动时已插着的设备也回调一遍 */</div><div class="ln">        g_vid, g_pid, LIBUSB_HOTPLUG_MATCH_ANY,</div><div class="ln">        hotplug_cb, NULL, &amp;handle);</div><div class="ln"></div><div class="ln"><span class="hl">    pthread_create(&amp;tid, NULL, event_thread, NULL);</span></div><div class="ln">    printf("SDK 骨架运行中（插拔 %04x:%04x 试试，回车退出）\n", g_vid, g_pid);</div><div class="ln">    getchar();</div><div class="ln"></div><div class="ln"><span class="hl">    libusb_hotplug_deregister_callback(ctx, handle);</span></div><div class="ln">    if (devh) libusb_close(devh);</div><div class="ln">    libusb_exit(ctx);</div><div class="ln">    return 0;</div><div class="ln">}</div><div class="ln"></div></pre>
+        <div class="notes">
+            <h4>逐段讲解</h4>
+            <p>完整组合（§9.5 SDK 骨架）：热插拔回调 + 事件泵线程 + ARRIVED 自动打开 + LEFT 自动收尾——第九篇全部知识汇成一个循环。</p>
+            <p><code>libusb_handle_events</code> 跑在独立线程（<code>pthread_create</code>）——回调触发、传输完成都靠它，主线程才能安心 getchar 等退出。</p>
+            <p>LEFT 只收尾：<code>libusb_close(devh)</code> 后置 NULL——设备已死，任何查询都是徒劳（与 02 同理）。</p>
+            <p>ARRIVED 打开后的注释写着“可接 claim + 开流 + 取流”——这正是 04 / 08 / 10 三张卡的拼装点。</p>
+            <p>退出顺序：deregister → close → exit——先摘回调再关设备，避免回调撞上已关的句柄。</p>
+        </div>
+    </article>
+</main>
+<script>
+(function () {
+    'use strict';
+
+    /* 搜索过滤：匹配卡片标题与代码文本，不匹配则 hidden */
+    var search = document.getElementById('search');
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.card'));
+    search.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        cards.forEach(function (card) {
+            var title = card.querySelector('h3').textContent.toLowerCase();
+            var code = card.querySelector('.code').textContent.toLowerCase();
+            card.hidden = q !== '' && title.indexOf(q) < 0 && code.indexOf(q) < 0;
+        });
+    });
+
+    /* 复制按钮：复制本 build 块的全部命令（编译 + 运行） */
+    function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) { /* 忽略 */ }
+        document.body.removeChild(ta);
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (btn) {
+        btn.addEventListener('click', function () {
+            var block = this.closest('.build');
+            var cmds = [];
+            Array.prototype.forEach.call(block.querySelectorAll('code'), function (c) {
+                cmds.push(c.textContent);
+            });
+            var text = cmds.join('\n');
+            var done = function () {
+                btn.classList.add('done');
+                btn.textContent = '已复制';
+                setTimeout(function () {
+                    btn.classList.remove('done');
+                    btn.textContent = '复制';
+                }, 2000);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done, function () {
+                    fallbackCopy(text);
+                    done();
+                });
+            } else {
+                fallbackCopy(text);
+                done();
+            }
+        });
+    });
+})();
+
+</script>
+</body>
+</html>
+
