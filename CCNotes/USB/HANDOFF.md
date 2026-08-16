@@ -393,7 +393,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 12. **PU 与 XU 的分工**：PU=标准控制（Class 请求寻址，bmControls 位图声明支持哪些），XU=厂商私有（Class 信封 + Vendor 内容） — ★ 第十会话
 13. **bmRequestType D6-5 字典速判**：0x0_/0x8_=Standard（OS USB 核心，枚举/生命周期），0x2_/0xA_=Class（类驱动/应用），0x4_/0xC_=Vendor（厂商 SDK） — ★ 第十会话
 14. **wValue 字节序（海康惯例）**：CS_ID 在高字节（`CS_ID<<8`）；UVC 规范标准是低字节；真机工作代码是唯一真相 — ★ 第十会话
-15. **开流 = SET_INTERFACE 切通道**：Alt0 零带宽 / Alt1+ 流端点，SET_INTERFACE 就是设备的"开流"开关 — ★ 第十会话
+15. **开流 = SET_INTERFACE 切通道**：Alt0 零带宽 / Alt1+ 流端点，SET_INTERFACE 就是设备的"开流"开关 — ★ 第十会话（★ 真机勘误 2026-08-16：2bdf:0101 是批量视频设备，VS 只有 Alt0、流端点直接挂在 Alt0——零带宽 Alt 是等时设备的带宽闸门，批量不需要；写代码自动发现 Alt，别硬编码）
 16. **视频 Bulk vs 等时**：完整性 vs 实时性权衡；UVC 1.5 才定义 Bulk；热成像选 Bulk 的理由 — ★ 第十会话
 17. **libuvc 抽象层**：描述符→分叉 bulk/isoc→12 字节载荷头（FID/EOF）拼帧→回调交付 uvc_frame_t；依赖"帧"接口不依赖"包"接口 — ★ 第十会话
 18. **枚举全景**：6 状态机、10 步时间线、Device Descriptor 读两次的原因、Config 先读 9 字节头的原因、枚举全走 EP0 — ★ 第十会话

@@ -3731,6 +3731,8 @@ Interface(VS): bInterfaceClass=0x0E, bInterfaceSubClass=0x02 (Video Streaming)
 
 你的 2bdf:0101：VC 接口号 0、VS 接口号 1（第十会话：VC_IF_NUM 永远从 lsusb -v 确认，同厂商不同型号都不同）。
 
+**★ 真机勘误（2026-08-16）**：2bdf:0101 是**批量视频设备**，其 VS 接口**只有 Alt 0**——批量流端点（EP 0x81, wMaxPacketSize=512）直接挂在 Alt 0 上，没有零带宽 Alt。"Alt0 零带宽 / Alt1+ 流端点"是**等时设备的带宽闸门**（等时带宽静态预留，需要零带宽档位省带宽）；**批量不预留带宽，零带宽 Alt 无意义**。该机 VC 接口还实现了中断状态端点（EP 0x83，16B，bInterval=8）。写代码时不要硬编码 Alt 号——自动发现第一个带端点的 Alt（见 code/examples/04_claim_alt_setting.c 与 08_uvc_open_stream.c）。
+
 ## 6.16 UVC VC Descriptor 链完整布局
 
 ```
