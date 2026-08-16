@@ -72,12 +72,14 @@ int main(int argc, char **argv)
     r = libusb_control_transfer(devh, 0xA1, 0x87, 0x0100, vs_if, buf, PROBE_LEN, 1000);
     if (r >= 0) print_probe("GET_DEF", buf); else printf("GET_DEF: %s\n", libusb_error_name(r));
 
-    /* 试问: 用默认值 Probe */
+    /* 试问: 用默认值 Probe（SET_CUR 是 OUT 传输，设备不会回写缓冲——
+     * 先打印"请求"再发送；设备是否敲定看下面的 GET_CUR） */
     memset(buf, 0, sizeof(buf));
     buf[OFF_FORMAT_IDX] = 1;
     buf[OFF_FRAME_IDX]  = 1;
+    print_probe("SET_CUR Probe 请求", buf);
     r = libusb_control_transfer(devh, 0x21, 0x01, 0x0100, vs_if, buf, PROBE_LEN, 1000);
-    if (r >= 0) print_probe("SET_CUR Probe", buf); else printf("Probe: %s\n", libusb_error_name(r));
+    printf("  发送结果: %s\n", r < 0 ? libusb_error_name(r) : "成功");
 
     memset(buf, 0, sizeof(buf));
     r = libusb_control_transfer(devh, 0xA1, 0x81, 0x0100, vs_if, buf, PROBE_LEN, 1000);

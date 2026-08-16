@@ -3900,6 +3900,8 @@ Interface (VS, Alt1, 流端点)
 
 要点：VS 请求 wIndex = VS 接口号（**没有 Unit ID**——第十会话三种 wIndex）；Probe/Commit 负载 26 字节（bmHint、bFormatIndex、bFrameIndex、dwFrameInterval、码率、压缩质量、dwMaxVideoFrameSize、**dwMaxPayloadTransferSize** 等）；`dwMaxPayloadTransferSize` 决定选哪个 Alt 的带宽配额。
 
+**★ 真机实测（2026-08-16，示例 07）**：2bdf:0101 的 Probe 返回**不合常理的字段**（Format=0、帧间隔 10.24s、单帧 9.8MB）——不是解析错，是**该设备的 VS Probe 协商本身不可靠**，与第八篇踩坑 38（libuvc 自动协商失败、需遍历原始格式描述符）完全一致。另注意：SET_CUR 是 OUT 传输，设备**不会回写缓冲**——发送后打印的缓冲是请求回显，设备的敲定要再发 GET_CUR 读。
+
 ## 6.26 ⛁ UVC Payload Header 逐字节（拼帧核心）
 
 ```
