@@ -2621,7 +2621,7 @@ SET_CONFIGURATION 之后总线枚举结束，剩下 OS 的活：按 VID:PID（4.
 
 ## 4.11a 真机抓包实战分析（2026-08-15，TM5X 2bdf:028a）
 
-> 抓包文件：`capture-tm5x-2bdf028a.pcapng`（206 包，从 174,032 包的全量抓包 `capture.pcapng` 中按设备地址切出）。设备：海康 TM5X 测温机芯，PID 028a（不是之前实战的 0101）。
+> 抓包文件：`captures/capture-tm5x-2bdf028a.pcapng`（206 包，从 174,032 包的全量抓包 `captures/capture.pcapng` 中按设备地址切出）。设备：海康 TM5X 测温机芯，PID 028a（不是之前实战的 0101）。
 
 ### 抓包全景
 
@@ -5742,4 +5742,4 @@ grep -n "EXTENSION_UNIT\|bUnitID\|bInterfaceNumber" /tmp/cam.txt
 
 > **创建日期**：2026-08-02（2026-08-16 更新）
 > **覆盖范围**：Phase 1-5（50/67 知识点）+ 真实设备实战 + UVC XU 控制与取流
-> **代码参考**：`code/xu_minimal_get.c` / `code/xu_interactive.c` / `code/uvc_stream_viewer.cpp` / `code/HIKVISION_TM76_libusb_3.c`
+> **代码参考**：`code/tools/xu_minimal_get.c` / `code/tools/xu_interactive.c` / `code/tools/uvc_stream_viewer.cpp` / `code/tools/HIKVISION_TM76_libusb_3.c`

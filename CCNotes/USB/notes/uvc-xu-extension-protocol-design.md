@@ -239,5 +239,5 @@ STATUS 阶段的意义不是"最后一个包收到了"，而是"这笔控制传�
 
 ---
 
-> 代码实现见 `code/uvc_xu_subfunc_framework.c`。
+> 代码实现见 `code/tools/uvc_xu_subfunc_framework.c`。
 > HTML 可视化见 `usb-notes.html` → 2.20 章节。

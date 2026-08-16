@@ -1876,7 +1876,7 @@ else document.documentElement.classList.add('dark');})();
     	    </div>
     	  </details>
 
-    	  <p><strong>代码参考：</strong>见 <code>code/uvc_xu_subfunc_framework.c</code>，包含 <code>xu_switch_subfunc()</code>、<code>xu_subfunc_get()</code>、<code>xu_subfunc_set()</code> 三个核心接口，以及 CS_ID 和 SubFunc ID 宏定义。</p>
+    	  <p><strong>代码参考：</strong>见 <code>code/tools/uvc_xu_subfunc_framework.c</code>，包含 <code>xu_switch_subfunc()</code>、<code>xu_subfunc_get()</code>、<code>xu_subfunc_set()</code> 三个核心接口，以及 CS_ID 和 SubFunc ID 宏定义。</p>
     	  <p><strong>完整设计文档：</strong>见 <code>notes/uvc-xu-extension-protocol-design.md</code>。</p>
     </article>
 
@@ -2221,7 +2221,7 @@ if (is_jpeg) {
 ④ 帧回调：检测 FF D8 头 → MJPEG(cv::imdecode) 或 YUYV(uvc_any2rgb) → 显示</pre>
         </div>
 
-        <p style="margin-top:12px;font-size:13px;color:var(--color-dim);">📎 完整代码见 <code>code/uvc_stream_viewer.cpp</code>，详细笔记见 <code>notes/xu-new-device-setup-guide.md</code> 第九章。</p>
+        <p style="margin-top:12px;font-size:13px;color:var(--color-dim);">📎 完整代码见 <code>code/tools/uvc_stream_viewer.cpp</code>，详细笔记见 <code>notes/xu-new-device-setup-guide.md</code> 第九章。</p>
     </article>
 
     <div class="phase-header" id="phase-3"><h2>Phase 3: USB 描述符体系 — 逐字节解剖 <span style="font-size:14px;color:var(--color-addr);margin-left:8px;">11/11 ✓</span></h2></div>
@@ -3064,7 +3064,7 @@ wLength = 9 = Config Descriptor 头部固定长度（§3.4）</code></pre>
         <h3>4.11a 真机抓包实战分析（2026-08-15，TM5X 2bdf:028a）</h3>
 
         <div class="info-box">
-          抓包文件：<code>capture-tm5x-2bdf028a.pcapng</code>（206 包，从 174,032 包全量抓包按设备切出）。设备：海康 TM5X 测温机芯（PID 028a），<strong>UVC + CDC 串口 + HID 三合一复合设备——SDK 三大目标的合体</strong>。
+          抓包文件：<code>captures/capture-tm5x-2bdf028a.pcapng</code>（206 包，从 174,032 包全量抓包按设备切出）。设备：海康 TM5X 测温机芯（PID 028a），<strong>UVC + CDC 串口 + HID 三合一复合设备——SDK 三大目标的合体</strong>。
         </div>
 
         <h4>★ TM5X 枚举逐包对照（三处真机勘误）</h4>

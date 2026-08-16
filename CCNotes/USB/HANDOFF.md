@@ -83,8 +83,8 @@
 
 | 类型 | 文件 | 变更 |
 |------|------|------|
-| 代码 | `code/xu_minimal_get.c` | **新增**：最小示例，直接读 CS_ID=0x04 协议版本（无 SubFunc） |
-| 代码 | `code/xu_interactive.c` | **新增**：交互式 XU 调试工具，预置设备列表、手动选 CS_ID/SubFunc、每步展示 SETUP 8 字节包结构 |
+| 代码 | `code/tools/xu_minimal_get.c` | **新增**：最小示例，直接读 CS_ID=0x04 协议版本（无 SubFunc） |
+| 代码 | `code/tools/xu_interactive.c` | **新增**：交互式 XU 调试工具，预置设备列表、手动选 CS_ID/SubFunc、每步展示 SETUP 8 字节包结构 |
 | 笔记 | `notes/xu-new-device-setup-guide.md` | **新增**：新设备上手实操指南（8 章）——lsusb → 参数 → SETUP 包构造 → 取流流程 |
 | 笔记 | `notes/phase2-communication-model.md` | 末尾新增「补充问答七：接口与端点的归属关系」——四条规则 + 真实设备数据验证 |
 | HTML | `usb-notes.html` | 新增 **2.3a 接口与端点的归属关系**（四条规则 + 设备树 + libusb 对比表 + Alternate Setting 折叠区）<br>新增 **✏ 开发实战踩坑记录**（8 条折叠坑） |
@@ -163,8 +163,8 @@
 |------|------|------|
 | 知识库 | `USB-Protocol-Knowledge-Base.md` | **第四篇补齐 §4.2~§4.12**（枚举 10 步逐包 + 抓包实战 + 真机分析 + 失败排查，Phase 4 完成 12/12）；第八篇新增 **§8.9 TM5X 大数据交互流程**（64/512/65535 三层上限、分包协议、两层确认机制，当时为第六篇，2026-08-16 两次重排后为第八篇）；第三篇新增 **补充问答五/六**（HID/CDC 类家族、USB 虚拟串口机制） |
 | HTML | `usb-notes.html` | **Phase 4 占位符替换为 12 张真卡片**（kp-4-2 ~ kp-4-12 + kp-4-11a 真机实战）；侧边栏 12/12 ✓；进度条 66%（3,152 行） |
-| 抓包 | `capture.pcapng` | 用户真机抓包：174,032 包 / 225.7s / 6 台设备（含 TM5X 2bdf:028a 完整枚举） |
-| 抓包 | `capture-tm5x-2bdf028a.pcapng` | **从全量抓包切出的 TM5X 单设备抓包**（206 包，KB §4.11a 引用） |
+| 抓包 | `captures/capture.pcapng` | 用户真机抓包：174,032 包 / 225.7s / 6 台设备（含 TM5X 2bdf:028a 完整枚举） |
+| 抓包 | `captures/capture-tm5x-2bdf028a.pcapng` | **从全量抓包切出的 TM5X 单设备抓包**（206 包，KB §4.11a 引用） |
 | 交接 | `HANDOFF.md` | 更新（本会话） |
 
 **本会话建立的深层理解（已存 KB）：**
@@ -247,8 +247,8 @@
 
 | 类型 | 文件 | 变更 |
 |------|------|------|
-| 代码 | `code/xu_interactive.c` | **修改**：GET_LEN 后新增 SET_CUR 自由选择（原来是硬编码只做 GET_CUR） |
-| 代码 | `code/uvc_stream_viewer.cpp` | **★ 新建**：libuvc 取流 + OpenCV 显示，约 400 行，完整 7 步流程 |
+| 代码 | `code/tools/xu_interactive.c` | **修改**：GET_LEN 后新增 SET_CUR 自由选择（原来是硬编码只做 GET_CUR） |
+| 代码 | `code/tools/uvc_stream_viewer.cpp` | **★ 新建**：libuvc 取流 + OpenCV 显示，约 400 行，完整 7 步流程 |
 | 笔记 | `notes/xu-new-device-setup-guide.md` | **新增第九章**：码流类型切换——为什么、什么时候、怎么切（约 200 行） |
 | HTML | `usb-notes.html` | **新增 kp-2-21**「⚡ 码流类型切换实战」卡片——热成像数据分层、XU/UVC 顺序、MJPEG 欺诈 |
 
@@ -279,44 +279,43 @@
 
 ## 三、当前文件结构
 
+> 完整导航（含"找什么 → 去哪"指引）见根目录 `README.md`（2026-08-16 整理后新增）。本区块只列结构。
+
 ```
 D:\CC\personal-lr-notes\CCNotes\USB\
-├── HANDOFF.md                                    ← 你正在看的这份交接文档
-├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~5,745 行，九篇 + 附录，★ 全主线完成）
-├── usb-protocol-learning-plan.md                 ← 完整学习计划（88知识点清单，原"67"已修正，★ 主线全部完成）
-├── usb-notes.html                                ← Phase 1-8 理论可视化（4,490 行，含 kp-4-1 ~ kp-4-12 + kp-4-11a + kp-5-1 ~ kp-5-6 + kp-6-1 ~ kp-6-17 + kp-8-1 ~ kp-8-5）
-├── usb-sdk-examples.html                         ← ★ 13 份最小示例讲解页（761 行，单文件零依赖，配 code/examples/）
-├── usb-notes.css                                 ← 10 层分层样式（暗色默认 IDE 风格）
-├── usb-notes.js                                  ← 4 模块脚本（数据/渲染/交互/初始化）
-├── usb-notes-old.html                            ← 旧版备份（翻新前单文件版本）
+├── README.md                                     ← ★ 项目导航（整理后新增，长时间未看先读它）
+├── HANDOFF.md                                    ← 会话交接文档（每次新会话必读）
+├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~5,745 行，九篇 + 附录，全主线完成）
+├── usb-protocol-learning-plan.md                 ← 学习计划（88 知识点，主线全部完成）
+├── usb-notes.html + usb-notes.css + usb-notes.js  ← Phase 1-8 理论可视化（3 文件架构，双击 html）
+├── usb-sdk-examples.html                         ← ★ 13 份最小示例讲解页（单文件零依赖）
 ├── descriptor-viewer.html                        ← 三设备描述符实战对比
-├── usb设备1的描述符.txt                            ← 设备1 原始 dump
-├── usb设备2的描述符.txt                            ← 设备2 原始 dump
-├── usb设备3的描述符.txt                            ← 设备3 原始 dump（无 Extension Unit）
-├── capture.pcapng                                ← 全量真机抓包（174K 包，6 设备）
-├── capture-tm5x-2bdf028a.pcapng                  ← ★ TM5X 单设备抓包（206 包，KB §4.11a 引用）
-├── docs/superpowers/
-│   ├── specs/
-│   │   ├── 2026-08-02-usb-notes-redesign.md      ← 前端翻新设计规格
-│   │   └── 2026-08-02-usb-knowledge-base-design.md ← ★ 知识库整理设计规格
-│   └── plans/
-│       └── 2026-08-02-usb-notes-redesign.md      ← 前端翻新实现计划
+├── archive/
+│   └── usb-notes-old.html                        ← 翻新前旧版备份（仅存档）
+├── captures/                                     ← ★ 真机采集数据（抓包 + 描述符 dump）
+│   ├── capture.pcapng                            ← 全量真机抓包（174K 包，6 设备）
+│   ├── capture-tm5x-2bdf028a.pcapng              ← TM5X 单设备抓包（206 包，KB §4.11a 引用）
+│   └── usb设备1/2/3的描述符.txt                    ← 三台设备原始 dump
 ├── code/
-│   ├── HIKVISION_TM76_libusb_3.c                 ← 海康 TM76 完整参考（伪彩/码流/视频流）
-│   ├── uvc_xu_subfunc_framework.c                ← UVC XU 扩展协议封装库
-│   ├── xu_minimal_get.c                          ← 最简示例（读 CS_ID=0x04）
-│   ├── xu_interactive.c                          ← 交互式 XU 调试工具（★ 支持 SET_CUR 选择）
-│   └── uvc_stream_viewer.cpp                     ← ★★★ libuvc 取流 + OpenCV 显示（第八会话核心产出）
-│   └── hotplug_demo.c                            ← （已迁移至 examples/02_hotplug_detect.c）
-│   └── examples/                                 ← ★ 13 份最小可运行示例 + README（第十二会话，配 usb-sdk-examples.html）
-├── notes/
+│   ├── tools/                                    ← 实战工具（写 SDK 时的参考实现）
+│   │   ├── HIKVISION_TM76_libusb_3.c             ← 海康 TM76 完整参考（裸 libusb 取流+手工拼帧）
+│   │   ├── uvc_xu_subfunc_framework.c            ← UVC XU 扩展协议封装库
+│   │   ├── xu_minimal_get.c                      ← 最简 XU 读示例（CS_ID=0x04）
+│   │   ├── xu_interactive.c                      ← 交互式 XU 调试工具（支持 SET_CUR）
+│   │   └── uvc_stream_viewer.cpp                 ← ★★★ libuvc 取流 + OpenCV 显示
+│   └── examples/                                 ← ★ 13 份最小可运行示例 + README（教学用，配 usb-sdk-examples.html）
+├── notes/                                        ← 分阶段学习笔记（原始素材，已全部整合进知识库）
 │   ├── phase1-usb-overview.md                    ← Phase 1
-│   ├── phase2-communication-model.md             ← Phase 2（新增接口-端点关系问答）
+│   ├── phase2-communication-model.md             ← Phase 2
 │   ├── phase3-descriptors.md                     ← Phase 3
-│   ├── real-device-descriptor-analysis.md        ← 实战手册（FAQ 10 个）
+│   ├── real-device-descriptor-analysis.md        ← 三设备描述符实战
 │   ├── uvc-xu-extension-protocol-design.md       ← UVC XU 扩展协议设计
-│   └── xu-new-device-setup-guide.md              ← 新设备上手实操指南（含第九章码流切换）
-└── .superpowers/sdd/                             ← SDD 进度账本
+│   ├── uvc-private-stream-trigger.md             ← UVC 私有命令触发码流方案
+│   └── xu-new-device-setup-guide.md              ← 新设备上手实操指南
+├── docs/superpowers/
+│   ├── specs/                                    ← 各阶段设计规格（5 份）
+│   └── plans/                                    ← 各阶段实现计划（4 份）
+└── .superpowers/sdd/                             ← SDD 进度账本（git 忽略）
 ```
 
 ---
@@ -492,7 +491,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 ### 知识库结构与协议事实（★ 第十会话新增）
 
 44. **★★★ 知识库篇章编号已两次重排，现行八篇为最终布局！** 第六篇=设备类协议（HID 篇，5.x 主干），第七篇=真实设备描述符实战（原第五/六篇，6.x→7.x），第八篇=UVC XU 控制与取流实战（原第六/七篇，7.x→8.x）。**不要再写旧编号**——"第七篇 §7.9 TM5X"现在应写"第八篇 §8.9"，"第六篇 FAQ Q8"现在应写"第七篇 FAQ Q8"。**后续 CDC（6.8+）/UVC（6.15+）内容直接补进第六篇，不再重排**；Phase 8（libusb）将来新增为第九篇，加在第八篇之后即可。
-45. **★★★ wValue 字节序（海康惯例 vs UVC 规范）**：2bdf:0101 固件把 CS_ID 放在 wValue **高字节**（`CS_ID << 8`，如 CS_ID=0x05 → wValue=0x0500）；UVC 规范标准写法是低字节。已由真机代码验证：`code/xu_minimal_get.c`（`uint16_t wValue = (TARGET_CS_ID << 8)`）、`code/uvc_stream_viewer.cpp`（`0x0500 /* CS_ID=0x05 */`）。**工作代码 > 手绘抓包 > 推测**——本会话曾差点按手绘抓包把对的改错，改文档前先核对真机代码。
+45. **★★★ wValue 字节序（海康惯例 vs UVC 规范）**：2bdf:0101 固件把 CS_ID 放在 wValue **高字节**（`CS_ID << 8`，如 CS_ID=0x05 → wValue=0x0500）；UVC 规范标准写法是低字节。已由真机代码验证：`code/tools/xu_minimal_get.c`（`uint16_t wValue = (TARGET_CS_ID << 8)`）、`code/tools/uvc_stream_viewer.cpp`（`0x0500 /* CS_ID=0x05 */`）。**工作代码 > 手绘抓包 > 推测**——本会话曾差点按手绘抓包把对的改错，改文档前先核对真机代码。
 46. **wIndex 的 Interface 接收者**：接口号在 wIndex **低字节**（0x0001=接口 1）；只有 XU 命令的高字节才是 Unit ID。usb-notes.html 的 wIndex 表和决策流图曾写反，本会话已修正。
 47. **枚举主线骨架（4.2~4.10 逐包讲解会反复用到）**：Device Descriptor 读两次（第一次只读 8 字节拿 bMaxPacketSize0）；Config 先读 9 字节头拿 wTotalLength；SET_ADDRESS 之前设备共用地址 0；枚举全走 EP0。
 
@@ -500,7 +499,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 
 ## 七、新会话启动步骤
 
-1. **读这份交接文档** — `Read HANDOFF.md`
+1. **读文件导航** — `Read README.md`（30 秒定位）+ **读这份交接文档** — `Read HANDOFF.md`
 2. **确认在 main 分支** — `git branch`。翻新分支已合并删除，后续全部工作在 main 上进行。
 3. **读知识库** — `Read USB-Protocol-Knowledge-Base.md`（★ 第九会话新建、第十二会话扩充：~4,803 行，八篇 + 附录，读它就能获得所有上下文）
 4. **读学习计划** — `Read usb-protocol-learning-plan.md`（如需了解后续 34 个未完成的知识点）
@@ -509,16 +508,16 @@ D:\CC\personal-lr-notes\CCNotes\USB\
    - 如果用户要复习/查阅某主题 → `USB-Protocol-Knowledge-Base.md`（单文件，含 10 张速查表）
    - 如果用户要看理论学习可视化 → 双击 `usb-notes.html`（3 文件架构）
    - 如果用户要看描述符实战 → 双击 `descriptor-viewer.html`
-   - 如果用户要看 **摄像头取流+显示** → `code/uvc_stream_viewer.cpp`（libuvc+OpenCV，完整 7 步流程）
+   - 如果用户要看 **摄像头取流+显示** → `code/tools/uvc_stream_viewer.cpp`（libuvc+OpenCV，完整 7 步流程）
    - 如果用户要查**最小代码示例** → 双击 `usb-sdk-examples.html`（13 份示例讲解页）/ `code/examples/`（可编译源码）
-   - 如果用户要调 XU → `code/xu_interactive.c`（支持 GET_LEN 后选 GET_CUR 或 SET_CUR）
+   - 如果用户要调 XU → `code/tools/xu_interactive.c`（支持 GET_LEN 后选 GET_CUR 或 SET_CUR）
    - 如果用户要看 **标准请求参数速查** → `USB-Protocol-Knowledge-Base.md` 第五篇 §5.6 / 附录 A.10
    - 如果用户要看 **HID 篇** → `USB-Protocol-Knowledge-Base.md` 第六篇 §6.1~§6.7（应用层裁剪版）
    - 如果用户要看 **码流类型切换原理** → `USB-Protocol-Knowledge-Base.md` 第八篇 §8.4
    - 如果用户要看新设备上手方法 → `USB-Protocol-Knowledge-Base.md` 第八篇 §8.2
    - 如果用户要看 UVC XU 协议设计 → `notes/uvc-xu-extension-protocol-design.md`
-   - 如果用户要看最小读 XU 示例 → `code/xu_minimal_get.c`
-   - 如果用户要看海康 TM76 完整代码（裸 libusb 取流） → `code/HIKVISION_TM76_libusb_3.c`
+   - 如果用户要看最小读 XU 示例 → `code/tools/xu_minimal_get.c`
+   - 如果用户要看海康 TM76 完整代码（裸 libusb 取流） → `code/tools/HIKVISION_TM76_libusb_3.c`
    - 如果用户问 Bus Hound 抓包 → `USB-Protocol-Knowledge-Base.md` 第七篇 FAQ Q8
    - 如果用户问 Interface vs Endpoint → `USB-Protocol-Knowledge-Base.md` §2.3a
    - 如果用户问 **标准 UVC 取流流程** → `USB-Protocol-Knowledge-Base.md` §8.3
