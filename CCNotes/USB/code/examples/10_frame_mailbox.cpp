@@ -4,7 +4,7 @@
  * 学什么:  "两方 + 一个信箱"的协调——回调只做转换+投放（信箱满就丢
  *          新帧，绝不阻塞事件泵）；主线程有空才取走渲染
  * 对应知识点: KB 第九篇 §9.4 深挖（信箱模式简版）+ 第八会话踩坑 1/36
- * 编译:    gcc -o frame_mailbox 10_frame_mailbox.c -luvc -lusb-1.0 \
+ * 编译:    g++ -o frame_mailbox 10_frame_mailbox.cpp -luvc -lusb-1.0 \
  *              $(pkg-config --cflags --libs opencv4)
  * 运行:    sudo ./frame_mailbox 2bdf 0101
  * 预期:    窗口显示画面；主线程跟不上时丢帧变慢动作但绝不卡死

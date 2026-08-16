@@ -111,7 +111,7 @@
 | 知识库 | `USB-Protocol-Knowledge-Base.md` | **新增第五篇：标准请求与 Setup 包深度解析 §5.1~§5.6**（三类语义修正版 + 11 种请求全集 + GET_STATUS 三种响应 + Feature Selector 全集 + SET_INTERFACE 机制 + 参数速查，含三个深挖 Q&A）；附录新增 **A.10 标准请求参数总表**；**新增第六篇：设备类协议（§6.1~§6.26 全篇）**——HID（Item 编码认字级 + 键盘解剖图 + 六类请求精讲）+ CDC（四件套 byte 表 + SET_LINE_CODING 精讲 + 数据流）+ UVC（VC/VS 链 + 描述符认字级 + bmControls 全集 + Probe/Commit + Payload Header 拼帧）；**两次篇章重排**（原第五篇→第七篇、原第六篇→第八篇，交叉引用全部同步）；**知识总计修正 67→88**；前言/进度更新（5,137 行） |
 | HTML | `usb-notes.html` | **Phase 5 占位符替换为 6 张真卡片**（kp-5-1 ~ kp-5-6）；**Phase 6 新增 17 张卡片**（kp-6-1 ~ kp-6-17，HID 7 + CDC 4 + UVC 6，以 desc-byte-map 单元格 + ASCII 结构图为主，减少文字）；Phase 7 标注跳过；CSS 新增 `.phase-note`；侧边栏 Phase 5 6/6 ✓ + Phase 6 26/26 ✓；进度条 86%（4,033 行） |
 | 计划 | `usb-protocol-learning-plan.md` | 6.1~6.7 标记完成（应用层裁剪版说明）；**Phase 7 标记 ⏭ 跳过（暂缓）** |
-| 代码 | `code/examples/` | **★ 新增 13 份最小可运行示例 + README**（01 枚举 ~ 13 综合骨架；统一头注释五要素；每份独立编译 `gcc -lusb-1.0`，10 加 `-luvc`+opencv、13 加 `-pthread`）；hotplug_demo.c 迁移为 02_hotplug_detect.c |
+| 代码 | `code/examples/` | **★ 新增 13 份最小可运行示例 + README**（01 枚举 ~ 13 综合骨架；统一头注释五要素；每份独立编译 `gcc -lusb-1.0`，10 加 `-luvc`+opencv 且用 g++（.cpp）、13 加 `-pthread`）；hotplug_demo.c 迁移为 02_hotplug_detect.c |
 | HTML | `usb-sdk-examples.html` | **★ 新建**：13 份示例讲解页（单文件零依赖，暗色 IDE 风格，内嵌完整代码 + 逐段「代码↔协议」讲解 + 搜索/复制交互） |
 | 文档 | `docs/superpowers/specs/2026-08-16-usb-sdk-examples-design.md` + `plans/2026-08-16-usb-sdk-examples.md` | **新建**：SDK 示例集设计规格与实现计划（SDD 流程执行，17 任务全部通过） |
 | 交接 | `HANDOFF.md` | 更新（本会话） |
