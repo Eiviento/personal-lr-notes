@@ -17,10 +17,10 @@
 #include <libuvc/libuvc.h>
 #include <opencv2/opencv.hpp>
 
-/* 信箱（共享缓冲 + 标志位 + 锁） */
+/* 信箱（共享缓冲 + 标志位 + 锁）——存的是"成品 BGR 帧"，不是原始字节 */
 static pthread_mutex_t mbox_mutex = PTHREAD_MUTEX_INITIALIZER;
 static unsigned char mbox_buf[640 * 480 * 3];
-static int mbox_len = 0;
+static int mbox_len = 0, mbox_w = 0, mbox_h = 0;
 static int mbox_ready = 0;
 
 /* 帧回调：跑在 libuvc 事件线程（与拼帧回调同一线程） */
@@ -43,8 +43,10 @@ static void frame_cb(uvc_frame_t *frame, void *ptr)
     /* 信箱规则：满就丢新帧，绝不等待（不阻塞事件泵） */
     pthread_mutex_lock(&mbox_mutex);
     if (!mbox_ready) {
-        memcpy(mbox_buf, img.data, img.total() * img.elemSize());
         mbox_len = (int)(img.total() * img.elemSize());
+        memcpy(mbox_buf, img.data, mbox_len);
+        mbox_w = img.cols;
+        mbox_h = img.rows;
         mbox_ready = 1;
     }
     pthread_mutex_unlock(&mbox_mutex);
@@ -115,20 +117,24 @@ int main(int argc, char **argv)
     }
     puts("取流中... 按 ESC 退出");
 
-    /* 主线程：信箱里有帧才取（渲染在锁外） */
+    /* 主线程：信箱里有帧才取（渲染在锁外）。
+     * ★ 信箱里已是解码好的 BGR 成品——回调干了转换，主线程只负责显示，
+     *   不要再解码第二遍（早期版本把 BGR 当 JPEG 再 imdecode，静默不显示） */
     while (1) {
         unsigned char local[640 * 480 * 3];
-        int len = 0;
+        int len = 0, w = 0, h = 0;
         pthread_mutex_lock(&mbox_mutex);
         if (mbox_ready) {
-            memcpy(local, mbox_buf, mbox_len);
             len = mbox_len;
+            memcpy(local, mbox_buf, len);
+            w = mbox_w;
+            h = mbox_h;
             mbox_ready = 0;
         }
         pthread_mutex_unlock(&mbox_mutex);
 
         if (len) {
-            cv::Mat img = cv::imdecode(cv::Mat(1, len, CV_8UC1, local), cv::IMREAD_COLOR);
+            cv::Mat img(h, w, CV_8UC3, local);
             if (!img.empty()) { cv::imshow("frame_mailbox", img); }
         }
         if (cv::waitKey(10) == 27) break;   /* ESC */
