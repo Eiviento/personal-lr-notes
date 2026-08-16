@@ -6,7 +6,9 @@
  * 对应知识点: KB 第九篇 §9.2 深挖（open ≠ 开流）+ 第十会话（开流=切通道）
  * 编译:    gcc -o uvc_open_stream 08_uvc_open_stream.c -lusb-1.0
  * 运行:    sudo ./uvc_open_stream 2bdf 0101
- * 预期:    打印选中的 Alt 与端点 → 收 1 秒 → 字节数（每秒约几十万字节）
+ * 预期:    打印选中的 Alt 与端点 → Probe/Commit 协商 → 收 1 秒 → 字节数
+ * ★ 真机勘误（2026-08-16）：只 SET_INTERFACE 收 0 字节——本设备固件
+ *   把 Probe/Commit 当管线武装命令，必须补上完整协商序列
  * ============================================================ */
 
 #include <stdio.h>
@@ -54,6 +56,22 @@ int main(int argc, char **argv)
     if (libusb_kernel_driver_active(devh, vs_if) == 1)
         libusb_detach_kernel_driver(devh, vs_if);
     libusb_claim_interface(devh, vs_if);
+
+    /* ★ 真机勘误（2026-08-16）：只 SET_INTERFACE 不收数据——本设备固件把
+     * Probe/Commit 当"管线武装命令"，不发协商内部视频管线不启动。
+     * 补上规范顺序：GET_DEF → SET_CUR(Probe, CS=0x01) → SET_CUR(Commit, CS=0x02) */
+    unsigned char probe[26] = {0};
+    r = libusb_control_transfer(devh, 0xA1, 0x87, 0x0100, vs_if, probe, 26, 1000);
+    if (r >= 0) {
+        probe[1] = 1; probe[2] = 1;    /* 若 GET_DEF 无默认，指定 Format1/Frame1 */
+        r = libusb_control_transfer(devh, 0x21, 0x01, 0x0100, vs_if, probe, 26, 1000);  /* Probe */
+        printf("[协商] Probe: %s\n", r < 0 ? libusb_error_name(r) : "成功");
+        r = libusb_control_transfer(devh, 0x21, 0x01, 0x0200, vs_if, probe, 26, 1000);  /* Commit */
+        printf("[协商] Commit: %s\n", r < 0 ? libusb_error_name(r) : "成功");
+    } else {
+        printf("[协商] GET_DEF: %s（继续尝试开流）\n", libusb_error_name(r));
+    }
+
     r = libusb_set_interface_alt_setting(devh, vs_if, alt_num);
     if (r < 0) { fprintf(stderr, "开流失败: %s\n", libusb_error_name(r)); return 1; }
     printf("★ 开流成功——设备已激活流端点；数据要等 Host 的 IN Token（现在开始收 1 秒）\n");
