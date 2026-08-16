@@ -119,20 +119,27 @@ else document.documentElement.classList.add('dark');})();
         <a class="sub-item" href="#kp-5-5">5.5 SET/GET_INTERFACE</a>
         <a class="sub-item" href="#kp-5-6">5.6 参数速查表</a>
     </details>
-    <details>
-        <summary><span>📡 Phase 6: HID/CDC/UVC</span><span class="badge phase-pending">0/26 ○ · 即将更新</span></summary>
+    <details open>
+        <summary><span>📡 Phase 6: HID/CDC/UVC</span><span class="badge phase-pending">7/26 ◐ HID ✓</span></summary>
+        <a class="sub-item" href="#kp-6-1">⛁ 6.1 HID Descriptor 逐字节</a>
+        <a class="sub-item" href="#kp-6-2">⛁ 6.2 Report Item 编码规则</a>
+        <a class="sub-item" href="#kp-6-3">6.3 Main Item 全集</a>
+        <a class="sub-item" href="#kp-6-4">6.4 Global 项速查</a>
+        <a class="sub-item" href="#kp-6-5">6.5 Local 项速查</a>
+        <a class="sub-item" href="#kp-6-6">6.6 键盘报表解剖图</a>
+        <a class="sub-item" href="#kp-6-7">6.7 HID Report 协议</a>
     </details>
     <details>
-        <summary><span>📡 Phase 7: 协议分析工具</span><span class="badge phase-pending">0/7 ○ · 即将更新</span></summary>
+        <summary><span>📡 Phase 7: 协议分析工具</span><span class="badge phase-pending">⏭ 跳过</span></summary>
     </details>
     <details>
         <summary><span>📡 Phase 8: libusb 编程</span><span class="badge phase-pending">0/5 ○ · 即将更新</span></summary>
     </details>
 
-    <div class="progress-wrap" role="progressbar" aria-valuenow="75" aria-valuemin="0"
-         aria-valuemax="100" aria-label="学习进度 75%">
-        <div class="progress-bar" style="width:75%"></div>
-        <span class="progress-label">50/67 (75%)</span>
+    <div class="progress-wrap" role="progressbar" aria-valuenow="85" aria-valuemin="0"
+         aria-valuemax="100" aria-label="学习进度 85%">
+        <div class="progress-bar" style="width:85%"></div>
+        <span class="progress-label">57/67 (85%)</span>
     </div>
 </nav>
 
@@ -3421,17 +3428,263 @@ Host 挂起总线（suspend）                 → 整条总线休眠
         <p><strong>一句话总结：SETUP 8 字节是"标准快递面单"——第 0 字节是寄收方向+字典+收件人，第 1 字节是业务类型，wValue/wIndex 是两张随业务换填法的表格，wLength 永远是包裹多大；11 种标准请求是 USB 宪法基本法——设备必须"听得懂"，要么执行要么在 STATUS 明确拒绝，不能装死。</strong></p>
     </article>
 
-    <!-- ===== Phase 6 Placeholder ===== -->
-    <div class="phase-header" id="phase-6"><h2>Phase 6: 设备类协议逐字节解析 (HID / CDC / UVC) <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+    <!-- ===== Phase 6: 设备类协议逐字节解析 (HID / CDC / UVC) ===== -->
+    <div class="phase-header" id="phase-6"><h2>Phase 6: 设备类协议逐字节解析 (HID / CDC / UVC) <span style="font-size:14px;color:var(--color-frame);margin-left:8px;">HID 7/26 ✓ · CDC/UVC 待学</span></h2></div>
+    <p class="phase-note">HID 篇按<strong>应用层裁剪版</strong>（2026-08-16 决策）：应用层开发者不写设备固件，Report Descriptor 编码学到"认字级"（能看懂 dump/工具解析结果即可）；6.4/6.5 压缩为速查、6.6 用成品解剖图、6.7 类请求精讲（SDK 直接使用）。</p>
+
+    <!-- kp-6-1 -->
+    <article class="card" id="kp-6-1">
+        <h3>6.1 ⛁ HID Descriptor 逐字节</h3>
+
+        <div class="info-box">
+          <strong>类专属描述符在标准命名空间占一个号</strong>——UVC 的 CS 描述符是 0x24/0x25（第七篇实战已见），HID 的类描述符是 <strong>0x21</strong>。同一个设计模式，换一个类再用一遍。
+        </div>
+
+        <h4>逐字节解剖（9 字节）</h4>
+        <pre><code>偏移  字段                大小   值
++0   bLength             1     0x09 —— 9 字节
++1   bDescriptorType     1     0x21 —— HID（类描述符）
++2   bcdHID              2     0x0111 —— HID 规范版本 1.11（BCD，3.3 同款编码）
++4   bCountryCode        1     0x00 —— 硬件本地化国家码（0 = 不本地化）
++5   bNumDescriptors     1     0x01 —— 后面跟着几个类描述符条目
++6   bDescriptorType     1     0x22 —— 条目类型 = Report Descriptor
++7   wDescriptorLength   2     0x003F —— 条目长度（小端）</code></pre>
+        <p>真实示例：<code>09 21 11 01 00 01 22 3F 00</code> = 9 字节、HID 1.11、不本地化、1 个条目、条目类型 0x22、长度 63 字节。</p>
+
+        <h4>关键认知一：可变长头部 + 档案目录</h4>
+        <p>标准描述符长度固定，HID Descriptor 是<strong>可变长</strong>：</p>
+        <pre><code>bLength = 6 + 3 × bNumDescriptors</code></pre>
+        <p>前 6 字节头部，之后每 3 字节一个"档案条目" <code>(类型, 长度)</code>。绝大多数设备只有 1 个条目（Report）→ 9 字节。<strong>档案目录类比</strong>：HID Descriptor 像档案室索引卡——每条条目 = "文件柜编号 + 文件页数"，它不含 Report Descriptor 内容，只告诉你"去哪找、有多长"。</p>
+
+        <h4>四个深点</h4>
+        <ol>
+          <li><strong>0x21 是标准命名空间的"类摊位号"</strong>：0x01 Device、0x02 Config、0x21 HID、0x22 Report、0x24/0x25 UVC CS。类描述符寄生在标准描述符链里——枚举 4.8 读 Config 完整链时一起被拉回，类信息枚举时就全拿到。</li>
+          <li><strong>wDescriptorLength 的用法：给标准请求搭"顺风车"</strong>。读 Report Descriptor 不发明新请求，复用标准 GET_DESCRIPTOR：wValue = <code>0x2200</code>（高字节 0x22 = Report 类型），wIndex = 接口号，wLength = wDescriptorLength。5.6 决策流"wValue 高字节=类型"再次兑现。</li>
+          <li><strong>Report Descriptor ≠ Report</strong>：说明书（~几十字节，定义报表每个 bit 的含义）vs 数据本身（TM5X 那个 1023 字节）。描述是压缩的语法，数据是展开的实体——几十字节说明书能定义出 1023 字节报表。</li>
+          <li><strong>bcdHID 与 bCountryCode</strong>：bcdHID 是 BCD（0x0111=1.11）；bCountryCode = 键盘硬件按哪国布局出厂（0=不本地化、32=英式、33=美式），让 OS 决定是否自动键位映射。</li>
+        </ol>
+
+        <h4>配置链位置</h4>
+        <pre><code>Interface Descriptor
+  bInterfaceClass=0x03 (HID)
+  bInterfaceSubClass=0/1    ← 0=无子类, 1=Boot Interface（BIOS 兼容模式）
+  bInterfaceProtocol=0/1/2  ← 0=无, 1=键盘, 2=鼠标
+HID Descriptor (0x21)        ← 索引卡
+Endpoint Descriptor          ← 通常 1 个中断 IN（键盘按键/鼠标位移/TM5X 报表全走它）</code></pre>
+        <p>HID 接口的标准配置是中断 IN 端点——2.11 的"周期 IN Token"在真实设备上的第一号应用。</p>
+    </article>
+
+    <!-- kp-6-2 -->
+    <article class="card" id="kp-6-2">
+        <h3>6.2 ⛁ Report Descriptor Item 编码规则（认字级）</h3>
+
+        <div class="info-box">
+          Report Descriptor 是一串<strong>指令（Item）流</strong>，每条 Item = <strong>1 字节前缀 + 若干字节数据</strong>。前缀字节的位布局就是本节的逐位主角。
+        </div>
+
+        <h4>前缀字节位布局</h4>
+        <table>
+          <tr><th>位</th><th>名称</th><th>编码</th></tr>
+          <tr><td>D7-D4</td><td>bTag</td><td>条目号（在其类型内的编号）</td></tr>
+          <tr><td>D3-D2</td><td>bType</td><td>00=Main 主项 / 01=Global 全局项 / 10=Local 局部项 / 11=Reserved</td></tr>
+          <tr><td>D1-D0</td><td>bSize</td><td>00=无数据 / 01=1 字节 / 10=长条目(Long Item) / 11=4 字节</td></tr>
+        </table>
+        <p><strong>核心公式</strong>（全部前缀字节都是算出来的）：</p>
+        <pre><code>前缀字节 = (bTag &lt;&lt; 4) | (bType &lt;&lt; 2) | bSize
+数据段   = 按 bSize 指示的长度跟随，多字节一律小端</code></pre>
+        <p>例：Usage Page 1 字节 = tag=0、type=1(Global)、size=1 → 0x05；同 tag 换 2 字节数据 → 0x06。</p>
+
+        <h4>三类 Item 分工</h4>
+        <table>
+          <tr><th>bType</th><th>名称</th><th>干什么</th><th>填表指南类比</th></tr>
+          <tr><td>00</td><td>Main 主项</td><td>在报表里真正划出字段（Input/Output/Feature）和组织结构（Collection）</td><td>"落笔：开一列，属性=只读"</td></tr>
+          <tr><td>01</td><td>Global 全局项</td><td>设定当前状态（Report Size/Count 等），影响之后所有 Main 项直到被改</td><td>"换一支 8bit 宽的笔，写第 2 张表"</td></tr>
+          <tr><td>10</td><td>Local 局部项</td><td>给下一个 Main 项贴标签（Usage 等），用完即弃</td><td>"给下一个空格贴标签：这格叫 X 坐标"</td></tr>
+        </table>
+        <p>作用域差异是灵魂：<strong>Global 会传染、Local 一次性、Main 是落笔</strong>。</p>
+
+        <h4>解码示例：键盘开头四件套</h4>
+        <pre><code>05 01   Usage Page (Generic Desktop)   ← 选词典
+09 06   Usage (Keyboard)               ← 给下一个字段贴标签："这是个键盘"
+A1 01   Collection (Application)       ← 开一个应用级集合
+C0      End Collection                 ← 关集合</code></pre>
+        <p><code>05 01</code> 与 <code>09 06</code> 对比：05/09 只差 D3-D2（Global vs Local）——同一个 tag=0，在 Global 里叫 Usage Page（选词典），在 Local 里叫 Usage（贴标签）。</p>
+
+        <h4>常见前缀速查</h4>
+        <pre><code>0x05 Usage Page(1B)   0x06 Usage Page(2B, 06 00 FF=厂商页 0xFF00)
+0x09 Usage(1B)        0x15/0x25 Logical Min/Max(1B)
+0x75 Report Size(1B)  0x95 Report Count(1B)  0x85 Report ID(1B)
+0x81/0x91/0xB1 Input/Output/Feature(1B 标志)  0xA1 Collection  0xC0 End Collection</code></pre>
+
+        <h4>跨章连接：为什么没有校验位</h4>
+        <p>PID（2.6）低 4 位类型码 + 高 4 位取反校验——因为跑在总线上可能出错。HID 前缀字节无校验位：Report Descriptor 是软件数据，走 GET_DESCRIPTOR 的 DATA 包，<strong>CRC16（2.8）已在包层兜底</strong>。不同层各管各的错。</p>
+    </article>
+
+    <!-- kp-6-3 -->
+    <article class="card" id="kp-6-3">
+        <h3>6.3 Main Item 全集（认字级）</h3>
+
+        <h4>五个成员</h4>
+        <table>
+          <tr><th>bTag</th><th>名称</th><th>数据</th><th>作用</th></tr>
+          <tr><td>8</td><td>Input</td><td>1 字节标志位</td><td>报表里开一个设备→Host 字段</td></tr>
+          <tr><td>9</td><td>Output</td><td>1 字节标志位</td><td>开一个 Host→设备字段（键盘 LED）</td></tr>
+          <tr><td>11 (0xB)</td><td>Feature</td><td>1 字节标志位</td><td>开一个双向配置字段（读写都行，不随报表走）</td></tr>
+          <tr><td>10 (0xA)</td><td>Collection</td><td>1 字节集合类型</td><td>开一组字段的"文件夹"</td></tr>
+          <tr><td>12 (0xC)</td><td>End Collection</td><td>无数据</td><td>关文件夹</td></tr>
+        </table>
+
+        <h4>Input/Output 的 8 个标志位逐位</h4>
+        <table>
+          <tr><th>位</th><th>0（默认）</th><th>1</th><th>含义</th></tr>
+          <tr><td>D0</td><td>Data</td><td>Constant</td><td>装"会变的数据"还是"固定常量"</td></tr>
+          <tr><td>D1</td><td>Array</td><td>Variable</td><td>数组槽（各位置同含义）还是变量（各字段各含义）</td></tr>
+          <tr><td>D2</td><td>Absolute</td><td>Relative</td><td>绝对量还是相对量</td></tr>
+          <tr><td>D3</td><td>No Wrap</td><td>Wrap</td><td>到边界是否回卷环绕</td></tr>
+          <tr><td>D4</td><td>Linear</td><td>Non Linear</td><td>值与物理量线性还是非线性</td></tr>
+          <tr><td>D5</td><td>Preferred State</td><td>No Preferred</td><td>松手后是否回"中立位"</td></tr>
+          <tr><td>D6</td><td>No Null Position</td><td>Null State</td><td>是否存在一个"无效值"状态</td></tr>
+          <tr><td>D7</td><td colspan="2">Reserved（Input/Output）</td><td>必须为 0</td></tr>
+        </table>
+
+        <h4>★ 最重要的两个位</h4>
+        <p><strong>D0 Data vs Constant</strong>——填数还是垫纸。Constant 字段占据位但不产生数据意义（对齐/保留位）：键盘报表第 2 字节恒 0x00（BIOS 兼容）就是 Constant。</p>
+        <p><strong>D1 Array vs Variable</strong>——键盘与鼠标的本质区别：</p>
+        <pre><code>键盘按键数组: D1=0 Array   ← 6 个槽位含义相同（都是"键"），槽里装按键码
+鼠标移动量:   D1=1 Variable ← X、Y 各是独立字段</code></pre>
+        <p><strong>酒店客房类比</strong>：Array = 入住单 6 间客房，每格写的都是"住着几号客人"；Variable = 家庭成员表，"身高"列和"体重"列各是各的。</p>
+        <p><strong>D2</strong> 是鼠标经典位：鼠标 X = <code>81 06</code>（Variable+Relative，相对移动）；游戏杆 X = <code>81 02</code>（Absolute，绝对坐标）。</p>
+
+        <h4>真实标志字节速查</h4>
+        <pre><code>0x00 = Data+Array+Absolute      ← 键盘 6 键位数组（81 00）
+0x01 = Constant                 ← 键盘保留字节（81 01）
+0x02 = Data+Variable+Absolute   ← 键盘修饰键 8×1bit、游戏杆 X（81 02）
+0x06 = Data+Variable+Relative   ← 鼠标移动 X/Y（81 06）</code></pre>
+        <p><code>81 02</code> 一字节两用：键盘修饰键"8 个独立 bit"与游戏杆"一个绝对坐标"——同样的标志位，配合不同 Report Size/Count 产生完全不同的字段形状。</p>
+        <p><strong>Feature 多两个位</strong>：D7 = Buffered Bytes、D8 = Non Volatile（掉电保存，需 4 字节形态，实际几乎不用）。</p>
+
+        <h4>Collection：四种文件夹</h4>
+        <pre><code>0x00 Physical    物理集合（一个物理装置）
+0x01 Application 应用集合（整个键盘/鼠标）★ 最常用
+0x02 Logical     逻辑集合（功能内一组字段）
+0x03 Report      Report 集合（HID 1.11+）
+0x80-0xFF       厂商自定义</code></pre>
+        <p><strong>括号配对规则</strong>：每个 Collection 必须被 End Collection 关闭；可嵌套、不可交叉（先开后关）。Collection 是<strong>纯语义标注</strong>——对报表位布局零影响，它告诉 OS"哪些字段组成一个完整设备功能"。</p>
+    </article>
+
+    <!-- kp-6-4 -->
+    <article class="card" id="kp-6-4">
+        <h3>6.4 Global 项认字速查（裁剪版）</h3>
+
+        <p>目标：看 dump 时能认出这些字节在干什么（不追求会写）。</p>
+        <pre><code>Usage Page          选"用词词典"（01=Generic Desktop, 07=Keyboard/Keypad, 09=Button, FF00=厂商）
+Logical Min / Max   字段值的逻辑范围（键盘 0~1；鼠标 X -127~127）
+Report Size         每个字段多宽（bit 数）★ 列宽
+Report Count        字段重复几次          ★ 列数
+Report ID           多报表共用一条管道时给报表编号（报表第一字节 = ID）
+Physical Min/Max    物理量范围（单位换算用，极罕见）
+Unit / Unit Exponent 单位系统（厘米、弧度，极罕见）
+Push / Pop          当前 Global 状态压栈/弹栈（极罕见）</code></pre>
+        <p><strong>Report Size × Report Count = 一个字段的总 bit 数——看懂任何 dump 的最小钥匙。</strong></p>
+    </article>
+
+    <!-- kp-6-5 -->
+    <article class="card" id="kp-6-5">
+        <h3>6.5 Local 项认字速查（裁剪版）</h3>
+
+        <pre><code>Usage            给下一个字段贴一个标签（"X 轴"、"按键 0x1E"）★ 最常用
+Usage Min / Max  贴一段连续标签（0x01~0xFF 全部按键）——Array 字段的"槽位含义"
+Designator/String 物理标注 / 字符串关联（多按键设备、多语言，罕见）
+Delimiter        分组标记（极罕见）</code></pre>
+        <p><strong>记忆骨架</strong>：Global 管"格子多宽、几格、数值范围"（报表形状），Local 管"这格叫什么"（字段标签），Main 落笔。</p>
+    </article>
+
+    <!-- kp-6-6 -->
+    <article class="card" id="kp-6-6">
+        <h3>6.6 键盘报表成品解剖图（替代逐字节手写）</h3>
+
+        <div class="info-box">
+          经典 8 字节 Boot 键盘 Report Descriptor 全文，按<strong>它最终造出的报表</strong>来读。
+        </div>
+
+        <pre><code>05 01   Usage Page (Generic Desktop)      ← 选词典
+09 06   Usage (Keyboard)                  ← 标签：这是个键盘
+A1 01   Collection (Application)          ← 开文件夹
+05 07   Usage Page (Key Codes)            ← 换词典：按键码
+19 E0   Usage Min (Left Ctrl)             ┐
+29 E7   Usage Max (Right GUI)             ┘ 连续标签 0xE0~0xE7 = 8 个修饰键
+15 00   Logical Min (0)     25 01  Logical Max (1)   ← 值域 0~1（按下/松开）
+75 01   Report Size (1)     95 08  Report Count (8)  ← 列宽 1bit × 8 格
+81 02   Input (Data, Variable, Absolute)  → 报表字节 0：修饰键位图（8×1bit）
+75 08   Report Size (8)     95 01  Report Count (1)  ← 列宽 8bit × 1 格
+81 01   Input (Constant)                  → 报表字节 1：保留字节（恒 0x00）
+19 00   Usage Min (0)       29 65  Usage Max (101)   ← 键码 0x00~0x65
+15 00   Logical Min (0)     25 65  Logical Max (101)
+75 08   Report Size (8)     95 06  Report Count (6)  ← 列宽 8bit × 6 格
+81 00   Input (Data, Array)               → 报表字节 2~7：6 个键位槽
+C0      End Collection</code></pre>
+
+        <h4>成品——8 字节 Boot 报表</h4>
+        <pre><code>字节 0    修饰键位图：8 个 bit 各是一个键（Ctrl/Shift/Alt/GUI 左右各一）
+字节 1    保留字节（Constant，恒 0x00，BIOS 兼容用）
+字节 2~7  6 个键位槽：每槽一个键码（0x00=空，0x04=A，0x1E=1...）</code></pre>
+
+        <p>知识点汇聚：<code>75 01 95 08</code> 是 Global 定形状，<code>19 E0 29 E7</code> 是 Local 贴标签，<code>81 02</code> 是 Main 落笔（Variable）；<code>81 00</code> 是 Array。不需要会写——看任何 HID dump（包括 TM5X 厂商 HID）认得这三步即可。验证方法：把这段 hex 贴进在线 HID descriptor parser，输出与上面注释一致。</p>
+    </article>
+
+    <!-- kp-6-7 -->
+    <article class="card" id="kp-6-7">
+        <h3>6.7 HID Report 协议（精讲——SDK 直接要用）</h3>
+
+        <div class="info-box">
+          六个类请求的形状：<strong>bmRequestType = 0x21 (OUT Class Interface) / 0xA1 (IN Class Interface)</strong>，wIndex = 接口号——与 XU 命令的 0x21/0xA1 完全同款（"行业规章"的第三张表：Standard 已会、UVC 已实战、HID 是这张）。
+        </div>
+
+        <h4>六请求总表</h4>
+        <table>
+          <tr><th>bRequest</th><th>名称</th><th>方向</th><th>wValue</th><th>数据阶段</th></tr>
+          <tr><td>0x01</td><td>GET_REPORT</td><td>IN (0xA1)</td><td>高字节=报表类型(1=Input,2=Output,3=Feature)，低字节=Report ID</td><td>报表内容</td></tr>
+          <tr><td>0x09</td><td>SET_REPORT</td><td>OUT (0x21)</td><td>同上</td><td>报表内容</td></tr>
+          <tr><td>0x02</td><td>GET_IDLE</td><td>IN (0xA1)</td><td>高=时长(4ms 单位)，低=Report ID</td><td>1B：当前 idle</td></tr>
+          <tr><td>0x0A</td><td>SET_IDLE</td><td>OUT (0x21)</td><td>同上</td><td>无</td></tr>
+          <tr><td>0x03</td><td>GET_PROTOCOL</td><td>IN (0xA1)</td><td>0</td><td>1B：0=boot, 1=report</td></tr>
+          <tr><td>0x0B</td><td>SET_PROTOCOL</td><td>OUT (0x21)</td><td>0 或 1</td><td>无</td></tr>
+        </table>
+
+        <h4>三个深点</h4>
+        <ol>
+          <li><strong>报表的"带外通道"</strong>：正常报表走中断端点（周期 IN），六个类请求走 EP0 控制通道——两条路并行互补。中断 IN = 设备的"主动汇报"（按键了就报）；GET_REPORT = Host 的"主动查岗"（软件刚启动立即要一份当前状态）；SET_REPORT = Host 的"直接下令"。SDK 读 TM5X 报表用 <code>libusb_interrupt_transfer</code>，想立即拉一份用 GET_REPORT——两条腿。</li>
+          <li><strong>wValue 高字节 1/2/3 对应 6.3 的三个 Main 项</strong>。Feature 报表（配置类数据）天生适合此通道——Feature 项存在的完整理由：<strong>第三条路</strong>（Input=管道上报、Output=管道下发、Feature=控制通道按需读写）。</li>
+          <li><strong>Boot protocol vs Report protocol——BIOS 历史</strong>。开机时 BIOS 没有 HID 解析器，键盘/鼠标必须支持固定格式（6.6 解剖的 8 字节表）。OS 起来后 HID 驱动发 <code>SET_PROTOCOL(1)</code> 切到 report protocol，按描述符完整定义解析。<strong>老式传真机类比</strong>：先按国际固定格式互通（boot），再协商切到高速定制格式（report）。</li>
+        </ol>
+        <p><strong>Idle rate</strong>：SET_IDLE 设中断管道"最大上报频率"（idle=0 → 变了就报；idle=50 → 最多每 200ms 报一次，50×4ms）——省电、降总线流量。</p>
+
+        <h4>应用层代码模板（SDK 会写成这样）</h4>
+        <pre><code>// 主动拉一份 Input 报表（控制通道）
+libusb_control_transfer(devh, 0xA1, 0x01, (1&lt;&lt;8) | 0, if_num, buf, len, 1000);
+// 切到 report protocol（键盘/鼠标上电初始化）
+libusb_control_transfer(devh, 0x21, 0x0B, 1, if_num, NULL, 0, 1000);
+// 设 idle：最多每 200ms 报一次（50 × 4ms）
+libusb_control_transfer(devh, 0x21, 0x0A, (50&lt;&lt;8) | 0, if_num, NULL, 0, 1000);</code></pre>
+        <p>与第八会话 XU 命令同一个函数（8 参数）——只是 bmRequestType 换 Class HID、bRequest 换数字。"换新设备只改 wIndex 高字节"升级成"<strong>换类协议只换 bmRequestType 字典 + bRequest 编号</strong>"。</p>
+
+        <h4>MQTT 类比收束 HID 篇</h4>
+        <pre><code>中断报表    = 周期性 PUBLISH（按键事件）
+GET_REPORT = 直接 REQUEST/RESPONSE 拉最新消息
+SET_IDLE   = 最小发布间隔
+SET_PROTOCOL = 切换报文格式版本（v1 固定 ↔ v2 自定义）</code></pre>
+        <p><strong>一句话总结：应用层 HID SDK 的全部招式 = 一条中断管道（读报表）+ 六个类请求（带外控制）。Report Descriptor 的逐位编码留给写固件的人，应用层只需要认字。</strong></p>
+    </article>
+
+    <!-- ===== Phase 6 CDC/UVC 待学 ===== -->
     <div class="placeholder">
-        <h3>第六阶段 — 26 个知识点</h3>
-        <p><strong>HID类:</strong> ⛁ HID Descriptor · ⛁ Report Descriptor Item编码 · Main/Global/Local Item全集 · 键盘Report范例 · HID Report协议</p>
-        <p><strong>CDC类:</strong> ⛁ CDC功能描述符链 · Header/ACM/Union/Call Mgmt Descriptor · CDC类请求 · 数据流</p>
+        <h3>CDC / UVC 篇 — 待学习（19 个知识点）</h3>
+        <p><strong>CDC类:</strong> ⛁ CDC功能描述符链 · Header/ACM/Union/Call Mgmt Descriptor · CDC类请求（SET_LINE_CODING 7 字节）· 数据流</p>
         <p><strong>UVC类:</strong> ⛁ UVC接口组织 · VC/VS描述符链 · Probe/Commit协商 · ⛁ Payload Header</p>
     </div>
 
-    <!-- ===== Phase 7 Placeholder ===== -->
-    <div class="phase-header" id="phase-7"><h2>Phase 7: 协议分析工具与实操 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">○ 待学习</span></h2></div>
+    <!-- ===== Phase 7: 跳过 ===== -->
+    <div class="phase-header" id="phase-7"><h2>Phase 7: 协议分析工具与实操 <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">⏭ 跳过（暂缓，2026-08-16）</span></h2></div>
     <div class="placeholder">
         <h3>第七阶段 — 7 个知识点</h3>
         <p>lsusb -v完整输出解读 · Wireshark+USBpcap安装配置 · 抓取HID/CDC/UVC枚举与数据流 · USB Tree Viewer</p>

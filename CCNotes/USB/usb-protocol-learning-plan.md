@@ -93,16 +93,18 @@
 
 ## 第六阶段：设备类协议逐字节解析（HID / CDC / UVC）
 
+> **2026-08-16 裁剪决策**：用户是应用层开发者（SDK 消费设备，不写设备固件），HID 篇按**应用层裁剪版**执行——Report Descriptor Item 编码只学到"认字"级别（能看懂 dump/工具解析结果），不追求会写。6.4/6.5 压缩为速查，6.6 用成品解剖图替代逐字节手写，6.7 类请求精讲（SDK 直接要用）。
+
 | # | 知识点 | 要讲清楚什么 | 状态 |
 |---|--------|-------------|------|
 | **HID 类** | | | |
-| 6.1 | ⛁ HID Descriptor 逐字节 | bLength/bDescriptorType(0x21)/bcdHID/bCountryCode/bNumDescriptors | ⬜ |
-| 6.2 | ⛁ Report Descriptor Item 编码规则 | Item 前缀字节的位布局：bSize/bType/bTag | ⬜ |
-| 6.3 | Main Item 全集 | Input/Output/Feature/Collection/End Collection — 8 个标志位 | ⬜ |
-| 6.4 | Global Item 全集 | Usage Page/Logical Min&Max/Report Size&Count/Report ID | ⬜ |
-| 6.5 | Local Item 全集 | Usage/Usage Min&Max | ⬜ |
-| 6.6 | 键盘 Report Descriptor 完整范例 | 8 字节 Boot Keyboard Report 一步一步写出 | ⬜ |
-| 6.7 | HID Report 协议 | Get_Report/Set_Report/Get_Idle/Set_Idle/Get_Protocol/Set_Protocol | ⬜ |
+| 6.1 | ⛁ HID Descriptor 逐字节 | bLength/bDescriptorType(0x21)/bcdHID/bCountryCode/bNumDescriptors | ✅ |
+| 6.2 | ⛁ Report Descriptor Item 编码规则 | Item 前缀字节的位布局：bSize/bType/bTag | ✅（认字级） |
+| 6.3 | Main Item 全集 | Input/Output/Feature/Collection/End Collection — 8 个标志位 | ✅（认字级） |
+| 6.4 | Global Item 全集 | Usage Page/Logical Min&Max/Report Size&Count/Report ID | ✅（压缩为速查） |
+| 6.5 | Local Item 全集 | Usage/Usage Min&Max | ✅（压缩为速查） |
+| 6.6 | 键盘 Report Descriptor 完整范例 | 8 字节 Boot Keyboard Report 一步一步写出 | ✅（成品解剖图） |
+| 6.7 | HID Report 协议 | Get_Report/Set_Report/Get_Idle/Set_Idle/Get_Protocol/Set_Protocol | ✅（精讲） |
 | **CDC 类** | | | |
 | 6.8 | ⛁ CDC 功能描述符链完整布局 | Interface↔Header↔ACM↔Union↔Call Mgmt↔Interface↔Endpoint×2 | ⬜ |
 | 6.9 | CDC Header Descriptor 逐字节 | bFunctionLength/bDescriptorType(0x24 CS)/bDescriptorSubType(0x00)/bcdCDC | ⬜ |
@@ -127,17 +129,19 @@
 
 ---
 
-## 第七阶段：协议分析工具与实操
+## 第七阶段：协议分析工具与实操 — ⏭ 跳过（2026-08-16 用户决定，暂缓）
+
+> 理由：应用层开发暂不需要；真机抓包实战已在 4.11/4.11a 完成（枚举全过程 + TM5X 逐包分析）。若将来调试需要再回补。
 
 | # | 知识点 | 要做什么 | 状态 |
 |---|--------|---------|------|
-| 7.1 | lsusb -v 完整输出解读 | 逐段对照描述符知识点，完全读懂输出信息的每一位 | ⬜ |
-| 7.2 | Wireshark + USBpcap 安装配置 | Windows 上抓 USB 流量的环境搭建 | ⬜ |
-| 7.3 | 抓取真实设备枚举过程 | HID 键盘 / CDC 串口 / UVC 摄像头 各抓一遍枚举过程 | ⬜ |
-| 7.4 | 抓取 HID 数据流 | 按键上报的中断 IN 传输，Report Descriptor 对应报文字段 | ⬜ |
-| 7.5 | 抓取 CDC 数据流 | 打开串口→Set_Line_Coding→收发测试→观察批量传输 | ⬜ |
-| 7.6 | 抓取 UVC 数据流 | Probe/Commit 协商→VS 启动→等时传输视频帧→Payload Header 分析 | ⬜ |
-| 7.7 | USB Tree Viewer 等工具 | 图形化查看描述符树 | ⬜ |
+| 7.1 | lsusb -v 完整输出解读 | 逐段对照描述符知识点，完全读懂输出信息的每一位 | ⏭ 跳过 |
+| 7.2 | Wireshark + USBpcap 安装配置 | Windows 上抓 USB 流量的环境搭建 | ✅（已在 4.11 实操） |
+| 7.3 | 抓取真实设备枚举过程 | HID 键盘 / CDC 串口 / UVC 摄像头 各抓一遍枚举过程 | ⏭ 跳过 |
+| 7.4 | 抓取 HID 数据流 | 按键上报的中断 IN 传输，Report Descriptor 对应报文字段 | ⏭ 跳过 |
+| 7.5 | 抓取 CDC 数据流 | 打开串口→Set_Line_Coding→收发测试→观察批量传输 | ⏭ 跳过 |
+| 7.6 | 抓取 UVC 数据流 | Probe/Commit 协商→VS 启动→等时传输视频帧→Payload Header 分析 | ⏭ 跳过 |
+| 7.7 | USB Tree Viewer 等工具 | 图形化查看描述符树 | ⏭ 跳过 |
 
 ---
 

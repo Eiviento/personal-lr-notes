@@ -1,8 +1,8 @@
 # USB 协议知识库
 
 > 整理日期：2026-08-02（2026-08-16 更新）
-> 覆盖范围：Phase 1-5 理论学习 + 真实设备描述符实战 + UVC XU 控制与取流实战
-> 学习进度：50/67 知识点（75%），Phase 5 完成，下一阶段 Phase 6
+> 覆盖范围：Phase 1-6（HID 篇完成）+ 真实设备描述符实战 + UVC XU 控制与取流实战
+> 学习进度：57/67 知识点（85%），Phase 6 进行中（HID 完成），下一阶段 CDC 篇
 > 学习策略：自底向上 — 先把协议基础打牢，再谈开发
 > 深度要求：每个 byte 的每个 bit 含义都要讲清楚（MQTT 报文头级别精度）
 
@@ -21,15 +21,15 @@
 | Phase 3 | USB 描述符体系 — 逐字节解剖 | 11 | ✅ 完成 |
 | Phase 4 | USB 枚举过程 — 逐包逐事务追踪 | 12 | ✅ 完成 12/12 |
 | Phase 5 | 标准请求与 Setup 包深度解析 | 6 | ✅ 完成 6/6 |
-| Phase 6 | 设备类协议逐字节解析（HID / CDC / UVC） | 26 | ⬜ 待开始 |
-| Phase 7 | 协议分析工具与实操 | 7 | ⬜ 待开始 |
+| Phase 6 | 设备类协议逐字节解析（HID / CDC / UVC） | 26 | ◐ HID 7/26 完成（应用层裁剪版），CDC/UVC 待学 |
+| Phase 7 | 协议分析工具与实操 | 7 | ⏭ 跳过（暂缓，2026-08-16 用户决定；真机抓包已在 4.11/4.11a 完成） |
 | Phase 8 | libusb 编程衔接 | 5 | ⬜ 待开始 |
 
 ### 阅读指南
 
-- **从零开始**：按第一篇→第二篇→第三篇→第四篇→第五篇→第六篇→第七篇顺序阅读
+- **从零开始**：按第一篇→第二篇→第三篇→第四篇→第五篇→第六篇→第七篇→第八篇顺序阅读
 - **快速查阅**：跳转到附录的速查表
-- **实战优先**：如果你已经有理论基础，直接跳到第六篇（真实设备）和第七篇（XU 取流）
+- **实战优先**：如果你已经有理论基础，直接跳到第七篇（真实设备）和第八篇（XU 取流）
 - **MQTT 类比**：文中大量使用 MQTT/TCP/HTTP 做类比，帮助理解 USB 协议设计
 - **方向视角**：IN = Device→Host（Host "收进来"），OUT = Host→Device（Host "发出去"）
 
@@ -1780,7 +1780,7 @@ USB 2.0 规范第 9 章定义的设备状态机，是理解整个 Phase 4 的骨
 
 - **Default = 无名氏**：所有刚复位的设备都叫"地址 0"，像没领工牌的新员工。
 - **Address = 有名字了，但没上岗**：只有 EP0 能应答。
-- **Configured = 上岗**：这之后才谈得上"开流"（SET_INTERFACE）、批量/等时传输——本知识库第七篇的所有实战（XU 命令、取流）都发生在 Configured 之后。
+- **Configured = 上岗**：这之后才谈得上"开流"（SET_INTERFACE）、批量/等时传输——本知识库第八篇的所有实战（XU 命令、取流）都发生在 Configured 之后。
 
 ### 完整时间线（Host 视角，教科书主线 10 步）
 
@@ -2024,7 +2024,7 @@ Host 任何时刻都能发复位，不只枚举开头。设备在任何状态（
 
 10 步时间线的第 ③ 步。前两格（4.2 检测、4.3 复位）都是纯电气行为——没有包、没有 PID。从这一刻起，Token、SETUP 包、DATA0/DATA1 全部登场。
 
-这个包的构造方法和第七篇 XU 命令完全相同（8 字节 SETUP 骨架），只是"三把钥匙"取值不同。
+这个包的构造方法和第八篇 XU 命令完全相同（8 字节 SETUP 骨架），只是"三把钥匙"取值不同。
 
 ### SETUP 包逐字节：80 06 00 01 00 00 08 00
 
@@ -2107,7 +2107,7 @@ Default 状态的设备全叫"地址 0"，靠 **Hub 逐端口复位**（4.3）�
 
 ### 与 §2.2a 的交叉：64 vs 512 vs 65535
 
-这里只读 8 字节，是因为"不知道上限"；而 bMaxPacketSize0 本身是 EP0 单笔事务的上限（HS 固定 64）。"控制传输最大多少"有三层答案：总线事务 64B（§2.2a）、TM5X 协议帧 512B（§7.9）、wLength 字段 65535——三个数管三层，一层套一层。
+这里只读 8 字节，是因为"不知道上限"；而 bMaxPacketSize0 本身是 EP0 单笔事务的上限（HS 固定 64）。"控制传输最大多少"有三层答案：总线事务 64B（§2.2a）、TM5X 协议帧 512B（§8.9）、wLength 字段 65535——三个数管三层，一层套一层。
 
 ### 一句话总结
 
@@ -2233,7 +2233,7 @@ bMaxPacketSize0=8 的设备回 18 字节：
 | 0 | bLength | 0x12 = 18 | 确认长度（交叉验证） |
 | 1 | bDescriptorType | 0x01 | 确认类型 |
 | 2-3 | bcdUSB | 0x0200 | 协议版本 |
-| 4 | bDeviceClass | 0xEF | 类信息（§6.3：Misc，IAD 场景） |
+| 4 | bDeviceClass | 0xEF | 类信息（§7.3：Misc，IAD 场景） |
 | 5 | bDeviceSubClass | 0x02 | 通用类 |
 | 6 | bDeviceProtocol | 0x01 | 配合 IAD 使用 |
 | 7 | bMaxPacketSize0 | 0x40 = 64 | 又见一次——交叉确认 |
@@ -2285,7 +2285,7 @@ Config Descriptor (9B)
   ├─ Interface Descriptor (9B)      ← 有几个接口就接几个
   │    ├─ Endpoint Descriptor (7B)  ← 每个接口下挂 N 个端点
   │    └─ 类专用描述符 (不定长)      ← UVC 的 VC/VS 链、CDC 的 CS 链…
-  └─ ...（2bdf:0101 整条链 433 字节，§6.8 逐段验算）
+  └─ ...（2bdf:0101 整条链 433 字节，§7.8 逐段验算）
 ```
 
 规范把链的总长 `wTotalLength` 写在 Config Descriptor 头部的 offset 2~3——**"先读固定长度的头，头里写着总长，再按总长读全部"，与 Device Descriptor 的两次读同构，换了一层楼。**
@@ -2372,7 +2372,7 @@ Device Descriptor 的两次读像**试通话**（先测语速），Config 的两
 
 ### ★ 枚举里第一次出现"一个传输拆多笔事务"
 
-4.7 之前所有枚举对话数据量都 ≤64 字节，一笔事务装下。这次 433 字节 > 64，§2.2a/§7.9 反复琢磨的"拆分"现象第一次在总线上真实上演：
+4.7 之前所有枚举对话数据量都 ≤64 字节，一笔事务装下。这次 433 字节 > 64，§2.2a/§8.9 反复琢磨的"拆分"现象第一次在总线上真实上演：
 
 ```
 DATA 阶段：433 字节 = 6 × 64 + 49
@@ -2401,7 +2401,7 @@ Device Descriptor (已读)
          └─ Endpoint 0x81: Bulk IN, wMaxPacketSize=512  ← 视频数据管道
 ```
 
-Host 从链里知道三件事：**每个接口是干什么的**（bInterfaceClass 驱动匹配依据）、**每个端点的地址和能力**（将来开流的数据管道施工图）、**Alt Setting 结构**（SET_INTERFACE 切档依据，§7.3）。
+Host 从链里知道三件事：**每个接口是干什么的**（bInterfaceClass 驱动匹配依据）、**每个端点的地址和能力**（将来开流的数据管道施工图）、**Alt Setting 结构**（SET_INTERFACE 切档依据，§8.3）。
 
 ### ★ 关键认知：读回来 ≠ 激活
 
@@ -2535,7 +2535,7 @@ String #0（特例）: 04 03 09 04
 | 供电限额 | 100mA | bMaxPower 声明的值（§1.5） |
 | 你能做什么 | 只有 EP0 控制传输 | XU 命令 + SET_INTERFACE 开流 + Bulk 取流 |
 
-**第七篇的所有实战（XU 命令、取流、码流切换）全部发生在 Configured 之后。** 前八步是"面试"，这步是"签合同上岗"。
+**第八篇的所有实战（XU 命令、取流、码流切换）全部发生在 Configured 之后。** 前八步是"面试"，这步是"签合同上岗"。
 
 ### ★ 设计哲学：为什么默认不启用
 
@@ -2661,7 +2661,7 @@ SET_CONFIGURATION 之后总线枚举结束，剩下 OS 的活：按 VID:PID（4.
 
 **1. 三合一初始化**：SET_INTERFACE(IF=1/3/5, alt=0)
 
-**2. UVC"发现五件套"轮询（§7.8 的实战版）**，5ms 周期，wVal=CS_ID<<8 高字节（海康惯例再验证）：
+**2. UVC"发现五件套"轮询（§8.8 的实战版）**，5ms 周期，wVal=CS_ID<<8 高字节（海康惯例再验证）：
 
 ```
 a1 86 wVal=0400 → GET_INFO  响应 1B: 03        （CS 0x04=协议版本）
@@ -2895,7 +2895,7 @@ Class 请求   = 行业规章       ← 只有同类设备才懂（UVC 的 SET_C
 Vendor 请求  = 公司内部规定    ← 只有自家设备认识（海康 CS_ID 那套）
 ```
 
-枚举 = 基本法里 3 条的连环调用；XU 实战（第七篇）= 行业规章 + 内部规定。
+枚举 = 基本法里 3 条的连环调用；XU 实战（第八篇）= 行业规章 + 内部规定。
 
 ## 5.3 GET_STATUS 响应解析
 
@@ -3129,7 +3129,7 @@ libuvc 的 uvc_start_streaming() 内部，就是在开始周期性发 IN URB
 
 设备内部可能已经"开转"（FIFO 灌满后新数据直接丢弃，直到 IN Token 来抽取）。设备侧的"送流"和总线上的"有流"是两件事，中间隔着 Host 的 Token。**类比：水龙头与泵**——SET_INTERFACE = 拧开水龙头（管道接好、阀门就位），但水泵（Host 的 IN Token）不启动，管子里一滴水都不会流。
 
-**Q5 可以搭配 XU 切换码流类型吗？——可以，第七篇的 `uvc_stream_viewer.cpp` 就是。** 完整分层：
+**Q5 可以搭配 XU 切换码流类型吗？——可以，第八篇的 `uvc_stream_viewer.cpp` 就是。** 完整分层：
 
 ```
 SET_INTERFACE = 传输层开关：管道建不建、多粗的管道（端点/带宽/传输类型）
@@ -3190,7 +3190,7 @@ XU 不是"送流开关"，是**内容选择器**。开流后设备按**固件当
 
 参数的性质：**不是"命令"，是"解码契约"**——目的不是命令设备，而是让 Host 一侧能正确解析。执法者不是规范条文，是**标准解码器本身**。
 
-**但撒谎确实会发生——2bdf:0101 就是活例**（描述符声称 YUYV，实际送 MJPEG，第七篇 §7.4 踩坑 3）。注意它撒谎的**精准边界**：
+**但撒谎确实会发生——2bdf:0101 就是活例**（描述符声称 YUYV，实际送 MJPEG，第八篇 §8.4 踩坑 3）。注意它撒谎的**精准边界**：
 
 ```
 分辨率/帧率：没撒谎（120x160 实打实）   ← 一验就破，不敢
@@ -3273,11 +3273,329 @@ XU 内容（码流类型/测温/伪彩）        = 厂商私有词汇
 
 ---
 
-# 第六篇：真实设备描述符实战
+# 第六篇：设备类协议逐字节解析 — HID 篇
+
+> 主线 Phase 6（HID / CDC / UVC，26 个知识点）。本篇为 HID 篇（§6.1~§6.7）。**2026-08-16 裁剪决策**：用户为应用层开发者（SDK 消费设备，不写设备固件），Report Descriptor Item 编码按"认字级"执行——能看懂 dump 与工具解析结果即可，不追求会写。6.4/6.5 压缩为速查，6.6 用成品解剖图替代逐字节手写，6.7 类请求精讲（应用层 SDK 直接使用）。CDC 篇（§6.8~6.14）与 UVC 篇（§6.15~6.26）后续补充。
+
+## 6.1 ⛁ HID Descriptor 逐字节
+
+### 铺垫
+
+第十一会话补充问答五学过 HID 类家族；TM5X (2bdf:028a) 三合一里有厂商 HID（1023B Report）。而且第五篇实战里已见过这个套路：**类专属描述符在标准命名空间占一个号**——UVC 的 CS 描述符是 0x24/0x25，HID 的类描述符是 **0x21**。
+
+### 逐字节解剖（9 字节）
+
+```
+偏移  字段                大小   值
++0   bLength             1     0x09 —— 9 字节
++1   bDescriptorType     1     0x21 —— HID（类描述符）
++2   bcdHID              2     0x0111 —— HID 规范版本 1.11（BCD，§3.3）
++4   bCountryCode        1     0x00 —— 硬件本地化国家码（0 = 不本地化）
++5   bNumDescriptors     1     0x01 —— 后面跟着几个类描述符条目
++6   bDescriptorType     1     0x22 —— 条目类型 = Report Descriptor
++7   wDescriptorLength   2     0x003F —— 条目长度（小端）
+```
+
+真实示例字节：`09 21 11 01 00 01 22 3F 00` = 9 字节、HID 1.11、不本地化、1 个条目、条目类型 0x22、长度 63 字节。
+
+### 关键认知一：可变长头部 + 档案目录
+
+标准描述符长度固定（Device 18 / Config 9 / Interface 9 / Endpoint 7），HID Descriptor 是**可变长**：
+
+```
+bLength = 6 + 3 × bNumDescriptors
+```
+
+前 6 字节头部，之后每 3 字节一个"档案条目" `(类型, 长度)`。绝大多数设备只有 1 个条目（Report Descriptor）→ 9 字节；带 Physical Descriptor（0x23，极罕见）→ 12 字节。
+
+**档案目录类比**：HID Descriptor 像档案室索引卡——头部是索引卡本身信息（版本、国家），每条条目 = "文件柜编号 + 文件页数"。它不含 Report Descriptor 内容，只告诉你"去哪找、有多长"。
+
+### 四个深点
+
+**① 0x21 是标准命名空间的"类摊位号"。** bDescriptorType 编号空间全局统一：0x01 Device、0x02 Config、0x21 HID、0x22 Report、0x24/0x25 UVC CS。类描述符寄生在标准描述符链里——枚举 §4.8 读 Config 完整链时，HID Descriptor 夹在 Interface Descriptor 后面一起被拉回，类信息枚举时就全拿到。
+
+**② wDescriptorLength 的用法：给标准请求搭"顺风车"。** HID 类驱动读 Report Descriptor 时**不发明新的读请求**，复用标准 GET_DESCRIPTOR：
+
+```
+GET_DESCRIPTOR: bmRequestType=0x81 (IN Standard Interface)
+                wValue = 0x2200   ← 高字节 0x22 = Report 类型，低字节 = 索引 0
+                wIndex = 接口号
+                wLength = wDescriptorLength（HID Descriptor 里报的 63）
+```
+
+§5.6 决策流的"wValue 高字节=类型"再次兑现——类型填 0x22（类描述符）而非 0x01（标准 Device）。HID Descriptor 的核心职责就是提供这个 wLength——先报数，再按数取。
+
+**③ Report Descriptor ≠ Report。**
+
+```
+Report Descriptor = 说明书（~几十字节）：定义报表长什么样、每个 bit 什么意思
+Report           = 数据本身（TM5X 那个 1023 字节）：按说明书打包的实际数据
+```
+
+描述是压缩的语法，数据是展开的实体——几十字节说明书能定义出 1023 字节报表。wDescriptorLength 指的是说明书的长度。
+
+**④ bcdHID 与 bCountryCode。** bcdHID 是 BCD（0x0111=1.11）——与 §3.3 bcdUSB 同款。bCountryCode = 键盘硬件按哪国布局出厂：0=不本地化（绝大多数）、8=法语、32=英式、33=美式。用途是让 OS 决定是否自动做键位映射。
+
+### 配置链位置
+
+```
+Interface Descriptor
+  bInterfaceClass=0x03 (HID)
+  bInterfaceSubClass=0/1    ← 0=无子类, 1=Boot Interface（BIOS 兼容模式）
+  bInterfaceProtocol=0/1/2  ← 0=无, 1=键盘, 2=鼠标
+HID Descriptor (0x21)        ← 索引卡
+Endpoint Descriptor          ← 通常 1 个中断 IN（键盘按键/鼠标位移/TM5X 报表全走它）
+```
+
+HID 接口的标准配置是中断 IN 端点——§2.11 的"周期 IN Token"在真实设备上的第一号应用。
+
+## 6.2 ⛁ Report Descriptor Item 编码规则（认字级）
+
+### 指令流
+
+Report Descriptor 是一串**指令（Item）流**，每条 Item = **1 字节前缀 + 若干字节数据**。
+
+### 前缀字节位布局
+
+```
+位      名称    编码
+D7-D4  bTag    条目号（在其类型内的编号）
+D3-D2  bType   00=Main 主项 / 01=Global 全局项 / 10=Local 局部项 / 11=Reserved
+D1-D0  bSize   00=无数据 / 01=1 字节数据 / 10=长条目(Long Item) / 11=4 字节数据
+```
+
+**核心公式**：`前缀字节 = (bTag << 4) | (bType << 2) | bSize`；数据段按 bSize 跟随，多字节小端。
+
+例：Usage Page 1 字节 = tag=0、type=1、size=1 → 0x05；同 tag 换 2 字节数据 → 0x06。
+
+### 三类 Item 分工（细节见 6.3~6.5）
+
+| bType | 名称 | 干什么 | 填表指南类比 |
+|:---:|------|--------|--------------|
+| 00 | Main 主项 | 在报表里真正划出字段（Input/Output/Feature）和组织结构（Collection/End Collection） | "落笔：在表上开一列，属性=只读" |
+| 01 | Global 全局项 | 设定当前状态（Usage Page、逻辑范围、Report Size/Count、Report ID），影响之后所有 Main 项直到被改 | "换一支 8bit 宽的笔，写第 2 张表" |
+| 10 | Local 局部项 | 给下一个 Main 项贴标签（Usage 等），用完即弃 | "给下一个空格贴标签：这格叫 X 坐标" |
+
+作用域差异是灵魂：**Global 会传染、Local 一次性、Main 是落笔**。
+
+### 解码示例：键盘开头四件套
+
+```
+05 01   Usage Page (Generic Desktop)   ← 选词典
+09 06   Usage (Keyboard)               ← 给下一个字段贴标签："这是个键盘"
+A1 01   Collection (Application)       ← 开一个应用级集合
+C0      End Collection                 ← 关集合
+```
+
+`05 01` 与 `09 06` 对比：05/09 只差 D3-D2（Global vs Local）——同一个 tag=0，在 Global 里叫 Usage Page（选词典），在 Local 里叫 Usage（贴标签）。
+
+### 常见前缀速查
+
+```
+0x05 Usage Page(1B)   0x06 Usage Page(2B, 06 00 FF=厂商页 0xFF00)
+0x09 Usage(1B)        0x15/0x25 Logical Min/Max(1B)
+0x75 Report Size(1B)  0x95 Report Count(1B)  0x85 Report ID(1B)
+0x81/0x91/0xB1 Input/Output/Feature(1B 标志)  0xA1 Collection  0xC0 End Collection
+```
+
+### 跨章连接：为什么没有校验位
+
+PID（§2.6）低 4 位类型码 + 高 4 位取反校验——因为跑在总线上可能出错。HID 前缀字节无校验位：Report Descriptor 是软件数据，走 GET_DESCRIPTOR 的 DATA 包，**CRC16（§2.8）已在包层兜底**。不同层各管各的错。
+
+**填表指南类比**：Global = 换笔换表；Local = 贴标签；Main = 落笔开列。顺序执行下来，报表每一列每一 bit 被精确划定——几十字节说明书定义 1023 字节报表的原理。
+
+## 6.3 Main Item 全集（认字级）
+
+### 五个成员
+
+| bTag | 名称 | 数据 | 作用 |
+|:---:|------|------|------|
+| 8 | Input | 1 字节标志位 | 报表里开一个设备→Host 字段 |
+| 9 | Output | 1 字节标志位 | 开一个 Host→设备字段（键盘 LED） |
+| 11 (0xB) | Feature | 1 字节标志位 | 开一个双向配置字段（读写都行，不随报表走） |
+| 10 (0xA) | Collection | 1 字节集合类型 | 开一组字段的"文件夹" |
+| 12 (0xC) | End Collection | 无数据 | 关文件夹 |
+
+### Input/Output 的 8 个标志位
+
+| 位 | 0（默认） | 1 | 含义 |
+|:---:|------|------|------|
+| D0 | Data | Constant | 装"会变的数据"还是"固定常量" |
+| D1 | Array | Variable | 数组槽（各位置同含义）还是变量（各字段各含义） |
+| D2 | Absolute | Relative | 绝对量还是相对量 |
+| D3 | No Wrap | Wrap | 到边界是否回卷环绕 |
+| D4 | Linear | Non Linear | 值与物理量线性还是非线性 |
+| D5 | Preferred State | No Preferred | 松手后是否回"中立位" |
+| D6 | No Null Position | Null State | 是否存在"无效值"状态 |
+| D7 | Reserved | — | 必须为 0 |
+
+**★ D0 Data vs Constant**——填数还是垫纸。Constant 字段占据位但不产生数据意义（对齐/保留位）：键盘报表第 2 字节恒 0x00（BIOS 兼容）就是 Constant。
+
+**★ D1 Array vs Variable**——键盘与鼠标的本质区别：
+
+```
+键盘按键数组: D1=0 Array   ← 6 个槽位含义相同（都是"键"），槽里装按键码
+鼠标移动量:   D1=1 Variable ← X、Y 各是独立字段
+```
+
+**酒店客房类比**：Array = 入住单 6 间客房，每格写的都是"住着几号客人"；Variable = 家庭成员表，"身高"列和"体重"列各是各的。
+
+**D2** 是鼠标经典位：鼠标 X = `81 06`（0x06 = Variable+Relative，相对移动）；游戏杆 X = `81 02`（Absolute，绝对坐标）。
+
+### 真实标志字节速查
+
+```
+0x00 = Data+Array+Absolute      ← 键盘 6 键位数组（81 00）
+0x01 = Constant                 ← 键盘保留字节（81 01）
+0x02 = Data+Variable+Absolute   ← 键盘修饰键 8×1bit、游戏杆 X（81 02）
+0x06 = Data+Variable+Relative   ← 鼠标移动 X/Y（81 06）
+```
+
+`81 02` 一字节两用：键盘修饰键"8 个独立 bit"与游戏杆"一个绝对坐标"——同样的标志位，配合不同 Report Size/Count（6.4）产生完全不同的字段形状。
+
+### Feature 多两个位
+
+D7 = Buffered Bytes（按字节缓冲）、D8 = Non Volatile（掉电保存）。D8 需要 4 字节数据形态，实际设备几乎不用。
+
+### Collection：四种文件夹
+
+```
+0x00 Physical    物理集合（一个物理装置）
+0x01 Application 应用集合（整个键盘/鼠标）★ 最常用
+0x02 Logical     逻辑集合（功能内一组字段）
+0x03 Report      Report 集合（HID 1.11+）
+0x80-0xFF       厂商自定义
+```
+
+**括号配对规则**：每个 Collection 必须被 End Collection 关闭；可嵌套、不可交叉（先开后关）。Collection 是**纯语义标注**——对报表位布局零影响，它告诉 OS"哪些字段组成一个完整设备功能"。
+
+**表格类比**：Input/Output/Feature = 开列三种墨水（读入列/写出列/配置列）；8 标志位 = 列属性；Collection = 分区圈，End Collection = 分区结束线。每列多宽（Report Size）和几格（Report Count）是 Global 的活（6.4）。
+
+## 6.4 Global 项认字速查（裁剪版）
+
+目标：看 dump 时能认出这些字节在干什么。
+
+```
+Usage Page          选"用词词典"（01=Generic Desktop, 07=Keyboard/Keypad, 09=Button, FF00=厂商）
+Logical Min / Max   字段值的逻辑范围（键盘 0~1；鼠标 X -127~127）
+Report Size         每个字段多宽（bit 数）★ 列宽
+Report Count        字段重复几次          ★ 列数
+Report ID           多报表共用一条管道时给报表编号（报表第一字节 = ID）
+Physical Min/Max    物理量范围（单位换算用，极罕见）
+Unit / Unit Exponent 单位系统（厘米、弧度，极罕见）
+Push / Pop          当前 Global 状态压栈/弹栈（极罕见）
+```
+
+**Report Size × Report Count = 一个字段的总 bit 数——看懂任何 dump 的最小钥匙。**
+
+## 6.5 Local 项认字速查（裁剪版）
+
+```
+Usage            给下一个字段贴一个标签（"X 轴"、"按键 0x1E"）★ 最常用
+Usage Min / Max  贴一段连续标签（0x01~0xFF 全部按键）——Array 字段的"槽位含义"
+Designator/String 物理标注 / 字符串关联（多按键设备、多语言，罕见）
+Delimiter        分组标记（极罕见）
+```
+
+记忆骨架：**Global 管"格子多宽、几格、数值范围"（报表形状），Local 管"这格叫什么"（字段标签），Main 落笔。**
+
+## 6.6 键盘报表成品解剖图（替代逐字节手写）
+
+经典 8 字节 Boot 键盘 Report Descriptor 全文，按"它最终造出的报表"来读：
+
+```
+05 01   Usage Page (Generic Desktop)      ← 选词典
+09 06   Usage (Keyboard)                  ← 标签：这是个键盘
+A1 01   Collection (Application)          ← 开文件夹
+05 07   Usage Page (Key Codes)            ← 换词典：按键码
+19 E0   Usage Min (Left Ctrl)             ┐
+29 E7   Usage Max (Right GUI)             ┘ 连续标签 0xE0~0xE7 = 8 个修饰键
+15 00   Logical Min (0)     25 01  Logical Max (1)   ← 值域 0~1（按下/松开）
+75 01   Report Size (1)     95 08  Report Count (8)  ← 列宽 1bit × 8 格
+81 02   Input (Data, Variable, Absolute)  → 报表字节 0：修饰键位图（8×1bit）
+75 08   Report Size (8)     95 01  Report Count (1)  ← 列宽 8bit × 1 格
+81 01   Input (Constant)                  → 报表字节 1：保留字节（恒 0x00）
+19 00   Usage Min (0)       29 65  Usage Max (101)   ← 键码 0x00~0x65
+15 00   Logical Min (0)     25 65  Logical Max (101)
+75 08   Report Size (8)     95 06  Report Count (6)  ← 列宽 8bit × 6 格
+81 00   Input (Data, Array)               → 报表字节 2~7：6 个键位槽
+C0      End Collection
+```
+
+**成品——8 字节 Boot 报表：**
+
+```
+字节 0    修饰键位图：8 个 bit 各是一个键（Ctrl/Shift/Alt/GUI 左右各一）
+字节 1    保留字节（Constant，恒 0x00，BIOS 兼容用）
+字节 2~7  6 个键位槽：每槽一个键码（0x00=空，0x04=A，0x1E=1...）
+```
+
+知识点汇聚：`75 01 95 08` 是 Global 定形状，`19 E0 29 E7` 是 Local 贴标签，`81 02` 是 Main 落笔（Variable）；`81 00` 是 Array。不需要会写——看任何 HID dump（包括 TM5X 厂商 HID）认得这三步即可。验证方法：把这段 hex 贴进在线 HID descriptor parser，输出与上面注释一致。
+
+## 6.7 HID Report 协议（精讲——SDK 直接要用）
+
+### 骨架：六个类请求
+
+```
+bmRequestType = 0x21 (OUT Class Interface) / 0xA1 (IN Class Interface)
+wIndex = 接口号
+```
+
+与 XU 命令的 0x21/0xA1 完全同款——§5.2 三层法律体系的"行业规章"：UVC 那张表已实战，HID 这张表就是它。
+
+| bRequest | 名称 | 方向 | wValue | 数据阶段 |
+|:---:|------|:---:|--------|---------|
+| 0x01 | GET_REPORT | IN (0xA1) | 高字节=报表类型(1=Input,2=Output,3=Feature)，低字节=Report ID | 报表内容 |
+| 0x09 | SET_REPORT | OUT (0x21) | 同上 | 报表内容 |
+| 0x02 | GET_IDLE | IN (0xA1) | 高=时长(4ms 单位)，低=Report ID | 1B：当前 idle |
+| 0x0A | SET_IDLE | OUT (0x21) | 同上 | 无 |
+| 0x03 | GET_PROTOCOL | IN (0xA1) | 0 | 1B：0=boot, 1=report |
+| 0x0B | SET_PROTOCOL | OUT (0x21) | 0 或 1 | 无 |
+
+### 三个深点
+
+**① 报表的"带外通道"。** 正常报表走中断端点（§2.11 周期 IN），六个类请求走 EP0 控制通道——两条路并行互补：
+
+```
+中断 IN 管道  = 设备的"主动汇报"（按键了就报）
+GET_REPORT    = Host 的"主动查岗"（软件刚启动，立即要一份当前状态）
+SET_REPORT    = Host 的"直接下令"（控制通道塞一份 Output/Feature 报表）
+```
+
+SDK 读 TM5X 报表用 `libusb_interrupt_transfer`（管道），想立即拉一份用 GET_REPORT（控制）——两条腿。
+
+**② wValue 高字节 1/2/3 对应 6.3 的三个 Main 项。** Feature 报表（配置类数据）天生适合此通道——不需要频繁中断上报，按需读写即可。Feature 项存在的完整理由：**第三条路**（Input=管道上报、Output=管道下发、Feature=控制通道按需读写）。
+
+**③ Boot protocol vs Report protocol——BIOS 历史。** 开机时 BIOS 没有 HID 解析器，键盘/鼠标必须支持固定格式：6.6 解剖的 8 字节表（boot protocol）。OS 起来后 HID 驱动发 `SET_PROTOCOL(1)` 切到 report protocol，按描述符完整定义解析。bInterfaceSubClass=1（Boot）与 6.6 的保留字节都是这段历史的化石。类比：**老式传真机握手**——先按国际固定格式互通（boot），再协商切到高速定制格式（report）。
+
+**Idle rate**：SET_IDLE 设中断管道"最大上报频率"（idle=0 → 变了就报；idle=50 → 最多每 200ms 报一次，50×4ms）——省电、降总线流量。
+
+### 应用层代码模板（SDK 会写成这样）
+
+```c
+// 主动拉一份 Input 报表（控制通道）
+libusb_control_transfer(devh, 0xA1, 0x01, (1<<8) | 0, if_num, buf, len, 1000);
+// 切到 report protocol（键盘/鼠标上电初始化）
+libusb_control_transfer(devh, 0x21, 0x0B, 1, if_num, NULL, 0, 1000);
+// 设 idle：最多每 200ms 报一次（50 × 4ms）
+libusb_control_transfer(devh, 0x21, 0x0A, (50<<8) | 0, if_num, NULL, 0, 1000);
+```
+
+与第八会话 XU 命令同一个函数（8 参数）——只是 bmRequestType 换 Class HID、bRequest 换数字。"换新设备只改 wIndex 高字节"（第六会话）升级成"**换类协议只换 bmRequestType 字典 + bRequest 编号**"。
+
+**MQTT 类比**：中断报表 = 周期性 PUBLISH（按键事件）；GET_REPORT = 直接 REQUEST/RESPONSE 拉最新消息；SET_IDLE = 最小发布间隔；SET_PROTOCOL = 切换报文格式版本（v1 固定 ↔ v2 自定义）。
+
+### 一句话总结
+
+**应用层 HID SDK 的全部招式 = 一条中断管道（读报表）+ 六个类请求（带外控制）。Report Descriptor 的逐位编码留给写固件的人，应用层只需要认字。**
+
+---
+
+# 第七篇：真实设备描述符实战
 
 > 基于三台真实海康 USB 摄像头，从字节级拆解 USB 描述符。
 
-## 6.1 三台设备速览
+## 7.1 三台设备速览
 
 | 项目 | 设备 1 (HikCamera #1) | 设备 2 (HikCamera #2) | 设备 3 (2K USB Camera) |
 |---|---|---|---|
@@ -3289,7 +3607,7 @@ XU 内容（码流类型/测温/伪彩）        = 厂商私有词汇
 | 视频格式 | YUY2/MJPEG/H.264, 最高640×360@30 | 同左 | MJPG/NV12/YUY2, 最高2560×1440@30 |
 | 音频 | 无 | 无 | PCM 16kHz/16bit/单声道 |
 
-## 6.2 描述符获取流程：枚举
+## 7.2 描述符获取流程：枚举
 
 ```
  设备                       Host
@@ -3310,7 +3628,7 @@ XU 内容（码流类型/测温/伪彩）        = 厂商私有词汇
 2. 完整链一次性返回——配置+IAD+接口+类专用+端点，全在一个包里
 3. 字符串是懒加载——描述符里只放索引（iManufacturer=0x01），Host 需要显示时才单独请求
 
-## 6.3 Device Descriptor 关键字段
+## 7.3 Device Descriptor 关键字段
 
 ### bDeviceClass = 0xEF，为什么不直接写 0x0E (Video)？
 
@@ -3322,7 +3640,7 @@ XU 内容（码流类型/测温/伪彩）        = 厂商私有词汇
 
 **一句话：设备级 class 管"整台机器是不是复合的"，IAD 的 function class 才管"每个功能是什么"。**
 
-## 6.4 IAD（Interface Association Descriptor）
+## 7.4 IAD（Interface Association Descriptor）
 
 设备 1 的 IAD：
 
@@ -3335,7 +3653,7 @@ bFunctionSubClass = 0x03  ← Video Interface Collection
 
 Host 的 UVC 驱动（Windows 的 usbvideo.sys）就是看到 `bFunctionClass=0x0E, bFunctionSubClass=0x03` 才决定加载自己的。
 
-## 6.5 Interface Descriptor — VC vs VS
+## 7.5 Interface Descriptor — VC vs VS
 
 | 字段 | 接口 0 (VC) | 接口 1 (VS) |
 |------|-------------|-------------|
@@ -3345,7 +3663,7 @@ Host 的 UVC 驱动（Windows 的 usbvideo.sys）就是看到 `bFunctionClass=0x
 
 bInterfaceSubClass 是 UVC 描述符体系的第一道分叉口——Host 据此区分控制接口和流接口。
 
-## 6.6 Endpoint Descriptor
+## 7.6 Endpoint Descriptor
 
 设备 1 的两个端点：
 
@@ -3378,7 +3696,7 @@ bInterfaceSubClass 是 UVC 描述符体系的第一道分叉口——Host 据此
 
 类比：等时 = 直播（按时播放，信号不好就花屏不重放）；Bulk = 文件下载（慢点可以，一个字节都不能错）。
 
-## 6.7 UVC 类专用描述符机制（0x24 / 0x25）
+## 7.7 UVC 类专用描述符机制（0x24 / 0x25）
 
 UVC 的类专用描述符大量复用同一个 `bDescriptorType`：
 
@@ -3431,7 +3749,7 @@ bDescriptorType = 0x24 (Video Control Interface)
 | 11 | bInCollection | 0x01 | 1 个 VS 接口关联 |
 | 12 | baInterfaceNr[1] | 0x01 | VS 接口号 = 1 |
 
-## 6.8 设备 1 完整 433 字节描述符链追踪
+## 7.8 设备 1 完整 433 字节描述符链追踪
 
 ### 逐段验算
 
@@ -3471,7 +3789,7 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔
                                          合计 = 433 B = 0x01B1 ✔
 ```
 
-## 6.9 设备 1 vs 设备 2 差异分析
+## 7.9 设备 1 vs 设备 2 差异分析
 
 | 对比项 | 设备 1 | 设备 2 | 说明 |
 |---|---|---|---|
@@ -3489,7 +3807,7 @@ VS 类子链:  16 + 27 + 90 + 11 + 90 + 28 + 30 + 6 = 298 (0x12A) ✔
 
 同一字节，两种速度两种含义。
 
-## 6.10 设备 3 从 KS 数据反推描述符结构
+## 7.10 设备 3 从 KS 数据反推描述符结构
 
 设备 3 没有原始描述符 dump，但从 Windows 驱动层数据反推：
 
@@ -3525,7 +3843,7 @@ Device Descriptor          bDeviceClass = 0xEF（复合设备）
 
 ---
 
-## 第六篇 FAQ
+## 第七篇 FAQ
 
 ### Q1: 为什么 bDeviceClass 不直接写 0x0E (Video)？
 
@@ -3593,11 +3911,11 @@ STATUS: Device → STALL ← ❌ 拒绝唯一发生在这里！
 
 ---
 
-# 第七篇：UVC XU 控制与取流实战
+# 第八篇：UVC XU 控制与取流实战
 
 ---
 
-## 7.1 UVC XU 扩展协议设计
+## 8.1 UVC XU 扩展协议设计
 
 ### CS_ID + SubFunc 二级命名空间
 
@@ -3662,7 +3980,7 @@ CS_ID 在白名单内，但:
 
 ---
 
-## 7.2 新设备上手实操指南
+## 8.2 新设备上手实操指南
 
 ### 三步找到所有参数
 
@@ -3769,7 +4087,7 @@ libusb_control_transfer(
 
 ---
 
-## 7.3 标准 UVC 取流完整流程
+## 8.3 标准 UVC 取流完整流程
 
 ### 两个 wIndex 体系对比
 
@@ -3853,7 +4171,7 @@ struct uvc_probe {
 
 ---
 
-## 7.4 码流类型切换实战
+## 8.4 码流类型切换实战
 
 > 本节是 `uvc_stream_viewer.cpp` 开发过程中踩坑的总结。
 
@@ -3931,7 +4249,7 @@ GUID: YUY2              期望 38400 字节         不是 38400 字节
 
 ---
 
-## 7.5 uvc_stream_viewer 完整流程
+## 8.5 uvc_stream_viewer 完整流程
 
 ```
 ① libusb 打开 → detach 内核驱动
@@ -3968,7 +4286,7 @@ g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cf
 
 ---
 
-## 7.6 实战踩坑全记录（★★★★★ 最重要）
+## 8.6 实战踩坑全记录（★★★★★ 最重要）
 
 | # | 症状 | 根因 | 修复 | 重要度 |
 |---|------|------|------|--------|
@@ -3993,7 +4311,7 @@ g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cf
 
 ---
 
-## 7.7 Interface 和 Endpoint 区分
+## 8.7 Interface 和 Endpoint 区分
 
 **一句话总结：**
 - **控制传输 = 发命令**（"请把分辨率调到 640x480"），走 EP0
@@ -4008,7 +4326,7 @@ g++ -o uvc_stream_viewer uvc_stream_viewer.cpp -luvc -lusb-1.0 $(pkg-config --cf
 | 参数指定方式 | bmRequestType+wValue+wIndex | 端点地址 | 端点地址 |
 | 有 SETUP 包？ | 有（8 字节） | 无 | 无 |
 
-## 7.8 标准 UVC 控制：亮度/对比度/白平衡（PU）
+## 8.8 标准 UVC 控制：亮度/对比度/白平衡（PU）
 
 ### 定位：标准控制住在 Processing Unit
 
@@ -4206,11 +4524,11 @@ libusb_control_transfer(devh, 0xA1, 0x81, 0x0002, (PU_ID<<8)|VC_IF, buf, 2, 1000
 
 ### 为什么海康设备没走这条标准通道
 
-设备 1/2 的 PU `bmControls = 00 00`——标准处理控制一个都没实现，对这些 CS 发 SET_CUR 会直接 STALL（硬件拒绝）。这是产品策略：厂商把亮度/对比度/增益全塞进 XU 私有控制（第六篇 Q6 的 10 个启用 control），配合厂商 SDK 卖。标准桌面摄像头（罗技等）才会实现 PU。
+设备 1/2 的 PU `bmControls = 00 00`——标准处理控制一个都没实现，对这些 CS 发 SET_CUR 会直接 STALL（硬件拒绝）。这是产品策略：厂商把亮度/对比度/增益全塞进 XU 私有控制（第七篇 Q6 的 10 个启用 control），配合厂商 SDK 卖。标准桌面摄像头（罗技等）才会实现 PU。
 
 **但标准通道值得学**：它是 UVC 规范的"正文"，XU 是"附录"。接第三方摄像头第一步查 PU bmControls——这条是通用的，不依赖任何厂商文档。
 
-## 7.9 TM5X 大数据交互流程（EP0 上的分包传输）
+## 8.9 TM5X 大数据交互流程（EP0 上的分包传输）
 
 > 来源：海康《TM5X 工业测温机芯 UVC 功能开发指南 V2.0》（2024-02-20，文档号 UD36878B）。解答"EP0 控制传输怎么搬大文件"（§4.4 的延伸问题）。
 
