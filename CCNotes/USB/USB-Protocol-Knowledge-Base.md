@@ -3815,6 +3815,8 @@ Interface (VC)
 
 **你的设备实证（第八篇 §8.8）**：2bdf:0101 的 PU `bmControls = 00 00`——**一个标准控制都没实现**，亮度/对比度/增益全塞进 XU 私有控制，配合厂商 SDK 卖。标准桌面摄像头才会实现 PU。所以"UVC 标准控制"在专业设备上经常是空壳——实际控制全走 XU。
 
+**★ 两台真机对照（2026-08-16，示例 06 实测）**：TM5X（2bdf:028a）的 PU `bmControls = 0x13df`——**标准控制齐全**（Brightness/Contrast/Hue/Saturation/Sharpness/Gamma/WB/背光/增益/抗工频全置位，PU_ID=2），同一份代码在 028a 上返回真实亮度并 SET_CUR 成功、在 0101 上 STALL（PU_ID=5）——"空壳 vs 齐全"的活体对照。**★ 勘误**：示例 06 初版 wIndex 漏了 PU_ID 高字节（PU 寻址与 XU 同构：`wIndex=(PU_ID<<8)|VC_IF`，第八篇 §8.8 早有此惯例），导致两台设备都 STALL、一度误判为"都是空壳"——**STALL 也可能只是寻址错，先查 bmControls 再下结论**。
+
 ## 6.21 UVC VS Descriptor 链完整布局
 
 ```

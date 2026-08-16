@@ -11,7 +11,7 @@
 | 03 | 03_desc_tree_walk.c | 描述符树：3.1 树的 C 版 | 同上模式 | 打印 433 字节链树形结构 |
 | 04 | 04_claim_alt_setting.c | claim + 切 Alt：四层动作 | 同上模式 | claim 成功 → 自动发现流 Alt（本机 Alt0）→ 还原 |
 | 05 | 05_clear_halt.c | Halt 恢复闭环 | 同上模式 | 设备拒绝（教科书 PIPE / 本机 IO）→ GET_STATUS → clear_halt |
-| 06 | 06_uvc_brightness.c | 标准 UVC 亮度（PU） | 同上模式 | ★ STALL（本设备 PU 空壳，预期失败=教学点） |
+| 06 | 06_uvc_brightness.c | 标准 UVC 亮度（PU） | 同上模式 | 028a 返回真实亮度+SET_CUR 成功；0101 STALL（真空壳）——两台对照 |
 | 07 | 07_uvc_probe_commit.c | Probe/Commit 协商 | 同上模式 | 打印设备自报格式/帧率范围 |
 | 08 | 08_uvc_open_stream.c | 开流：SET_INTERFACE + 收 1 秒 | 同上模式 | 打印字节速率（管道已通） |
 | 09 | 09_xu_minimal.c | XU：GET_LEN 读版本 | 同上模式 | 返回协议版本号 |
