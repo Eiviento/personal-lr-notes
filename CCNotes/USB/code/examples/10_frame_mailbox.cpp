@@ -28,8 +28,10 @@ static void frame_cb(uvc_frame_t *frame, void *ptr)
 {
     (void)ptr;
     /* 快解码：本设备撒谎报 YUYV 实发 MJPEG（第八会话踩坑 3）——检测 FF D8 */
+    /* uvc_frame_t::data 是 void*——C++ 必须先转指针再下标（第八会话踩坑 7） */
+    const uint8_t *raw = (const uint8_t *)frame->data;
     cv::Mat img;
-    if (frame->data[0] == 0xFF && frame->data[1] == 0xD8) {
+    if (raw[0] == 0xFF && raw[1] == 0xD8) {
         img = cv::imdecode(cv::Mat(1, frame->data_bytes, CV_8UC1, frame->data),
                            cv::IMREAD_COLOR);
     } else {
