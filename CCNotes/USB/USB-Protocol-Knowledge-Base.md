@@ -23,7 +23,7 @@
 | Phase 5 | 标准请求与 Setup 包深度解析 | 6 | ✅ 完成 6/6 |
 | Phase 6 | 设备类协议逐字节解析（HID / CDC / UVC） | 26 | ✅ 完成 26/26（应用层裁剪版） |
 | Phase 7 | 协议分析工具与实操 | 7 | ⏭ 跳过（暂缓，2026-08-16 用户决定；真机抓包已在 4.11/4.11a 完成） |
-| Phase 8 | libusb 编程衔接 | 5 | ✅ 完成 5/5（架构 / 设备发现 / 控制传输 / 三种传输 / 热插拔，含五大深挖 + hotplug_demo 真机验证） |
+| Phase 8 | libusb 编程衔接 | 5 | ✅ 完成 5/5（架构 / 设备发现 / 控制传输 / 三种传输 / 热插拔，含五大深挖 + 02_hotplug_detect 真机验证） |
 
 ### 阅读指南
 
@@ -5493,7 +5493,7 @@ while (running) libusb_handle_events(ctx);
 设备插入/拔出 → 内核更新花名册 → libusb 监听到 → ★ 调用你注册的回调
 ```
 
-### API 骨架 + 完整可跑 demo（code/hotplug_demo.c，已真机验证）
+### API 骨架 + 完整可跑 demo（code/examples/02_hotplug_detect.c，已真机验证）
 
 ```c
 static int hotplug_cb(libusb_context *ctx, libusb_device *dev,
@@ -5535,7 +5535,7 @@ int main(int argc, char **argv) {
 }
 ```
 
-编译 `gcc -o hotplug_demo hotplug_demo.c -lusb-1.0`，`sudo ./hotplug_demo` 监听全部 / `sudo ./hotplug_demo 2bdf 0101` 只监听海康。**真机验证现象**：启动瞬间 ENUMERATE 刷出全部现有设备；插拔任意设备实时打印 +/-；拔出时无设备信息（设备已离线）。
+编译 `gcc -o 02_hotplug_detect 02_hotplug_detect.c -lusb-1.0`，`sudo ./02_hotplug_detect` 监听全部 / `sudo ./02_hotplug_detect 2bdf 0101` 只监听海康。**真机验证现象**：启动瞬间 ENUMERATE 刷出全部现有设备；插拔任意设备实时打印 +/-；拔出时无设备信息（设备已离线）。
 
 ### 三个必须知道的细节
 

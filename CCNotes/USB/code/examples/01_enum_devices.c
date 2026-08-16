@@ -28,7 +28,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (libusb_init(&ctx) < 0) { perror("libusb_init"); return 1; }
+    if (libusb_init(&ctx) < 0) { fprintf(stderr, "libusb_init 失败\n"); return 1; }
 
     cnt = libusb_get_device_list(ctx, &devs);   /* ★ 抄花名册（零总线流量） */
     if (cnt < 0) { fprintf(stderr, "get_device_list: %s\n", libusb_error_name((int)cnt)); return 1; }

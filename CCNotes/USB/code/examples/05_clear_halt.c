@@ -20,7 +20,6 @@ int main(int argc, char **argv)
     libusb_device_handle *devh = NULL;
     int vid, pid, r;
     unsigned char buf[16];
-    int vc_if = 0;
 
     if (argc != 3) { printf("用法: %s VID PID\n", argv[0]); return 1; }
     vid = (int)strtol(argv[1], NULL, 16);
@@ -43,6 +42,7 @@ int main(int argc, char **argv)
     int ep = 0x81;   /* VS 批量 IN 端点 */
     unsigned char status[2];
     r = libusb_control_transfer(devh, 0x82, 0x00, 0, ep, status, 2, 1000);
+    if (r < 0) { printf("② GET_STATUS 失败: %s\n", libusb_error_name(r)); return 1; }
     printf("② GET_STATUS(EP 0x%02x) = %02x %02x（D0=Halt:%d）\n",
            ep, status[0], status[1], status[0] & 1);
 

@@ -20,8 +20,8 @@ int main(int argc, char **argv)
 {
     libusb_context *ctx = NULL;
     libusb_device_handle *devh = NULL;
-    unsigned char len[2], ver[8];
-    int vid, pid, vc_if, xu_id, r, got;
+    unsigned char len[2] = {0}, ver[8] = {0};
+    int vid, pid, vc_if, xu_id, r;
 
     if (argc != 5) {
         printf("用法: %s VID PID VC_IF XU_ID\n", argv[0]);

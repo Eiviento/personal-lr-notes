@@ -111,6 +111,9 @@
 | 知识库 | `USB-Protocol-Knowledge-Base.md` | **新增第五篇：标准请求与 Setup 包深度解析 §5.1~§5.6**（三类语义修正版 + 11 种请求全集 + GET_STATUS 三种响应 + Feature Selector 全集 + SET_INTERFACE 机制 + 参数速查，含三个深挖 Q&A）；附录新增 **A.10 标准请求参数总表**；**新增第六篇：设备类协议（§6.1~§6.26 全篇）**——HID（Item 编码认字级 + 键盘解剖图 + 六类请求精讲）+ CDC（四件套 byte 表 + SET_LINE_CODING 精讲 + 数据流）+ UVC（VC/VS 链 + 描述符认字级 + bmControls 全集 + Probe/Commit + Payload Header 拼帧）；**两次篇章重排**（原第五篇→第七篇、原第六篇→第八篇，交叉引用全部同步）；**知识总计修正 67→88**；前言/进度更新（5,137 行） |
 | HTML | `usb-notes.html` | **Phase 5 占位符替换为 6 张真卡片**（kp-5-1 ~ kp-5-6）；**Phase 6 新增 17 张卡片**（kp-6-1 ~ kp-6-17，HID 7 + CDC 4 + UVC 6，以 desc-byte-map 单元格 + ASCII 结构图为主，减少文字）；Phase 7 标注跳过；CSS 新增 `.phase-note`；侧边栏 Phase 5 6/6 ✓ + Phase 6 26/26 ✓；进度条 86%（4,033 行） |
 | 计划 | `usb-protocol-learning-plan.md` | 6.1~6.7 标记完成（应用层裁剪版说明）；**Phase 7 标记 ⏭ 跳过（暂缓）** |
+| 代码 | `code/examples/` | **★ 新增 13 份最小可运行示例 + README**（01 枚举 ~ 13 综合骨架；统一头注释五要素；每份独立编译 `gcc -lusb-1.0`，10 加 `-luvc`+opencv、13 加 `-pthread`）；hotplug_demo.c 迁移为 02_hotplug_detect.c |
+| HTML | `usb-sdk-examples.html` | **★ 新建**：13 份示例讲解页（单文件零依赖，暗色 IDE 风格，内嵌完整代码 + 逐段「代码↔协议」讲解 + 搜索/复制交互） |
+| 文档 | `docs/superpowers/specs/2026-08-16-usb-sdk-examples-design.md` + `plans/2026-08-16-usb-sdk-examples.md` | **新建**：SDK 示例集设计规格与实现计划（SDD 流程执行，17 任务全部通过） |
 | 交接 | `HANDOFF.md` | 更新（本会话） |
 
 **本会话建立的深层理解（已存 KB 第五篇）：**
@@ -282,6 +285,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
 ├── USB-Protocol-Knowledge-Base.md                 ← ★ 知识库整合文档（~5,745 行，九篇 + 附录，★ 全主线完成）
 ├── usb-protocol-learning-plan.md                 ← 完整学习计划（88知识点清单，原"67"已修正，★ 主线全部完成）
 ├── usb-notes.html                                ← Phase 1-8 理论可视化（4,490 行，含 kp-4-1 ~ kp-4-12 + kp-4-11a + kp-5-1 ~ kp-5-6 + kp-6-1 ~ kp-6-17 + kp-8-1 ~ kp-8-5）
+├── usb-sdk-examples.html                         ← ★ 13 份最小示例讲解页（761 行，单文件零依赖，配 code/examples/）
 ├── usb-notes.css                                 ← 10 层分层样式（暗色默认 IDE 风格）
 ├── usb-notes.js                                  ← 4 模块脚本（数据/渲染/交互/初始化）
 ├── usb-notes-old.html                            ← 旧版备份（翻新前单文件版本）
@@ -506,6 +510,7 @@ D:\CC\personal-lr-notes\CCNotes\USB\
    - 如果用户要看理论学习可视化 → 双击 `usb-notes.html`（3 文件架构）
    - 如果用户要看描述符实战 → 双击 `descriptor-viewer.html`
    - 如果用户要看 **摄像头取流+显示** → `code/uvc_stream_viewer.cpp`（libuvc+OpenCV，完整 7 步流程）
+   - 如果用户要查**最小代码示例** → 双击 `usb-sdk-examples.html`（13 份示例讲解页）/ `code/examples/`（可编译源码）
    - 如果用户要调 XU → `code/xu_interactive.c`（支持 GET_LEN 后选 GET_CUR 或 SET_CUR）
    - 如果用户要看 **标准请求参数速查** → `USB-Protocol-Knowledge-Base.md` 第五篇 §5.6 / 附录 A.10
    - 如果用户要看 **HID 篇** → `USB-Protocol-Knowledge-Base.md` 第六篇 §6.1~§6.7（应用层裁剪版）

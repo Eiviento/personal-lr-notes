@@ -4018,7 +4018,7 @@ Interface (VS, Alt1, 流端点)
 
     <!-- ===== Phase 8: libusb 编程衔接 ===== -->
     <div class="phase-header" id="phase-8"><h2>Phase 8: libusb 编程衔接 <span style="font-size:14px;color:var(--color-frame);margin-left:8px;">5/5 ✓ · 全主线完成 🎉</span></h2></div>
-    <p class="phase-note">方案 A 自底向上的最后一段：把前八篇的协议知识翻译成 C 函数。每个 libusb 概念都能在协议里找到原型——学习模式是"对照"。★ = 重点标记。hotplug_demo.c 已真机验证。</p>
+    <p class="phase-note">方案 A 自底向上的最后一段：把前八篇的协议知识翻译成 C 函数。每个 libusb 概念都能在协议里找到原型——学习模式是"对照"。★ = 重点标记。02_hotplug_detect.c 已真机验证。</p>
 
     <!-- kp-8-1 -->
     <article class="card" id="kp-8-1">
@@ -4419,7 +4419,7 @@ while (running) libusb_handle_events(ctx);
         <h3>8.5 热插拔检测（Phase 8 收官 🎉）</h3>
 
         <div class="info-box">
-          8.2 的伏笔兑现：<strong>设备列表是动态的（内核维护花名册），热插拔 API 把这个"动态"变成回调</strong>——设备插入/拔出 → 内核更新花名册 → libusb 监听到 → 调用你注册的回调。code/hotplug_demo.c 已真机验证。
+          8.2 的伏笔兑现：<strong>设备列表是动态的（内核维护花名册），热插拔 API 把这个"动态"变成回调</strong>——设备插入/拔出 → 内核更新花名册 → libusb 监听到 → 调用你注册的回调。code/examples/02_hotplug_detect.c 已真机验证。
         </div>
 
         <h4>最小可跑 demo（真机验证过）</h4>
@@ -4441,7 +4441,7 @@ libusb_hotplug_register_callback(ctx,
     vid, pid, LIBUSB_HOTPLUG_MATCH_ANY,
     hotplug_cb, NULL, &amp;handle);
 while (1) libusb_handle_events(ctx);   /* 事件泵：回调在这里被触发 */</code></pre>
-        <p>编译 <code>gcc -o hotplug_demo hotplug_demo.c -lusb-1.0</code>；<code>sudo ./hotplug_demo</code> 监听全部 / <code>sudo ./hotplug_demo 2bdf 0101</code> 只监听海康。</p>
+        <p>编译 <code>gcc -o 02_hotplug_detect 02_hotplug_detect.c -lusb-1.0</code>；<code>sudo ./02_hotplug_detect</code> 监听全部 / <code>sudo ./02_hotplug_detect 2bdf 0101</code> 只监听海康。</p>
 
         <h4>三个必须知道的细节</h4>
         <ol>
