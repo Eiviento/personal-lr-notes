@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 650" width="1220" height="650"
+     font-family="system-ui,'Segoe UI','Microsoft YaHei',sans-serif">
+<title>BLE 协议报文结构图</title>
+
+<!-- ============ 标题 ============ -->
+<text x="60" y="46" font-size="22" font-weight="700" fill="#0b0b0b">BLE 协议报文结构图</text>
+<text x="60" y="68" font-size="12" fill="#52514e">完整空中帧 → PDU → 链路层广播/数据 → DATA/CONTROL → L2CAP → ATT/SMP · 字段下标注字节数或位宽</text>
+
+<!-- ============ 空中帧 ============ -->
+<g>
+  <rect x="60"   y="92" width="120" height="66" rx="8" fill="#eaf2fc" stroke="#2a78d6" stroke-width="1.5"/>
+  <rect x="186"  y="92" width="210" height="66" rx="8" fill="#eaf2fc" stroke="#2a78d6" stroke-width="1.5"/>
+  <rect x="402"  y="92" width="470" height="66" rx="8" fill="#f4f3ef" stroke="#8a867e" stroke-width="1.5"/>
+  <rect x="878"  y="92" width="140" height="66" rx="8" fill="#eaf2fc" stroke="#2a78d6" stroke-width="1.5"/>
+  <rect x="1024" y="92" width="130" height="66" rx="8" fill="#eaf2fc" stroke="#2a78d6" stroke-width="1.5"/>
+
+  <text x="120" y="118" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">前导码</text>
+  <text x="120" y="134" font-size="10" fill="#52514e" text-anchor="middle" font-family="Consolas,'Cascadia Mono',monospace">Preamble · 1B</text>
+
+  <text x="291" y="118" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">Access Address</text>
+  <text x="291" y="134" font-size="10" fill="#52514e" text-anchor="middle" font-family="Consolas,'Cascadia Mono',monospace">4B · 广播 0x8E89BED6 / 数据随机</text>
+
+  <text x="637" y="114" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">PDU</text>
+  <rect x="412" y="122" width="130" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/>
+  <rect x="548" y="122" width="314" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/>
+  <text x="477" y="139" font-size="10" fill="#52514e" text-anchor="middle" font-family="Consolas,'Cascadia Mono',monospace">LL Header · 2B</text>
+  <text x="705" y="139" font-size="10" fill="#52514e" text-anchor="middle" font-family="Consolas,'Cascadia Mono',monospace">Payload · 0~251B</text>
+
+  <text x="948" y="118" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">MIC</text>
+  <text x="948" y="134" font-size="10" fill="#52514e" text-anchor="middle" font-family="Consolas,'Cascadia Mono',monospace">4B · 仅加密数据包</text>
+
+  <text x="1089" y="118" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">CRC</text>
+  <text x="1089" y="134" font-size="10" fill="#52514e" text-anchor="middle" font-family="Consolas,'Cascadia Mono',monospace">3B · 所有包</text>
+</g>
+
+<!-- PDU → 两大分支 -->
+<g stroke="#b9b6ae" stroke-width="1.5" fill="none">
+  <path d="M 637 158 V 190"/>
+  <path d="M 340 190 H 910"/>
+  <path d="M 340 190 V 214"/>
+  <path d="M 910 190 V 214"/>
+</g>
+
+<!-- ============ 左：广播 ============ -->
+<rect x="60" y="196" width="10" height="10" rx="3" fill="#eb6834"/>
+<text x="76" y="205" font-size="13" font-weight="600" fill="#0b0b0b">链路层 · 广播（广告信道 37/38/39）</text>
+
+<!-- 广播 Header -->
+<rect x="60" y="214" width="560" height="66" rx="8" fill="#fdeee7" stroke="#eb6834" stroke-width="1.5"/>
+<text x="70" y="232" font-size="11" font-weight="600" fill="#52514e">PDU Header · 16 bit</text>
+<g font-family="Consolas,'Cascadia Mono',monospace" font-size="9.5" fill="#0b0b0b" text-anchor="middle">
+  <rect x="70"  y="240" width="108" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="124" y="257">Length 8b</text>
+  <rect x="180" y="240" width="48"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="204" y="257">RxAdd 1b</text>
+  <rect x="230" y="240" width="48"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="254" y="257">TxAdd 1b</text>
+  <rect x="280" y="240" width="48"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="304" y="257">ChSel 1b</text>
+  <rect x="330" y="240" width="44"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="352" y="257">RFU 1b</text>
+  <rect x="376" y="240" width="74"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="413" y="257">PDU Type 4b</text>
+</g>
+
+<!-- Payload -->
+<path d="M 195 280 V 300" stroke="#b9b6ae" stroke-width="1.5" fill="none"/>
+<rect x="60" y="300" width="270" height="66" rx="8" fill="#fdeee7" stroke="#eb6834" stroke-width="1.5"/>
+<text x="70" y="318" font-size="11" font-weight="600" fill="#52514e">Payload</text>
+<g font-family="Consolas,'Cascadia Mono',monospace" font-size="10" fill="#0b0b0b" text-anchor="middle">
+  <rect x="68"  y="326" width="92"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="114" y="343">AdvA 6B</text>
+  <rect x="166" y="326" width="122" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="227" y="343">AdvData 0~31B</text>
+</g>
+
+<!-- LTV -->
+<path d="M 227 366 V 396" stroke="#b9b6ae" stroke-width="1.5" fill="none"/>
+<rect x="60" y="396" width="270" height="92" rx="8" fill="#fdeee7" stroke="#eb6834" stroke-width="1.5"/>
+<text x="70" y="414" font-size="10.5" font-weight="600" fill="#52514e">AdvData = AD Structure LTV（×N 拼接）</text>
+<g font-family="Consolas,'Cascadia Mono',monospace" font-size="10" fill="#0b0b0b" text-anchor="middle">
+  <rect x="68"  y="424" width="74" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="105" y="441">Length 1B</text>
+  <rect x="148" y="424" width="80" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="188" y="441">AD Type 1B</text>
+  <rect x="234" y="424" width="88" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="278" y="441">AD Data 0~30B</text>
+</g>
+
+<!-- PDU Type 列表 -->
+<path d="M 413 280 V 300" stroke="#b9b6ae" stroke-width="1.5" fill="none"/>
+<rect x="340" y="300" width="280" height="188" rx="8" fill="#ffffff" stroke="#eb6834" stroke-width="1.5"/>
+<text x="350" y="320" font-size="11" font-weight="600" fill="#0b0b0b">PDU Type · 4 bit · 7 种取值</text>
+<g font-family="Consolas,'Cascadia Mono',monospace" font-size="10.5" fill="#52514e">
+  <text x="350" y="340">0000  ADV_IND</text>
+  <text x="350" y="360">0001  ADV_DIRECT_IND</text>
+  <text x="350" y="380">0010  ADV_NONCONN_IND</text>
+  <text x="350" y="400">0011  SCAN_REQ</text>
+  <text x="350" y="420">0100  SCAN_RSP</text>
+  <text x="350" y="440">0101  CONNECT_IND</text>
+  <text x="350" y="460">0110  ADV_SCAN_IND</text>
+</g>
+
+<!-- ============ 右：数据 ============ -->
+<rect x="660" y="196" width="10" height="10" rx="3" fill="#1baf7a"/>
+<text x="676" y="205" font-size="13" font-weight="600" fill="#0b0b0b">链路层 · 数据（数据信道 0~36）</text>
+
+<!-- 数据 Header -->
+<rect x="660" y="214" width="500" height="66" rx="8" fill="#e9f7f1" stroke="#1baf7a" stroke-width="1.5"/>
+<text x="670" y="232" font-size="11" font-weight="600" fill="#52514e">PDU Header · 16 bit</text>
+<g font-family="Consolas,'Cascadia Mono',monospace" font-size="9.5" fill="#0b0b0b" text-anchor="middle">
+  <rect x="670" y="240" width="112" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="726" y="257">Length 8b</text>
+  <rect x="784" y="240" width="46"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="807" y="257">RFU 2b</text>
+  <rect x="832" y="240" width="38"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="851" y="257">CP 1b</text>
+  <rect x="872" y="240" width="38"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="891" y="257">MD 1b</text>
+  <rect x="912" y="240" width="38"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="931" y="257">SN 1b</text>
+  <rect x="952" y="240" width="44"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="974" y="257">NESN 1b</text>
+  <rect x="998" y="240" width="58"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="1027" y="257">LLID 2b</text>
+</g>
+
+<!-- LLID 分叉 -->
+<g stroke="#b9b6ae" stroke-width="1.5" fill="none">
+  <path d="M 1027 280 V 304"/>
+  <path d="M 790 304 H 1090"/>
+  <path d="M 790 304 V 316"/>
+  <path d="M 1090 304 V 316"/>
+</g>
+
+<rect x="670" y="316" width="240" height="62" rx="8" fill="#fdf6e0" stroke="#eda100" stroke-width="1.5"/>
+<text x="790" y="336" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">LL Control PDU · LLID=11</text>
+<g font-family="Consolas,'Cascadia Mono',monospace" font-size="10" fill="#0b0b0b" text-anchor="middle">
+  <rect x="678" y="344" width="88"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="722" y="361">Opcode 1B</text>
+  <rect x="772" y="344" width="130" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="837" y="361">CtrData 变长</text>
+</g>
+
+<rect x="960" y="316" width="200" height="62" rx="8" fill="#e9f7f1" stroke="#1baf7a" stroke-width="1.5"/>
+<text x="1060" y="334" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">LL Data PDU</text>
+<text x="1060" y="352" font-size="10.5" fill="#52514e" text-anchor="middle" font-family="Consolas,'Cascadia Mono',monospace">LLID = 10 / 01</text>
+<text x="960" y="394" font-size="10" fill="#898781">空包(Length=0)：仅 Header + CRC</text>
+
+<!-- LL Data → L2CAP -->
+<g stroke="#b9b6ae" stroke-width="1.5" fill="none">
+  <path d="M 1060 378 V 406"/>
+  <path d="M 940 406 H 1060"/>
+  <path d="M 940 406 V 436"/>
+</g>
+
+<rect x="720" y="436" width="440" height="66" rx="8" fill="#fdeef4" stroke="#e87ba4" stroke-width="1.5"/>
+<text x="730" y="456" font-size="12" font-weight="600" fill="#0b0b0b">L2CAP 包</text>
+<g font-family="Consolas,'Cascadia Mono',monospace" font-size="10" fill="#0b0b0b" text-anchor="middle">
+  <rect x="730" y="462" width="104" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="782" y="479">Length 2B</text>
+  <rect x="842" y="462" width="90"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="887" y="479">CID 2B</text>
+  <rect x="940" y="462" width="212" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="1046" y="479">Information Payload</text>
+</g>
+
+<!-- CID 分叉 -->
+<g stroke="#b9b6ae" stroke-width="1.5" fill="none">
+  <path d="M 887 502 V 512"/>
+  <path d="M 750 512 H 1128"/>
+  <path d="M 800 512 V 524"/>
+  <path d="M 993 512 V 524"/>
+  <path d="M 1128 512 V 524"/>
+</g>
+
+<rect x="680" y="524" width="240" height="62" rx="8" fill="#e6f2e6" stroke="#008300" stroke-width="1.5"/>
+<text x="688" y="544" font-size="11" font-weight="600" fill="#0b0b0b">ATT · CID=0x0004</text>
+<g font-family="Consolas,'Cascadia Mono',monospace" font-size="10" fill="#0b0b0b" text-anchor="middle">
+  <rect x="688" y="550" width="86"  height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="731" y="567">Opcode 1B</text>
+  <rect x="780" y="550" width="134" height="26" rx="4" fill="#ffffff" stroke="#b9b6ae"/><text x="847" y="567">Parameters 0~MTU-1</text>
+</g>
+
+<rect x="930" y="524" width="125" height="62" rx="8" fill="#edeaf7" stroke="#4a3aa7" stroke-width="1.5"/>
+<text x="936" y="544" font-size="11" font-weight="600" fill="#0b0b0b">SMP · CID=0x0006</text>
+<text x="992" y="566" font-size="10" fill="#52514e" text-anchor="middle" font-family="Consolas,'Cascadia Mono',monospace">Code 1B + Data 变长</text>
+
+<rect x="1065" y="524" width="125" height="62" rx="8" fill="#fceaea" stroke="#e34948" stroke-width="1.5"/>
+<text x="1071" y="544" font-size="11" font-weight="600" fill="#0b0b0b">Signaling · 0x0005</text>
+<text x="1127" y="566" font-size="10" fill="#52514e" text-anchor="middle" font-family="Consolas,'Cascadia Mono',monospace">Code+Id+Len+Data</text>
+
+<!-- 底部说明 -->
+<text x="60" y="620" font-size="11" fill="#898781">字段含义与位级说明见《ble-protocol-manual.html》与 ble-protocol-tree.html · 2026-08-22</text>
+</svg>
