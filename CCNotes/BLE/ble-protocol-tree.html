@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLE 空中帧协议解析树</title>
+<style>
+:root{
+  /* 面与墨（浅色文档面） */
+  --page:#f9f9f7;
+  --surface:#fcfcfb;
+  --card:#ffffff;
+  --ink:#0b0b0b;
+  --ink-2:#52514e;
+  --muted:#898781;
+  --hairline:#e1e0d9;
+  --border:rgba(11,11,11,.10);
+  /* 分层色（已通过 CVD/正常视觉校验的 8 槽位，顺序即树内出现顺序） */
+  --c-phy:#2a78d6;    /* 物理层 */
+  --c-adv:#eb6834;    /* 链路层·广播 */
+  --c-data:#1baf7a;   /* 链路层·数据 */
+  --c-ctrl:#eda100;   /* LL Control */
+  --c-l2cap:#e87ba4;  /* L2CAP */
+  --c-att:#008300;    /* ATT */
+  --c-smp:#4a3aa7;    /* SMP */
+  --c-sig:#e34948;    /* L2CAP Signaling */
+  --c-field:#898781;  /* 字段/中性（结构，不承担身份） */
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{transition:none!important;animation:none!important}
+}
+body{
+  margin:0;
+  background:var(--page);
+  color:var(--ink);
+  font:14px/1.65 var(--sans);
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px 64px}
+
+/* ---------- 头部 ---------- */
+header{padding:36px 0 20px}
+.eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px;
+}
+h1{font-size:26px;font-weight:650;margin:0;letter-spacing:.01em}
+.sub{margin:6px 0 0;color:var(--ink-2);font-size:13.5px}
+.sub a{color:var(--c-phy);text-decoration:none;border-bottom:1px solid rgba(42,120,214,.35)}
+.sub a:hover{border-bottom-color:var(--c-phy)}
+
+/* ---------- 空中帧字节条（签名元素） ---------- */
+.frame-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:16px 18px 14px;
+  margin:18px 0 8px;
+  box-shadow:0 1px 2px rgba(11,11,11,.04);
+}
+.frame-caption{
+  display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);
+}
+.strip{display:flex;gap:2px}  /* 2px 表面间隙，段与段之间不粘连 */
+.seg{
+  position:relative;cursor:pointer;border-radius:6px;
+  padding:8px 10px 7px;min-width:0;
+  background:#f2f1ed;color:var(--ink);
+  border:1.5px solid transparent;
+  transition:background .12s,border-color .12s,box-shadow .12s;
+}
+.seg:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.seg__cn{display:block;font-size:12.5px;font-weight:600;white-space:nowrap}
+.seg__en{display:block;font-family:var(--mono);font-size:10.5px;color:var(--ink-2);white-space:nowrap}
+.seg--preamble{width:9%}
+.seg--aa{width:21%}
+.seg--pd{width:44%}
+.seg--mic{width:14%}
+.seg--crc{width:12%}
+.seg--preamble,.seg--aa,.seg--mic,.seg--crc{background:#e8effa}
+.seg--preamble:hover,.seg--aa:hover,.seg--mic:hover,.seg--crc:hover,
+.seg--preamble.strip-active,.seg--aa.strip-active,.seg--mic.strip-active,.seg--crc.strip-active{
+  background:#d6e4f8;border-color:var(--c-phy)
+}
+.seg--pd{background:#efeeea}
+.seg--pd:hover,.seg--pd.strip-active{background:#e5e4dd;border-color:var(--ink)}
+.seg__inner{
+  display:flex;gap:2px;margin-top:5px;
+  font-family:var(--mono);font-size:10px;color:var(--ink-2);
+}
+.seg__inner span{
+  background:rgba(11,11,11,.06);border-radius:3px;padding:1px 5px;white-space:nowrap;
+}
+.strip-tip{margin:8px 2px 0;font-size:11.5px;color:var(--muted)}
+
+/* ---------- 图例 ---------- */
+.legend{
+  display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 4px;
+  font-size:12px;color:var(--ink-2);
+}
+.legend i{
+  display:inline-block;width:9px;height:9px;border-radius:2.5px;
+  margin-right:5px;vertical-align:baseline;transform:translateY(.5px);
+}
+
+/* ---------- 工具条 ---------- */
+.toolbar{
+  position:sticky;top:0;z-index:10;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:10px 0;margin:12px 0 4px;
+  background:rgba(249,249,247,.94);
+  backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--hairline);
+}
+.btn{
+  font:12.5px var(--sans);color:var(--ink-2);
+  background:var(--card);border:1px solid var(--border);border-radius:7px;
+  padding:5px 12px;cursor:pointer;
+}
+.btn:hover{color:var(--ink);border-color:rgba(11,11,11,.25)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.level-ctl{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)}
+.level-ctl input{
+  width:44px;padding:4px 6px;font-family:var(--mono);font-size:12.5px;
+  border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);
+}
+.search-ctl{position:relative;margin-left:auto}
+.search-ctl input{
+  width:210px;padding:5px 26px 5px 10px;font:13px var(--sans);
+  border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--ink);
+}
+.search-ctl input::placeholder{color:var(--muted)}
+.search-ctl input:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.search-clear{
+  position:absolute;right:4px;top:50%;transform:translateY(-50%);
+  border:none;background:none;cursor:pointer;color:var(--muted);
+  font-size:14px;padding:2px 6px;border-radius:4px;display:none;
+}
+.search-clear:hover{color:var(--ink)}
+.search-clear:focus-visible{outline:2px solid var(--ink)}
+.hits{margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--mono);white-space:nowrap}
+
+/* ---------- 树 ---------- */
+ul.tree,ul.tree ul{list-style:none;margin:0;padding:0}
+ul.tree ul{margin-left:22px;border-left:1px dashed #d8d6cf;padding-left:6px}
+li.node{position:relative;margin:1px 0}
+.row{
+  display:flex;align-items:baseline;gap:7px;width:100%;
+  padding:4px 8px 4px 4px;border:none;border-radius:7px;background:none;
+  text-align:left;cursor:default;font:inherit;color:inherit;
+  transition:background .1s;
+}
+button.row{cursor:pointer}
+.row:hover{background:rgba(11,11,11,.05)}
+.row:focus-visible{outline:2px solid var(--ink);outline-offset:-2px;background:rgba(11,11,11,.05)}
+.caret{
+  flex:none;width:15px;text-align:center;color:var(--muted);
+  font-size:10px;transition:transform .15s;user-select:none;
+}
+.caret--open{transform:rotate(90deg)}
+.caret--none{visibility:hidden}
+.chip{
+  flex:none;width:10px;height:10px;border-radius:3px;align-self:center;
+}
+.chip--field{background:#fff;border:1.5px solid #b9b6ae}
+.lbl{font-size:13.5px;font-weight:600;white-space:nowrap}
+.lbl .en{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink-2);margin-left:6px}
+.size{
+  font-family:var(--mono);font-size:10.5px;color:var(--ink-2);
+  background:#f0efeb;border-radius:4px;padding:1px 6px;white-space:nowrap;
+}
+.desc{display:block;margin:0 0 3px 34px;max-width:64rem;font-size:12.5px;color:var(--ink-2)}
+.desc mark,.lbl mark,.lbl .en mark,.detail mark{background:#fbe28b;color:inherit;border-radius:2px;padding:0 1px}
+.detail{
+  margin:2px 0 6px 34px;padding:8px 12px;
+  background:var(--card);border:1px solid var(--hairline);border-radius:7px;
+  font-size:12.5px;
+}
+.detail table{border-collapse:collapse;width:100%;font-size:12.5px}
+.detail th{
+  text-align:left;font-family:var(--mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--hairline);padding:3px 10px 3px 0;
+}
+.detail td{border-bottom:1px solid #f0efea;padding:3px 10px 3px 0;vertical-align:top}
+.detail td:first-child,.detail th:first-child{font-family:var(--mono);font-size:11.5px;white-space:nowrap;color:var(--ink)}
+.detail td:first-child{color:var(--ink-2)}
+.detail tr:last-child td{border-bottom:none}
+.detail pre{
+  margin:0;font-family:var(--mono);font-size:11.5px;line-height:1.7;
+  white-space:pre-wrap;color:var(--ink);
+}
+.note .desc{background:#fbf3dd;border-left:3px solid #e7c56a;padding:6px 10px;border-radius:0 6px 6px 0}
+/* 高亮联动 */
+.row-row-active{background:#eef2f8}
+/* 行首节点（根） */
+.lbl--root{font-size:15px}
+.desc--root{font-size:13px}
+
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--hairline);font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">BLE Protocol Dissection Tree</p>
+  <h1>BLE 空中帧协议解析树</h1>
+  <p class="sub">从完整空中帧逐层下钻到 ATT / SMP 的 Opcode 全集 · 配套 <a href="ble-protocol-manual.html">《BLE 协议手册》</a>（第二~八章）</p>
+
+  <div class="frame-card" id="frame-card">
+    <div class="frame-caption">
+      <span>完整空中帧 · Air Interface Packet</span>
+      <span>悬停任一字段 → 定位到树中节点；点击 → 展开该节点</span>
+    </div>
+    <div class="strip" id="strip">
+      <button class="seg seg--preamble" data-node="preamble" title="前导码 Preamble">
+        <span class="seg__cn">前导码</span><span class="seg__en">1 B · 0xAA</span>
+      </button>
+      <button class="seg seg--aa" data-node="aa" title="Access Address">
+        <span class="seg__cn">Access Address</span><span class="seg__en">4 B · 广告 0x8E89BED6</span>
+      </button>
+      <button class="seg seg--pd" data-node="pd" title="PDU = LL Header + Payload">
+        <span class="seg__cn">PDU</span><span class="seg__en">2 ~ 257 B</span>
+        <span class="seg__inner"><span>LL Header 2B</span><span>Payload 0~251B</span></span>
+      </button>
+      <button class="seg seg--mic" data-node="mic" title="Message Integrity Check（仅加密后有）">
+        <span class="seg__cn">MIC</span><span class="seg__en">4 B · 仅加密</span>
+      </button>
+      <button class="seg seg--crc" data-node="crc" title="Cyclic Redundancy Check（所有包都有）">
+        <span class="seg__cn">CRC</span><span class="seg__en">3 B · 所有包</span>
+      </button>
+    </div>
+    <p class="strip-tip">字节条按 2px 间隙分段；PDU 内部示意 LL Header(2B) + Payload(0~251B)。加密时 MIC 才存在——它随 Payload 一起被 AES-CCM 加密。</p>
+  </div>
+
+  <div class="legend" aria-label="图例：协议层配色">
+    <span><i style="background:var(--c-phy)"></i>物理层</span>
+    <span><i style="background:var(--c-adv)"></i>链路层·广播</span>
+    <span><i style="background:var(--c-data)"></i>链路层·数据</span>
+    <span><i style="background:var(--c-ctrl)"></i>LL Control</span>
+    <span><i style="background:var(--c-l2cap)"></i>L2CAP</span>
+    <span><i style="background:var(--c-att)"></i>ATT</span>
+    <span><i style="background:var(--c-smp)"></i>SMP</span>
+    <span><i style="background:var(--c-sig)"></i>Signaling</span>
+  </div>
+</header>
+
+<div class="toolbar" id="toolbar">
+  <button class="btn" id="btn-expand-all">展开全部</button>
+  <button class="btn" id="btn-collapse-all">折叠全部</button>
+  <span class="level-ctl">
+    展开至第 <input id="level-input" type="number" min="1" max="8" value="3" aria-label="展开层级"> 层
+    <button class="btn" id="btn-level">应用</button>
+  </span>
+  <span class="hits" id="hits" aria-live="polite"></span>
+  <span class="search-ctl">
+    <input id="search" type="search" placeholder="搜索节点（如 CONNECT_IND、LLID、0x52）" aria-label="搜索节点">
+    <button class="search-clear" id="search-clear" aria-label="清空搜索">✕</button>
+  </span>
+</div>
+
+<ul class="tree" id="tree" role="tree"></ul>
+
+<footer>
+  内容依据《ble-protocol-manual.html》第二~八章整理 · 2026-08-22 · 分层配色经色觉无障碍校验（8 槽位，相邻对 CVD ΔE ≥ 9.1）
+</footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* ============ 树数据（平面 id → 节点；c = 子节点 id 数组） ============ */
+/* k：kind → phy/adv/data/ctrl/l2cap/att/smp/sig/field/note
+   t：{cols, rows} 表格；pre：等宽示例；strip：对应帧字节条的段 id */
+const NODES = {
+
+air:{k:"phy", l:"BLE 完整空中帧", e:"Air Interface Packet", s:"10 ~ 272 字节",
+ d:"所有 BLE 包在空中（PHY 层）的统一结构：Preamble + Access Address + PDU + [MIC] + CRC。从 PDU 开始向下分叉为广播（广告信道）与数据（数据信道）两大支。",
+ c:["preamble","aa","pd","mic","crc","stack-note"]},
+
+preamble:{k:"phy", l:"前导码", e:"Preamble", s:"1 字节", strip:"preamble",
+ d:"0xAA——接收方用于位同步与自动增益控制（AGC）。广告信道固定 0xAA；数据信道按 Access Address 首 bit 在 0xAA / 0x55 间交替。"},
+
+aa:{k:"phy", l:"Access Address", s:"4 字节", strip:"aa",
+ d:"广播包固定 0x8E89BED6（蓝牙规范固定值，所有 BLE 设备共用）；数据包为 32-bit 随机值，由 CONNECT_IND 的 AA 字段下发、每个连接唯一。链路层硬件按 AA 过滤：匹配才收，不匹配直接丢弃（不消耗 CPU）。",
+ t:{cols:["阶段","Access Address","说明"],rows:[
+   ["广告包","0x8E89BED6","蓝牙规范固定值，所有 BLE 设备共用"],
+   ["数据包","32-bit 随机值","CONNECT_IND 的 AA 字段下发，每个连接唯一"]]}},
+
+pd:{k:"field", l:"PDU", e:"Protocol Data Unit", s:"2 ~ 257 字节", strip:"pd",
+ d:"= LL Header (2 字节) + Payload (0~251 字节)。链路层 PDU Header 有【两套格式】——广告信道和数据信道完全不同，由报文所处信道决定用哪套：广播走广告信道格式，连接后走数据信道格式。",
+ c:["pd-hdr","adv","data"]},
+
+"pd-hdr":{k:"field", l:"LL Header", s:"2 字节",
+ d:"16 bit。广告信道与数据信道的位布局完全不同，分别见下方两个分支的「PDU Header」节点。"},
+
+"stack-note":{k:"note", l:"协议栈定位（本树覆盖范围）",
+ d:"App → GAP（规则层，不产生 PDU）→ SMP / GATT→ATT → L2CAP（复用+分片）→ HCI（不过空中）→ 链路层 LL → PHY（2.4GHz GFSK）。本树只解析真正上到空中的部分：PHY 帧 → LL PDU → L2CAP → ATT/SMP/Signaling；HCI 与 GAP 不产生空中报文，故不展开。"},
+
+/* ---------- 广播分支 ---------- */
+adv:{k:"adv", l:"链路层 · 广播", e:"Advertising · 广告信道 37/38/39",
+ d:"广播阶段：设备在 37/38/39 三个广告信道轮发广播包，供扫描与连接。广播 PDU 的 Payload 实际最大 37 字节（AdvA 6B + AdvData 31B），最小 6 字节（仅 AdvA）。",
+ c:["adv-hdr","adv-data"]},
+
+"adv-hdr":{k:"adv", l:"PDU Header（广告信道版）", s:"16 bit",
+ d:"位布局：[15:8] Length | [7] RxAdd | [6] TxAdd | [5] ChSel | [4] RFU | [3:0] PDU Type。注意与数据信道版完全不同。",
+ c:["adv-hdr-type","adv-hdr-len","adv-hdr-rxadd","adv-hdr-txadd","adv-hdr-chsel","adv-hdr-rfu"]},
+
+"adv-hdr-type":{k:"adv", l:"PDU Type", e:"[3:0]", s:"4 bit",
+ d:"广播 PDU 类型标识，7 种取值（0111~1111 保留）。选择决策：需要被连接？→ 是 → 限制谁能连？→ ADV_DIRECT_IND（已知 MAC）/ ADV_IND（最常用）；→ 否 → 需要更多广播数据？→ ADV_SCAN_IND（+SCAN_RSP=62B）/ ADV_NONCONN_IND（纯信标）。",
+ c:["type-0000","type-0001","type-0010","type-0011","type-0100","type-0101","type-0110"]},
+
+"type-0000":{k:"adv", l:"ADV_IND", e:"0000", d:"通用广播等连接（最常用）。可扫描 ✅ 可连接 ✅ 带 AdvData(≤31B)。Payload：AdvA(6B) + AdvData(0~31B)。"},
+"type-0001":{k:"adv", l:"ADV_DIRECT_IND", e:"0001", d:"快速重连已配对设备——仅 InitA 目标可连接，无 AdvData。Payload：AdvA(6B) + InitA(6B) = 12B。InitA 来自绑定表（首次配对存入的 Identity Address；对方用 RPA 每 15 分钟换地址也没关系，收到后用 IRK 认出自己的身份地址）。"},
+"type-0010":{k:"adv", l:"ADV_NONCONN_IND", e:"0010", d:"纯信标广播（iBeacon / Eddystone），不可扫描、不可连接。Payload：AdvA(6B) + AdvData(0~31B)。"},
+"type-0011":{k:"adv", l:"SCAN_REQ", e:"0011", d:"扫描方请求广播方提供更多数据（主动扫描时发）。Payload：ScanA(6B) + AdvA(6B) = 12B。"},
+"type-0100":{k:"adv", l:"SCAN_RSP", e:"0100", d:"广播方对 SCAN_REQ 的响应，可再带 31 字节。Payload：AdvA(6B) + ScanRspData(0~31B)。AdvData(31B) + ScanRspData(31B) = 最多 62 字节广播数据。"},
+"type-0101":{k:"adv", l:"CONNECT_IND", e:"0101", d:"发起连接——最重要的一个包。Payload 固定 34 字节，携带全部连接参数。约束：(1 + Latency) × Interval × 2 ≤ Timeout（违反可能导致从设备跳过一次事件后被误判断连）。之后双方进入 Connection State：数据包改用 AA（替代 MAC 地址）按 ChM 跳频，从设备在 150μs 内回复第一个包。",
+ t:{cols:["字段","大小","说明"],rows:[
+   ["InitA","6 B","发起方 MAC"],
+   ["AdvA","6 B","广播方 MAC"],
+   ["AA","4 B","32 位随机 Access Address——后续所有数据包用它标识连接（替代 MAC）"],
+   ["CRCInit","3 B","CRC 计算初始值"],
+   ["WinSize","1 B","传输窗口 = 1.25ms × WinSize"],
+   ["WinOffset","2 B","第一次连接事件偏移 = 1.25ms × WinOffset"],
+   ["Interval","2 B","连接间隔 = 1.25ms × Interval（7.5ms ~ 4s）"],
+   ["Latency","2 B","从设备可跳过的连接事件次数（0~499）"],
+   ["Timeout","2 B","监督超时 = 10ms × Timeout（100ms ~ 32s）"],
+   ["ChM","5 B","37 位信道图：bit=1 表示可用"],
+   ["Hop","1 B","跳频增量（5~16，必须与 37 互质）"],
+   ["SCA","1 B","睡眠时钟精度（0~7，ppm）"]]}},
+"type-0110":{k:"adv", l:"ADV_SCAN_IND", e:"0110", d:"仅广播+额外信息（可扫描），绝不允许连接。Payload：AdvA(6B) + AdvData(0~31B)。ADV_IND 本身可被扫描（能回 SCAN_RSP），ADV_SCAN_IND 唯一的存在理由是「想给额外广播数据但绝不允许连接」。"},
+
+"adv-hdr-len":{k:"field", l:"Length", e:"[15:8]", s:"8 bit",
+ d:"Payload 字节数（6~37）。BLE 4.0~4.1 为 6 bit（[5:0]，最大 63）；4.2+ 扩展为 8 bit（最大 255）。广播 Payload 实际最大 37B；CONNECT_IND 固定 34B；最小 6B（仅 AdvA，无 AdvData）。"},
+"adv-hdr-rxadd":{k:"field", l:"RxAdd", e:"[7]", s:"1 bit",
+ d:"目标方地址类型：0=Public MAC，1=Random MAC。仅 ADV_DIRECT_IND 和 CONNECT_IND 使用此位，其他 PDU Type 置 0。"},
+"adv-hdr-txadd":{k:"field", l:"TxAdd", e:"[6]", s:"1 bit",
+ d:"发送方地址类型：0=Public（IEEE 注册的全球唯一 MAC，需购买 OUI）；1=Random。Random 分两种：Static Random（每次上电生成、本次上电期间不变，免费）与 Private RPA（每 15 分钟更换，用 IRK + 随机数 hash 生成，只有持有 IRK 的设备能解析出真实身份——BLE 隐私保护的核心机制；现代手机默认 RPA）。"},
+"adv-hdr-chsel":{k:"field", l:"ChSel", e:"[5]", s:"1 bit",
+ d:"信道选择算法：0=Algorithm #1（自适应跳频，基于信道图+跳频增量循环，不可用信道重映射）；1=Algorithm #2（伪随机，BLE 5.0 引入）。广播阶段告知「我支持 #2」，Central 也支持则连接后用 #2。"},
+"adv-hdr-rfu":{k:"field", l:"RFU", e:"[4]", s:"1 bit", d:"保留位，必须为 0。"},
+
+"adv-data":{k:"adv", l:"AdvData / ScanRspData", e:"AD Structure · LTV 格式",
+ d:"广播数据用 LTV（Length-Type-Value）自描述格式编码，多个 AD Structure 依次拼接。解析方不需要预先知道 31 字节里放了什么，逐字节解析即可——新增 AD Type 不影响兼容性。",
+ c:["ltv-fmt","ltv-rule","ltv-example","ltv-types"]},
+
+"ltv-fmt":{k:"field", l:"单个 AD Structure", e:"Length | AD Type | AD Data", s:"1B + 1B + (Length-1)B",
+ d:"L（Length，1 字节）= Type + Data 的总长度（不含自身），值为 0 表示 AD 列表结束；T（AD Type，1 字节）= 蓝牙 SIG 统一分配的编号；V（AD Data，Length-1 字节）= 实际数据，格式取决于 AD Type。"},
+"ltv-rule":{k:"field", l:"解析规则",
+ d:"逐字节读 Length → 若为 0，列表结束；若 > 0，读 Type(1B) + Data(Length-1 B) → 指针前进 Length 字节 → 继续读下一个 Length。"},
+"ltv-example":{k:"note", l:"实例",
+ pre:"02 01 06               ← Length=2, Type=0x01(Flags), Data=0x06\n03 03 0F 18            ← Length=3, Type=0x03(Complete 16-bit UUIDs), Data=0x0F 0x18\n                          → UUID 列表: 0x180F (Battery Service)\n09 09 46 4C 4F 57 4D 45 54 45 52\n                       ← Length=9, Type=0x09(Complete Local Name), Data=\"FLOWMETER\"\n00                     ← Length=0, AD 列表结束"},
+"ltv-types":{k:"field", l:"常用 AD Type 速查表",
+ t:{cols:["AD Type","名称","Data 格式","说明"],rows:[
+   ["0x01","Flags","1 字节位掩码","必须排第一个：bit0=LE Limited Discoverable, bit1=LE General Discoverable, bit2=BR/EDR Not Supported"],
+   ["0x02 / 0x03","16-bit Service UUIDs","多个 16-bit UUID（小端）","0x02 放不下、需 SCAN_RSP 补全；0x03 为完整列表"],
+   ["0x06 / 0x07","128-bit Service UUIDs","多个 128-bit UUID","同上，128-bit 版本"],
+   ["0x08 / 0x09","Local Name","UTF-8 字符串","0x08 简称；0x09 设备全名（如 \"FLOWMETER\"）"],
+   ["0x0A","TX Power Level","1 字节有符号整数","发射功率 dBm（用于距离估算）"],
+   ["0x16","Service Data","UUID(2B) + Data","服务关联数据"],
+   ["0xFF","Manufacturer Specific","Company ID(2B 小端) + 自定义","厂商自定义数据（如 iBeacon）"]]}},
+
+/* ---------- 数据分支 ---------- */
+data:{k:"data", l:"链路层 · 数据", e:"Data · 数据信道 0~36",
+ d:"连接建立后，所有通信在 0~36 数据信道跳频进行；PDU Header 从「广告信道格式」切换为「数据信道格式」。",
+ c:["data-hdr"]},
+
+"data-hdr":{k:"data", l:"PDU Header（数据信道版）", s:"16 bit",
+ d:"位布局：[15:8] Length | [7:6] RFU | [5] CP | [4] MD | [3] SN | [2] NESN | [1:0] LLID。与广告信道版完全不同——LLID 决定 PDU 是 Data 还是 Control。",
+ c:["data-hdr-llid","data-hdr-len","data-hdr-rfu","data-hdr-cp","data-hdr-md","data-hdr-sn","data-hdr-nesn"]},
+
+"data-hdr-len":{k:"field", l:"Length", e:"[15:8]", s:"8 bit",
+ d:"Payload 字节数。0=空包（仅 LL Header + CRC，维持心跳/确认）；最大 27（4.0/4.1）或 251（4.2+ 经 LL_LENGTH_REQ/RSP 协商 Data Length Extension）。多层限制链：writeCharacteristic → ATT MTU（Android 默认 517 / iOS 527）→ L2CAP（纸面 65535，不是瓶颈）→ LL Payload（27 / 251）← 真正的瓶颈 → 链路层自动分片（LLID=10 第一片，LLID=01 续传）。"},
+"data-hdr-rfu":{k:"field", l:"RFU", e:"[7:6]", s:"2 bit", d:"保留位。"},
+"data-hdr-cp":{k:"field", l:"CP", e:"[5]", s:"1 bit",
+ d:"Coded PHY 指示（BLE 5.0 引入）：0=1M 或 2M PHY；1=Coded PHY（S=2 或 S=8）。Coded PHY 以降低速率为代价换前向纠错（FEC）增益，实现远程通信。",
+ t:{cols:["PHY","速率","距离","编码"],rows:[
+   ["1M (LE 1M)","1 Mbps","~100m","无编码，每 bit 1 个符号"],
+   ["2M (LE 2M)","2 Mbps","~50m","无编码，每 bit 0.5 个符号"],
+   ["Coded S=2","500 Kbps","~200m","每 bit 编码为 2 个符号（FEC）"],
+   ["Coded S=8","125 Kbps","~400m+","每 bit 编码为 8 个符号（FEC 最强纠错）"]]}},
+"data-hdr-md":{k:"field", l:"MD", e:"[4]", s:"1 bit",
+ d:"More Data——1=本连接事件内还有更多数据要发，对方应继续监听、不要立即休眠；0=本事件最后一包，对方可安全关闭接收窗口。典型用法：长数据分片发送时前 N-1 片 MD=1，最后一片 MD=0。"},
+"data-hdr-sn":{k:"field", l:"SN", e:"[3]", s:"1 bit",
+ d:"Sequence Number——本包序列号。BLE 链路层是停等协议（Stop-and-Wait，非 TCP 滑动窗口）：一次只发一包、收到回复才发下一包，最多一个包在飞，所以 1 bit 够用。翻转=新包，相同=重传包。"},
+"data-hdr-nesn":{k:"field", l:"NESN", e:"[2]", s:"1 bit",
+ d:"Next Expected SN——隐含 ACK。翻转（0↔1）=「上一个收到了，下一个用这个 SN」；不变=「还是那个 SN」=上一个没收到（隐性 NAK）。确认与期望打包在同一个 1 bit 字段里，是停等协议最优雅的设计。丢包时 Master 150μs 超时重传（SN 不变），Slave 认出重传后只重发 ACK 不处理数据。",
+ t:{cols:["","TCP","BLE 链路层"],rows:[
+   ["协议类型","滑动窗口","停等 (Stop-and-Wait)"],
+   ["同时在路上的包","多个","最多 1 个"],
+   ["SN 大小","32 bit","1 bit"],
+   ["ACK 方式","独立 ACK 包","NESN 翻转隐含 ACK"],
+   ["乱序","可能","不存在"]]}},
+
+"data-hdr-llid":{k:"data", l:"LLID", e:"[1:0]", s:"2 bit",
+ d:"链路层 ID，决定 PDU 类型：10=LL Data（起始片段/完整 L2CAP 包）；01=LL Data（续传片段或空包）；11=LL Control（链路层管理命令）。关键认知：LL Control 与 LL Data 是【平级】关系，不是嵌套——链路层收到包看 LLID：10/01 → Payload 是 L2CAP 包，拆掉 LL Header 交给 L2CAP；11 → Payload 以 Opcode 开头，Controller 自己处理，不出链路层。",
+ c:["ctrl","lldata"]},
+
+ctrl:{k:"ctrl", l:"LL Control PDU", e:"LLID = 11",
+ d:"链路层自身管理命令（改参数、加密、断连）。结构：Opcode(1 字节，始终明文) + Control Data(可变长度)。Controller 内部消化——不出链路层、不过 L2CAP、没有 CID。",
+ c:["op-0000","op-0001","op-0002","op-0809","op-000c","op-000d","op-1415","op-1617","ctrl-enc","ctrl-others"]},
+
+"op-0000":{k:"ctrl", l:"LL_CONNECTION_UPDATE_REQ", e:"Opcode 0x00 · M→S", d:"更新连接参数。无 Response：接受则在 Instant 时刻自动切换；拒绝则回 LL_REJECT_IND。",
+ t:{cols:["字段","大小","说明"],rows:[
+   ["Opcode","1 B","0x00"],
+   ["WinSize","1 B","传输窗口"],
+   ["WinOffset","2 B","= 1.25ms × WinOffset"],
+   ["Interval","2 B","新连接间隔"],
+   ["Latency","2 B","新从设备延迟"],
+   ["Timeout","2 B","新监督超时"],
+   ["Instant","2 B","生效时刻（连接事件计数器值）"]]}},
+"op-0001":{k:"ctrl", l:"LL_CHANNEL_MAP_REQ", e:"Opcode 0x01 · M→S", d:"更新信道图。",
+ t:{cols:["字段","大小","说明"],rows:[
+   ["Opcode","1 B","0x01"],
+   ["ChM","5 B","37 位信道图（bit=1=可用）"],
+   ["Instant","2 B","生效时刻"]]}},
+"op-0002":{k:"ctrl", l:"LL_TERMINATE_IND", e:"Opcode 0x02 · 双向", d:"断开连接。",
+ t:{cols:["字段","大小","说明"],rows:[
+   ["Opcode","1 B","0x02"],
+   ["ErrorCode","1 B","断开原因码"]]}},
+"op-0809":{k:"ctrl", l:"LL_FEATURE_REQ / RSP", e:"Opcode 0x08/0x09 · 双向", d:"特性交换。",
+ t:{cols:["字段","大小","说明"],rows:[
+   ["Opcode","1 B","0x08(Req) / 0x09(Rsp)"],
+   ["FeatureSet","8 B","64 位特性掩码：bit0 LE Encryption / bit1 Connection Parameters Request / bit3 Slave-initiated Features Exchange / bit5 Data Packet Length Extension(4.2+) / bit8 LE 2M PHY(5.0) / bit9 LE Coded PHY / bit10 LE Extended Advertising"]]}},
+"op-000c":{k:"ctrl", l:"LL_VERSION_IND", e:"Opcode 0x0C · 双向", d:"版本通知（无 Req/Rsp，单向）。",
+ t:{cols:["字段","大小","说明"],rows:[
+   ["Opcode","1 B","0x0C"],
+   ["VersNr","1 B","蓝牙控制器版本号（如 9=4.2, 10=5.0）"],
+   ["CompId","2 B","公司 ID"],
+   ["SubVersNr","2 B","固件子版本号"]]}},
+"op-000d":{k:"ctrl", l:"LL_REJECT_IND", e:"Opcode 0x0D · 双向", d:"拒绝不支持的 Control PDU。",
+ t:{cols:["字段","大小","说明"],rows:[
+   ["Opcode","1 B","0x0D"],
+   ["RejectOpcode","1 B","被拒绝的 Control PDU Opcode"],
+   ["ErrorCode","1 B","拒绝原因"]]}},
+"op-1415":{k:"ctrl", l:"LL_PHY_REQ / RSP", e:"Opcode 0x14/0x15 · 双向 · BLE 5.0", d:"PHY 更新。",
+ t:{cols:["字段","大小","说明"],rows:[
+   ["Opcode","1 B","0x14(Req) / 0x15(Rsp)"],
+   ["TX_PHYS","1 B","bit0=1M, bit1=2M, bit2=Coded(S8), bit3=Coded(S2)"],
+   ["RX_PHYS","1 B","同上"]]}},
+"op-1617":{k:"ctrl", l:"LL_LENGTH_REQ / RSP", e:"Opcode 0x16/0x17 · 双向 · BLE 4.2", d:"数据长度扩展（Data Length Extension）。",
+ t:{cols:["字段","大小","说明"],rows:[
+   ["Opcode","1 B","0x16(Req) / 0x17(Rsp)"],
+   ["MaxRxOctets","2 B","最大接收 Payload 字节数 (27~251)"],
+   ["MaxRxTime","2 B","最大接收时间（μs）"],
+   ["MaxTxOctets","2 B","最大发送 Payload 字节数"],
+   ["MaxTxTime","2 B","最大发送时间（μs）"]]}},
+
+"ctrl-enc":{k:"note", l:"加密三握手（0x03 ~ 0x06）",
+ d:"① LL_ENC_REQ (0x03, M→S)：Rand + EDIV + SKDm + IVm——把 LTK 的索引（EDIV+Rand）传给对方；② LL_ENC_RSP (0x04, S→M)：SKDs + IVs；③ LL_START_ENC_REQ (0x05, M→S) ⚠ 明文发出；④ LL_START_ENC_RSP (0x06, S→M) ⚠ 明文发出。LL_START_ENC 是切换时刻的「发令枪」，必须明文——对方必须先读到「即将切换到加密」才能同步切换解密引擎。分工：SMP（Host 软件层）协商密钥「我们用什么钥匙」，LL 加密命令（Controller 硬件层）启用加密「现在开始用这把钥匙」。绑定设备重连时跳过 SMP，直接 LL_ENC_REQ 加密。"},
+
+"ctrl-others":{k:"ctrl", l:"其余 Opcode 速查表",
+ t:{cols:["Opcode","PDU 名称","方向","说明"],rows:[
+   ["0x03","LL_ENC_REQ","M→S","加密请求（见加密三握手）"],
+   ["0x04","LL_ENC_RSP","S→M","加密响应"],
+   ["0x05","LL_START_ENC_REQ","M→S","开始加密（明文！）"],
+   ["0x06","LL_START_ENC_RSP","S→M","开始加密确认（明文！）"],
+   ["0x07","LL_UNKNOWN_RSP","双向","收到未知 Control PDU"],
+   ["0x0A","LL_PAUSE_ENC_REQ","双向","暂停加密 (5.1+)"],
+   ["0x0B","LL_PAUSE_ENC_RSP","双向","暂停加密确认"],
+   ["0x0E","LL_SLAVE_FEATURE_REQ","S→M","从设备主动特性请求 (4.2+)"],
+   ["0x19","LL_PERIODIC_SYNC_IND","—","周期广播同步 (5.0)"]]}},
+
+lldata:{k:"data", l:"LL Data PDU", e:"LLID = 10 / 01",
+ d:"承载上层数据——链路层只是「卡车」，把 L2CAP 包从 A 运到 B，不关心 Payload 内容。LLID=10：完整 L2CAP 包或分片起始；LLID=01：续传片段或空包。",
+ c:["lldata-10","lldata-01","lldata-empty","l2cap"]},
+
+"lldata-10":{k:"field", l:"LLID=10 — 完整包 / 分片起始",
+ d:"Payload = 完整 L2CAP 包（或分片第一片）。结构：LL Header(2B) + L2CAP 包 + [MIC 4B，加密时] + CRC(3B)。LL Data PDU 本身不关心 Payload 内容。"},
+"lldata-01":{k:"field", l:"LLID=01 — 续传片段 / 空包",
+ d:"分片续传：接收方按 LLID=10 起头、LLID=01 续传重组。链路层自动分片——真正的瓶颈是 LL Payload（27 / 251），不是 L2CAP 的 65535。"},
+"lldata-empty":{k:"field", l:"空包", e:"LLID=01 · Length=0",
+ d:"仅 LL Header(2B) + CRC(3B)，无 Payload、无 MIC。作用：① 通过 NESN 确认收到对方上一包；② 维持连接心跳；③ 从设备无数据时「签到」。"},
+
+l2cap:{k:"l2cap", l:"L2CAP 包", e:"Logical Link Control & Adaptation",
+ s:"Length(2B) + CID(2B) + Payload",
+ d:"封装在 LL Data PDU 的 Payload 里，不直接面对空中。Header 只有 4 字节，是所有协议层中头部最小的。解决两件事：① 协议复用——同一个 LL Data 通道里区分 ATT 还是 SMP，靠 CID；② 分片重组（SAR）。",
+ c:["l2cap-hdr","att","smp","sig"]},
+
+"l2cap-hdr":{k:"field", l:"L2CAP Header", e:"Length(2B) | CID(2B)", s:"4 字节",
+ d:"Length = Information Payload 字节数（不含自身和 CID），纸面上限 65535——但实际一次能发多少由 ATT MTU 决定，不是 L2CAP 的 65535。CID 决定 Payload 交给哪个上层协议。",
+ t:{cols:["CID","协议","说明"],rows:[
+   ["0x0004","ATT","属性协议——GATT 读写通知走这条路"],
+   ["0x0005","L2CAP Signaling","L2CAP 层自身控制命令（参数更新等）"],
+   ["0x0006","SMP","安全管理器——配对/加密/密钥分发"],
+   ["0x0020~0x003F","LE Credit Based","面向连接的自定义信道 (4.2+)"]]}},
+
+att:{k:"att", l:"ATT", e:"CID = 0x0004 · Attribute Protocol",
+ d:"属性协议——定义数据交互的「动词」（怎么读写）。GATT 定义「名词」（怎么组织）。承载于 LL Data PDU → L2CAP CID=0x0004。",
+ c:["att-fmt","att-read","att-write","att-notify","att-mtu","gatt"]},
+
+"att-fmt":{k:"field", l:"ATT PDU 通用格式", e:"Opcode(1B) + Parameters(0~MTU-1B)",
+ d:"Opcode 位结构：bit[5:0]=Method（具体操作）；bit[6]=Command Flag（0=需响应，1=无需响应——如 0x12|0x40=0x52 Write Command）；bit[7]=Authentication Signature（0=无签名，1=带 CSRK 签名）。"},
+"att-read":{k:"field", l:"读操作（Requests）",
+ t:{cols:["Opcode","PDU 名称","参数","说明"],rows:[
+   ["0x0A","Read Request","Handle(2B)","读取指定 Handle 的值"],
+   ["0x0B","Read Response","Value(变长)","返回读取的数据"],
+   ["0x0C","Read Blob Request","Handle(2B)+Offset(2B)","长数据分段续读"],
+   ["0x0D","Read Blob Response","Part Value(变长)","返回一段数据"],
+   ["0x08","Read By Type Request","范围+UUID(2/16B)","范围内搜同类型属性 → 发现 Characteristic"],
+   ["0x09","Read By Type Response","多个 [Handle+Value]","返回匹配的属性列表"],
+   ["0x10","Read By Group Type Request","范围+UUID(2/16B)","范围内搜组类型属性 → 发现 Service"],
+   ["0x11","Read By Group Type Response","多个 [Start+End+Value]","返回 Service 列表"],
+   ["0x04","Find Information Request","Start+End(2B)","范围内发现所有属性 → 发现 Descriptor"],
+   ["0x05","Find Information Response","多个 [Handle+UUID]","返回属性信息列表"],
+   ["0x06","Find By Type Value Request","范围+Type(2B)+Value","按类型+值搜索"],
+   ["0x07","Find By Type Value Response","多个 [Handle 范围]","返回匹配的属性 Handle"]]}},
+"att-write":{k:"field", l:"写操作（Requests & Commands）",
+ t:{cols:["Opcode","PDU 名称","参数","确认"],rows:[
+   ["0x12","Write Request","Handle(2B)+Value(变长)","✅ 有"],
+   ["0x13","Write Response","无","—"],
+   ["0x52","Write Command","Handle(2B)+Value(变长)","❌ 无（0x12|0x40）"],
+   ["0xD2","Signed Write Command","Handle+Value+CSRK签名(12B)","❌ 无"],
+   ["0x16","Prepare Write Request","Handle+Offset(2B)+PartValue","✅ 长写准备（不立即生效）"],
+   ["0x17","Prepare Write Response","Handle+Offset+PartValue","回显准备的内容"],
+   ["0x18","Execute Write Request","Flags(1B: 0x00=取消, 0x01=原子提交)","✅"],
+   ["0x19","Execute Write Response","无","提交确认"]]}},
+"att-notify":{k:"field", l:"通知与指示（Server → Client 推送）",
+ t:{cols:["Opcode","PDU 名称","参数","确认","说明"],rows:[
+   ["0x1B","Handle Value Notification","Handle(2B)+Value","❌ 无","通知推送（快，不可靠）"],
+   ["0x1D","Handle Value Indication","Handle(2B)+Value","✅ 有","指示推送（慢，可靠）"],
+   ["0x1E","Handle Value Confirmation","无","—","指示确认回复"]]},
+ d:"选择：Notification 快但不可靠（CCCD=0x0001，适合流速/累计流量——丢了下一包马上到）；Indication 慢但可靠（CCCD=0x0002，等确认才发下一个，适合报警事件——绝对不能丢）。"},
+"att-mtu":{k:"field", l:"错误与 MTU",
+ t:{cols:["Opcode","PDU 名称","参数","说明"],rows:[
+   ["0x01","Error Response","ReqOpcode(1B)+Handle(2B)+ErrorCode(1B)","操作失败通知"],
+   ["0x02","Exchange MTU Request","ClientRxMTU(2B)","MTU 协商请求"],
+   ["0x03","Exchange MTU Response","ServerRxMTU(2B)","→ ATT MTU = min(两者)"]]},
+ d:"常用错误码：0x01 Invalid Handle / 0x02 Read Not Permitted / 0x03 Write Not Permitted / 0x05 Insufficient Authentication / 0x08 Insufficient Encryption（访问需加密属性会自动触发 SMP 配对）。"},
+gatt:{k:"att", l:"GATT 数据组织（名词）",
+ d:"Profile（概念层，不存在于 Attribute DB）→ Service（功能模块：Declaration [Handle=N][Type=0x2800/0x2801][Value=Service UUID]）→ Characteristic（具体数据项：Declaration 0x2803 + Value + Descriptor）。一句话：ATT 定义怎么读写（动词），GATT 定义怎么组织（名词）。"},
+
+smp:{k:"smp", l:"SMP", e:"CID = 0x0006 · Security Manager",
+ d:"安全管理器——配对、密钥交换、身份认证、密钥分发。承载于 LL Data PDU → L2CAP CID=0x0006。",
+ c:["smp-fmt","smp-codes","smp-phases"]},
+
+"smp-fmt":{k:"field", l:"SMP PDU 通用格式", e:"Code(1B) + Data(可变)",
+ d:"Code 决定 Data 格式，全集见下方 14 个 Code。触发方式：① 从设备主动请求 SMP Security Request(0x0B, S→M)；② Master 直接发起 Pairing Request(0x01, M→S)；③ GATT 按需触发——App 访问需加密 Characteristic → ATT Error: Insufficient Encryption → 协议栈自动触发 SMP 配对。"},
+"smp-codes":{k:"field", l:"Code 全集（14 个）",
+ t:{cols:["Code","PDU 名称","方向","说明"],rows:[
+   ["0x01","Pairing Request","双向","配对特征交换（IO Cap/AuthReq）"],
+   ["0x02","Pairing Response","双向","配对特征响应"],
+   ["0x03","Pairing Confirm","双向","Legacy 配对确认值"],
+   ["0x04","Pairing Random","双向","Legacy 配对随机数"],
+   ["0x05","Pairing Failed","双向","配对失败通知"],
+   ["0x06","Encryption Information","双向","分发 LTK"],
+   ["0x07","Master Identification","双向","分发 EDIV + Rand"],
+   ["0x08","Identity Information","双向","分发 IRK"],
+   ["0x09","Identity Address Information","双向","分发身份地址"],
+   ["0x0A","Signing Information","双向","分发 CSRK"],
+   ["0x0B","Security Request","S→M","从设备请求 Master 启动加密"],
+   ["0x0C","Pairing Public Key","双向","SC: ECDH P-256 公钥（64 字节）"],
+   ["0x0D","Pairing DHKey Check","双向","SC: DHKey 一致性校验"],
+   ["0x0E","Pairing Keypress Notification","双向","Passkey Entry 按键确认"]]}},
+"smp-phases":{k:"note", l:"配对完整四阶段",
+ d:"Phase 1 特征交换（IO Cap / AuthReq）→ Phase 2 密钥交换（Legacy：TK；SC：ECDH 公钥）→ Phase 3 认证（四种路径：Just Works / Numeric Comparison / Passkey Entry / OOB）→ Phase 4 DHKey 校验 → 密钥派生（LTK）→ 密钥分发（LTK / IRK / CSRK）。之后链路层加密握手（LL_ENC_REQ → LL_ENC_RSP → LL_START_ENC），此后全部 AES-CCM 加密通信。"},
+
+sig:{k:"sig", l:"L2CAP Signaling", e:"CID = 0x0005 · 控制命令",
+ d:"L2CAP 层自身的参数协商命令。BLE 中最常用的是连接参数更新（从设备主动请求改参数）。",
+ c:["sig-fmt","sig-cmds","sig-vs-ll"]},
+
+"sig-fmt":{k:"field", l:"包格式", e:"Code(1B) + Identifier(1B) + Length(2B) + Data", d:"信令命令统一封装格式。"},
+"sig-cmds":{k:"field", l:"命令集（3 条）",
+ t:{cols:["Code","命令","说明"],rows:[
+   ["0x01","Command Reject","拒绝不支持的 L2CAP 命令"],
+   ["0x12","Connection Parameter Update Request","从设备主动请求修改连接参数"],
+   ["0x13","Connection Parameter Update Response","Master 对更新请求的响应"]]}},
+"sig-vs-ll":{k:"note", l:"两条改连接参数之路对比",
+ t:{cols:["","LL_CONNECTION_UPDATE_REQ（LL 层）","L2CAP Parameter Update（L2CAP 层）"],rows:[
+   ["谁发起","仅 Master","Master 或 Slave"],
+   ["响应","无 Response（接受=即时生效，拒绝=LL_REJECT_IND）","有 Request/Response 配对"],
+   ["如何承载","LL Control PDU (LLID=11)","LL Data PDU (LLID=10) → L2CAP CID=0x0005"]]},
+ d:"两条路都能改连接参数——Slave 想改参数时必须走 L2CAP 路。"},
+
+mic:{k:"phy", l:"MIC", e:"Message Integrity Check", s:"4 字节", strip:"mic",
+ d:"紧接 Payload 之后，仅加密后的 Data PDU 有。AES-CBC-MAC（用 Session Key）防【人为篡改】（安全）；加密时随 Payload 一起加密；只有持有 LTK 的配对双方能验证。CRC 防天灾（无线噪声），MIC 防人祸（篡改攻击）。"},
+crc:{k:"phy", l:"CRC", e:"Cyclic Redundancy Check", s:"3 字节", strip:"crc",
+ d:"帧末尾 3 字节，所有包都有。多项式除法（公开算法）防【物理误码】（噪声干扰）；始终明文，任何人都能算。"}
+};
+
+/* ============ 状态 ============ */
+const KIND_COLOR = { phy:"var(--c-phy)", adv:"var(--c-adv)", data:"var(--c-data)",
+  ctrl:"var(--c-ctrl)", l2cap:"var(--c-l2cap)", att:"var(--c-att)",
+  smp:"var(--c-smp)", sig:"var(--c-sig)", field:"var(--c-field)" };
+
+const treeEl = document.getElementById("tree");
+let expanded = new Set();
+let query = "";
+let rowFocusId = null;      // 重渲染后恢复焦点
+let rowActiveId = null;     // 帧字节条 → 树 的联动高亮
+
+function childrenOf(id){ return NODES[id].c || []; }
+
+function depthOf(id){
+  // 根 air = 0
+  const parent = Object.keys(NODES).find(p => (NODES[p].c||[]).includes(id));
+  return parent === undefined ? 0 : depthOf(parent) + 1;
+}
+
+/* 默认展开：深度 < 4（第 0~3 层展开） */
+function applyLevel(n){
+  expanded.clear();
+  for(const id of Object.keys(NODES)){
+    if(childrenOf(id).length && depthOf(id) < n) expanded.add(id);
+  }
+}
+applyLevel(4);
+
+/* ============ 渲染 ============ */
+function esc(s){
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function markify(text){
+  const safe = esc(text);
+  if(!query) return safe;
+  const re = new RegExp("(" + query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "gi");
+  return safe.replace(re, "<mark>$1</mark>");
+}
+
+/* 搜索：节点自身或任一可见后代命中即可见；命中子树全部展开 */
+function visibleInfo(id){
+  const n = NODES[id];
+  const selfHit = !query || (n.l + " " + (n.e||"") + " " + (n.d||"") + " " +
+    (n.t ? n.t.rows.flat().join(" ") : "") + " " + (n.pre||"")).toLowerCase().includes(query);
+  let anyChild = false, anyHit = selfHit;
+  for(const c of childrenOf(id)){
+    const vi = visibleInfo(c);
+    anyChild = anyChild || vi.vis;
+    anyHit = anyHit || vi.hit;
+  }
+  const vis = selfHit || anyChild;
+  return { vis, hit: anyHit, selfHit, anyChild };
+}
+
+function renderRow(id){
+  const n = NODES[id];
+  const kids = childrenOf(id);
+  const vi = visibleInfo(id);
+  const shownKids = query ? kids.filter(k => visibleInfo(k).vis) : kids;
+  /* 展开条件：手动展开过，或搜索命中（祖先自动展开让命中可见） */
+  const effOpen = shownKids.length > 0 && (expanded.has(id) || (query && vi.hit));
+  const hasCaret = shownKids.length > 0;
+  const chipColor = KIND_COLOR[n.k] || "var(--c-field)";
+
+  let html = '<li class="node ' + (n.k === "note" ? "note" : "") + '" role="treeitem"';
+  if(effOpen) html += ' aria-expanded="true"';
+  else if(hasCaret) html += ' aria-expanded="false"';
+  html += '>';
+
+  const tag = hasCaret ? "button" : "div";
+  html += '<' + tag + ' class="row" data-node="' + id + '"' + (tag === "button" ? ' type="button"' : '') + ' tabindex="0">';
+  html += '<span class="caret ' + (effOpen ? "caret--open" : "") + (hasCaret ? "" : " caret--none") + '" aria-hidden="true">▶</span>';
+  if(n.k !== "note") html += '<span class="chip' + (n.k === "field" ? " chip--field" : "") + '" style="background:' + chipColor + '" aria-hidden="true"></span>';
+  html += '<span class="lbl' + (id === "air" ? " lbl--root" : "") + '">' + markify(n.l) + (n.e ? ' <span class="en">' + markify(n.e) + '</span>' : '') + '</span>';
+  if(n.s) html += '<span class="size">' + markify(n.s) + '</span>';
+  html += '</' + tag + '>';
+
+  if(n.d) html += '<p class="desc' + (id === "air" ? " desc--root" : "") + '">' + markify(n.d) + '</p>';
+
+  if(effOpen){
+    if(n.pre) html += '<div class="detail"><pre>' + esc(n.pre) + '</pre></div>';
+    if(n.t){
+      html += '<div class="detail"><table><thead><tr>' +
+        n.t.cols.map(c => "<th>" + esc(c) + "</th>").join("") + '</tr></thead><tbody>' +
+        n.t.rows.map(r => "<tr>" + r.map(cell => "<td>" + markify(cell) + "</td>").join("") + "</tr>").join("") +
+        '</tbody></table></div>';
+    }
+    html += '<ul role="group">' + shownKids.map(renderRow).join("") + '</ul>';
+  }
+
+  return html + '</li>';
+}
+
+function render(){
+  treeEl.innerHTML = '<ul class="tree" role="tree">' + renderRow("air") + '</ul>';
+  if(rowFocusId){
+    const el = treeEl.querySelector('[data-node="' + rowFocusId + '"]');
+    if(el){ el.focus(); rowFocusId = null; }
+  }
+  if(rowActiveId){
+    const el = treeEl.querySelector('[data-node="' + rowActiveId + '"]');
+    if(el) el.classList.add("row-row-active");
+  }
+  updateHits();
+}
+
+function updateHits(){
+  const hitsEl = document.getElementById("hits");
+  if(!query){ hitsEl.textContent = ""; return; }
+  let count = 0;
+  for(const id of Object.keys(NODES)) if(visibleInfo(id).selfHit) count++;
+  hitsEl.textContent = count + " 个匹配";
+}
+
+/* ============ 交互 ============ */
+treeEl.addEventListener("click", e => {
+  const row = e.target.closest(".row");
+  if(!row) return;
+  const id = row.dataset.node;
+  if(!childrenOf(id).length) return;
+  if(expanded.has(id)) expanded.delete(id);
+  else expanded.add(id);
+  rowFocusId = id;
+  render();
+});
+
+treeEl.addEventListener("keydown", e => {
+  if(e.key !== "Enter" && e.key !== " ") return;
+  const row = e.target.closest(".row");
+  if(!row || row.tagName !== "BUTTON") return;
+  e.preventDefault();
+  row.click();
+});
+
+/* 树 → 帧字节条：悬停带 strip 标记的节点，点亮对应字节段 */
+treeEl.addEventListener("mouseover", e => {
+  const row = e.target.closest(".row");
+  if(!row) return;
+  const n = NODES[row.dataset.node];
+  if(!n || !n.strip) return;
+  const seg = document.querySelector('.seg[data-node="' + n.strip + '"]');
+  if(seg) seg.classList.add("strip-active");
+});
+treeEl.addEventListener("mouseout", e => {
+  const row = e.target.closest(".row");
+  if(!row) return;
+  const n = NODES[row.dataset.node];
+  if(!n || !n.strip) return;
+  const seg = document.querySelector('.seg[data-node="' + n.strip + '"]');
+  if(seg) seg.classList.remove("strip-active");
+});
+
+/* 帧字节条 → 树：悬停高亮、点击展开路径并滚动定位 */
+function expandPath(id){
+  const parent = Object.keys(NODES).find(p => (NODES[p].c||[]).includes(id));
+  if(parent){ expanded.add(parent); expandPath(parent); }
+}
+document.getElementById("strip").addEventListener("mouseover", e => {
+  const seg = e.target.closest(".seg");
+  if(!seg) return;
+  rowActiveId = seg.dataset.node;
+  const el = treeEl.querySelector('[data-node="' + rowActiveId + '"]');
+  if(el){
+    treeEl.querySelectorAll(".row-row-active").forEach(x => x.classList.remove("row-row-active"));
+    el.classList.add("row-row-active");
+  }
+});
+document.getElementById("strip").addEventListener("mouseout", e => {
+  const seg = e.target.closest(".seg");
+  if(!seg) return;
+  const el = treeEl.querySelector('[data-node="' + seg.dataset.node + '"]');
+  if(el) el.classList.remove("row-row-active");
+  rowActiveId = null;
+});
+document.getElementById("strip").addEventListener("click", e => {
+  const seg = e.target.closest(".seg");
+  if(!seg) return;
+  const id = seg.dataset.node;
+  expandPath(id);
+  rowFocusId = id;
+  render();
+  const el = treeEl.querySelector('[data-node="' + id + '"]');
+  if(el) el.scrollIntoView({block:"center"});
+  treeEl.querySelectorAll(".row-row-active").forEach(x => x.classList.remove("row-row-active"));
+});
+
+/* 工具条 */
+document.getElementById("btn-expand-all").addEventListener("click", () => {
+  for(const id of Object.keys(NODES)) if(childrenOf(id).length) expanded.add(id);
+  render();
+});
+document.getElementById("btn-collapse-all").addEventListener("click", () => {
+  expanded.clear();
+  render();
+});
+document.getElementById("btn-level").addEventListener("click", () => {
+  const v = parseInt(document.getElementById("level-input").value, 10);
+  if(!v) return;
+  applyLevel(v + 1);  /* 第 0 层起算：「第 N 层」= 深度 ≤ N 的节点全部展开 */
+  render();
+});
+
+/* 搜索 */
+const searchInput = document.getElementById("search");
+const searchClear = document.getElementById("search-clear");
+function runSearch(){
+  query = searchInput.value.trim().toLowerCase();
+  searchClear.style.display = query ? "block" : "none";
+  render();
+}
+searchInput.addEventListener("input", runSearch);
+searchClear.addEventListener("click", () => {
+  searchInput.value = "";
+  runSearch();
+  searchInput.focus();
+});
+
+render();
+</script>
+</body>
+</html>
