@@ -1,0 +1,140 @@
+{
+  "protocol_name": "智能水表数据采集与控制协议",
+  "description": "用于智能水表每日上报累计用水量、阀门状态及告警信息，并支持平台远程控制阀门开关，包含校验机制以确保指令安全。",
+  "fields": [
+    {
+      "name": "device_id",
+      "chinese_name": "设备ID",
+      "type": "uint32",
+      "length": 4,
+      "unit": "-",
+      "range": "0~4294967295",
+      "description": "唯一标识水表设备"
+    },
+    {
+      "name": "report_type",
+      "chinese_name": "上报类型",
+      "type": "uint8",
+      "length": 1,
+      "unit": "-",
+      "range": "0x01=日常上报, 0x02=低压告警, 0x03=强磁告警",
+      "description": "区分上报触发原因"
+    },
+    {
+      "name": "timestamp",
+      "chinese_name": "时间戳",
+      "type": "uint32",
+      "length": 4,
+      "unit": "秒",
+      "range": "Unix时间戳",
+      "description": "上报时刻，允许数分钟误差"
+    },
+    {
+      "name": "cumulative_water_volume",
+      "chinese_name": "累计用水量",
+      "type": "uint32",
+      "length": 4,
+      "unit": "升",
+      "range": "0~99999000",
+      "description": "累计用水量，达到99999立方米后自动清零"
+    },
+    {
+      "name": "valve_status",
+      "chinese_name": "阀门状态",
+      "type": "uint8",
+      "length": 1,
+      "unit": "-",
+      "range": "0x00=开, 0x01=关, 0x02=正在动作",
+      "description": "当前阀门状态"
+    },
+    {
+      "name": "battery_voltage",
+      "chinese_name": "电池电压",
+      "type": "uint16",
+      "length": 2,
+      "unit": "毫伏",
+      "range": "0~65535",
+      "description": "电池电压值，低于3200mV触发低压告警"
+    },
+    {
+      "name": "magnetic_interference",
+      "chinese_name": "强磁干扰标志",
+      "type": "uint8",
+      "length": 1,
+      "unit": "-",
+      "range": "0x00=无, 0x01=有",
+      "description": "检测到强磁干扰时置1"
+    },
+    {
+      "name": "valve_command",
+      "chinese_name": "阀门控制指令",
+      "type": "uint8",
+      "length": 1,
+      "unit": "-",
+      "range": "0x00=开阀, 0x01=关阀, 0xFF=无指令",
+      "description": "下行指令，用于控制阀门开关"
+    },
+    {
+      "name": "checksum",
+      "chinese_name": "校验和",
+      "type": "uint16",
+      "length": 2,
+      "unit": "-",
+      "range": "0~65535",
+      "description": "对除校验和外的所有字段进行CRC16校验，防止误操作"
+    }
+  ],
+  "timing": {
+    "report_interval": "每日一次（24点后随机延后0~5分钟）",
+    "direction": "双向"
+  },
+  "constraints": [
+    {
+      "field": "cumulative_water_volume",
+      "rule": "最大量程99999立方米（即99999000升），达到上限后自动清零，字段值范围0~99999000"
+    },
+    {
+      "field": "battery_voltage",
+      "rule": "电压值低于3200mV（3.2V）时，上报类型必须为0x02（低压告警）"
+    },
+    {
+      "field": "magnetic_interference",
+      "rule": "强磁干扰标志为0x01时，上报类型必须为0x03（强磁告警）"
+    },
+    {
+      "field": "valve_command",
+      "rule": "该字段仅用于下行指令，上行上报时该字段应置为0xFF（无指令）"
+    },
+    {
+      "field": "checksum",
+      "rule": "对除校验和外的所有字段进行CRC16校验，防止误操作阀门"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "error",
+      "field": "report_type",
+      "message": "缺少0x00（正常上报）类型定义，需求中每日上报为常规操作，应补充0x00=日常上报，否则0x01语义不明确"
+    },
+    {
+      "severity": "warning",
+      "field": "cumulative_water_volume",
+      "message": "字段类型为uint32，最大可表示4294967295，但实际量程上限为99999000，存在约4.3倍冗余，建议使用更紧凑类型（如uint32可保留，但需确认扩展需求）"
+    },
+    {
+      "severity": "warning",
+      "field": "battery_voltage",
+      "message": "电压范围0~65535mV，但实际电池电压通常为2.5V~4.2V（2500~4200mV），建议明确异常电压（如0或超范围）的处理方式，避免误判"
+    },
+    {
+      "severity": "warning",
+      "field": "valve_command",
+      "message": "缺少阀门动作确认机制（如回执或状态反馈），仅依赖校验和无法完全防止误操作，建议增加指令执行确认字段"
+    },
+    {
+      "severity": "warning",
+      "field": "timestamp",
+      "message": "需求允许数分钟误差，但未定义时间同步机制或误差范围上限，建议明确最大允许误差（如±5分钟）以支持后续校准"
+    }
+  ]
+}

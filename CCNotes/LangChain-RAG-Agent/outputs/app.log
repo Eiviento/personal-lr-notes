@@ -1,0 +1,26 @@
+2026-08-29 15:29:37,590 [INFO] 开始生成（模拟失败）：inputs/sample_requirement2.md
+2026-08-29 15:29:39,642 [INFO] Retrying request to /chat/completions in 0.406999 seconds
+2026-08-29 15:29:42,065 [INFO] Retrying request to /chat/completions in 0.950313 seconds
+2026-08-29 15:29:48,716 [INFO] Retrying request to /chat/completions in 0.482772 seconds
+2026-08-29 15:29:51,213 [INFO] Retrying request to /chat/completions in 0.996767 seconds
+2026-08-29 15:29:58,872 [INFO] Retrying request to /chat/completions in 0.383628 seconds
+2026-08-29 15:30:01,267 [INFO] Retrying request to /chat/completions in 0.763414 seconds
+2026-08-29 15:30:04,049 [ERROR] 生成失败（模拟）：APITimeoutError（耗时 26.5s，重试 3 次后放弃）
+2026-08-29 15:30:07,968 [INFO] 开始生成：inputs/sample_requirement2.md（392 字符）
+2026-08-29 15:30:08,154 [INFO] HTTP Request: POST https://api.deepseek.com/chat/completions "HTTP/1.1 200 OK"
+2026-08-29 15:30:10,285 [INFO] HTTP Request: POST https://api.deepseek.com/chat/completions "HTTP/1.1 200 OK"
+2026-08-29 15:30:15,283 [INFO] HTTP Request: POST https://api.deepseek.com/chat/completions "HTTP/1.1 200 OK"
+2026-08-29 15:30:21,859 [INFO] 生成成功：inputs/sample_requirement2.md → 智能水表通信协议（9 字段，耗时 13.9s）
+2026-08-29 23:52:59,966 [INFO] 开始生成（模拟失败）：inputs/sample_requirement2.md
+2026-08-29 23:53:02,023 [INFO] Retrying request to /chat/completions in 0.404269 seconds
+2026-08-29 23:53:04,435 [INFO] Retrying request to /chat/completions in 0.870047 seconds
+2026-08-29 23:53:11,210 [INFO] Retrying request to /chat/completions in 0.431477 seconds
+2026-08-29 23:53:13,653 [INFO] Retrying request to /chat/completions in 0.850709 seconds
+2026-08-29 23:53:20,946 [INFO] Retrying request to /chat/completions in 0.400046 seconds
+2026-08-29 23:53:23,358 [INFO] Retrying request to /chat/completions in 0.851259 seconds
+2026-08-29 23:53:26,228 [ERROR] 生成失败（模拟）：APITimeoutError（耗时 26.3s，重试 3 次后放弃）
+2026-08-29 23:53:29,309 [INFO] 开始生成：inputs/sample_requirement2.md（392 字符）
+2026-08-29 23:53:29,504 [INFO] HTTP Request: POST https://api.deepseek.com/chat/completions "HTTP/1.1 200 OK"
+2026-08-29 23:53:30,968 [INFO] HTTP Request: POST https://api.deepseek.com/chat/completions "HTTP/1.1 200 OK"
+2026-08-29 23:53:34,165 [INFO] HTTP Request: POST https://api.deepseek.com/chat/completions "HTTP/1.1 200 OK"
+2026-08-29 23:53:40,257 [INFO] 生成成功：inputs/sample_requirement2.md → 智能水表数据上报与控制协议（6 字段，耗时 10.9s）

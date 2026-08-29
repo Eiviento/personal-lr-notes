@@ -1,0 +1,122 @@
+{
+  "protocol_name": "水表计量协议",
+  "description": "水表周期上报累计用水量、阀门状态、电池电压及告警，支持远程阀门控制",
+  "fields": [
+    {
+      "name": "msg_type",
+      "chinese_name": "消息类型",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0x01=计量上报,0x02=阀门控制,0x03=控制应答,0x04=告警上报",
+      "description": "区分报文类型"
+    },
+    {
+      "name": "meter_id",
+      "chinese_name": "表具编号",
+      "type": "uint32",
+      "length": 4,
+      "unit": "",
+      "range": "0x00000000-0xFFFFFFFF",
+      "description": "唯一标识水表"
+    },
+    {
+      "name": "total_flow",
+      "chinese_name": "累计用水量",
+      "type": "uint32",
+      "length": 4,
+      "unit": "L",
+      "range": "0-99999999（超过99999000清零）",
+      "description": "累计用量，单位升，最大量程99999立方米即99999000升，超过自动清零"
+    },
+    {
+      "name": "valve_state",
+      "chinese_name": "阀门状态",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0=关,1=开,2=动作中",
+      "description": "当前阀门状态"
+    },
+    {
+      "name": "battery_voltage",
+      "chinese_name": "电池电压",
+      "type": "uint16",
+      "length": 2,
+      "unit": "mV",
+      "range": "0-65535",
+      "description": "电池电压，单位mV，低于3200mV时触发告警"
+    },
+    {
+      "name": "alarm_flag",
+      "chinese_name": "告警标志",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "bit0=低电压,bit1=强磁干扰,bit2-7保留",
+      "description": "告警标志位，置1表示对应告警发生"
+    },
+    {
+      "name": "crc16",
+      "chinese_name": "CRC16校验",
+      "type": "uint16",
+      "length": 2,
+      "unit": "",
+      "range": "0x0000-0xFFFF",
+      "description": "数据区校验，低字节在前，防止误操作阀门"
+    }
+  ],
+  "timing": {
+    "report_interval": "每天一次，晚上12点后随机延迟0-5分钟",
+    "direction": "双向"
+  },
+  "constraints": [
+    {
+      "field": "total_flow",
+      "rule": "最大量程99999000升，超过后自动清零，需在协议中明确清零后的起始值（建议从0重新累计）"
+    },
+    {
+      "field": "battery_voltage",
+      "rule": "电压低于3200mV时触发告警，需在协议中定义告警上报的触发条件和去抖机制（如连续多次低于阈值才上报）"
+    },
+    {
+      "field": "alarm_flag",
+      "rule": "bit0=低电压告警，bit1=强磁干扰告警，bit2-7保留位必须置0，接收方需忽略保留位"
+    },
+    {
+      "field": "crc16",
+      "rule": "CRC16校验覆盖数据区（从msg_type到alarm_flag），低字节在前，接收方校验失败时丢弃报文"
+    },
+    {
+      "field": "msg_type",
+      "rule": "0x01=计量上报，0x02=阀门控制，0x03=控制应答，0x04=告警上报，其他值视为非法报文"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "error",
+      "field": "total_flow",
+      "message": "字段类型为uint32，最大值为4294967295，但量程上限为99999000升，存在约4.3倍的冗余。建议改用uint32以支持未来扩展，但需在协议中明确当前量程上限为99999000升，超过后清零"
+    },
+    {
+      "severity": "warning",
+      "field": "battery_voltage",
+      "message": "电压范围0-65535mV，但实际电池电压通常在2.5V-3.6V（2500-3600mV），建议将范围限定为0-5000mV以节省传输位宽，或保留uint16以支持未来更高电压电池"
+    },
+    {
+      "severity": "warning",
+      "field": "alarm_flag",
+      "message": "告警标志仅定义bit0和bit1，bit2-7保留。建议在协议中明确保留位的处理方式（如必须置0），并预留至少2个扩展位以支持未来新增告警类型（如阀门故障、流量异常）"
+    },
+    {
+      "severity": "warning",
+      "field": "msg_type",
+      "message": "消息类型仅定义4种，未包含心跳或时间同步消息。考虑到上报时间允许延迟，建议增加心跳消息（如0x05）以维持连接，或明确无需心跳机制"
+    },
+    {
+      "severity": "warning",
+      "field": "meter_id",
+      "message": "表具编号使用uint32，范围0x00000000-0xFFFFFFFF。建议明确0x00000000为非法编号（保留用于广播或测试），并定义编号分配规则以避免冲突"
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 搭建一个基于 LangChain + Python 的自动化工作流，实现"输入需求文档 → 大模型分析 → 输出协议规范"的完整管线。
 
 ## Current Phase
-Phase 2
+Phase 5
 
 ## Phases
 
@@ -17,29 +17,29 @@ Phase 2
 
 ### Phase 2: LangChain 核心概念
 - [x] 2.1 理解 LangChain 的三大核心：PromptTemplate、Model、Parser
-- [ ] 2.2 学习 LCEL（LangChain Expression Language）管道写法
-- [ ] 2.3 掌握 StrOutputParser / JsonOutputParser 的使用
-- [ ] 2.4 实操：用 LangChain 重写第一阶段的功能，对比差异
-- **Status:** in_progress
+- [x] 2.2 学习 LCEL（LangChain Expression Language）管道写法
+- [x] 2.3 掌握 StrOutputParser / JsonOutputParser 的使用
+- [x] 2.4 实操：用 LangChain 重写第一阶段的功能，对比差异（内容已在 2.1 重写中覆盖：原生 SDK vs LCEL 对比）
+- **Status:** complete
 
 ### Phase 3: 构建协议生成工作流
-- [ ] 3.1 文档输入：解析 Markdown / TXT 需求文档，提取关键信息
-- [ ] 3.2 设计协议生成的 Prompt 模板链（需求分析 → 字段定义 → 约束规则 → 最终协议）
-- [ ] 3.3 学习 LangChain 的 Chain 串联：SequentialChain / RunnableSequence
-- [ ] 3.4 实操：完整跑通"输入需求文档 → 输出协议规范"
-- **Status:** pending
+- [x] 3.1 文档输入：解析 Markdown / TXT 需求文档，提取关键信息
+- [x] 3.2 设计协议生成的 Prompt 模板链（需求分析 → 字段定义 → 约束规则 → 最终协议）
+- [x] 3.3 学习 LangChain 的 Chain 串联：SequentialChain / RunnableSequence
+- [x] 3.4 实操：完整跑通"输入需求文档 → 输出协议规范"
+- **Status:** complete
 
 ### Phase 4: 增强与优化
-- [ ] 4.1 RAG 基础：用向量数据库（Chroma/FAISS）存历史协议模板，检索后注入 Prompt
-- [ ] 4.2 学习 Function Calling / Tool Use，让模型能调用工具（如校验字段类型）
-- [ ] 4.3 加入人工审核环节：输出草稿 → 人确认 → 生成最终版
-- **Status:** pending
+- [x] 4.1 RAG 基础：用向量数据库（Chroma/FAISS）存历史协议模板，检索后注入 Prompt
+- [x] 4.2 学习 Function Calling / Tool Use，让模型能调用工具（如校验字段类型）
+- [x] 4.3 加入人工审核环节：输出草稿 → 人确认 → 生成最终版
+- **Status:** complete
 
 ### Phase 5: 部署上线
-- [ ] 5.1 用 Streamlit 搭一个简易 Web UI（上传文档 → 查看协议 → 下载）
-- [ ] 5.2 加入错误处理、重试、日志
+- [x] 5.1 用 Streamlit 搭一个简易 Web UI（上传文档 → 查看协议 → 下载）
+- [x] 5.2 加入错误处理、重试、日志
 - [ ] 5.3 整体串联测试，用真实同事需求文档跑一遍
-- **Status:** pending
+- **Status:** in_progress
 
 ## Key Questions
 1. 选用哪个 LLM API？（Claude API vs OpenAI API vs 国产模型 API）

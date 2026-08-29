@@ -1,0 +1,52 @@
+[
+  {
+    "kind": "code",
+    "severity": "error",
+    "field": "msg_type",
+    "message": "uint8 应为 1 字节，声明 2",
+    "fix": "length → 1",
+    "expected": 1,
+    "decision": "自动修正",
+    "applied": true
+  },
+  {
+    "severity": "warning",
+    "field": "total_flow",
+    "message": "累计用水量范围描述存在歧义：uint32 类型理论最大值为 4294967295，但 range 字段写为 0-99999999，且描述中又提到超过 99999000 清零，两者不一致，且未说明清零后的行为（如是否回绕到 0 或保留溢出标志）。",
+    "suggestion": "明确累计用水量的有效范围（如 0-99999000），并说明清零机制（例如达到上限后自动归零，或使用溢出标志位），确保 range 与描述一致。",
+    "kind": "llm",
+    "decision": "记录待办"
+  },
+  {
+    "severity": "warning",
+    "field": "battery_voltage",
+    "message": "电池电压范围 0-65535 覆盖了 uint16 全范围，但描述中提及低于 3200mV 触发告警，未说明该阈值是否在协议中固定，且未考虑电压为 0 的异常场景（如传感器故障）。",
+    "suggestion": "建议在协议中明确低电压告警阈值（如 3200mV）的固定值或可配置性，并考虑增加电压为 0 时的异常处理说明（如视为无效数据）。",
+    "kind": "llm",
+    "decision": "记录待办"
+  },
+  {
+    "severity": "warning",
+    "field": "alarm_flag",
+    "message": "告警标志位 bit2-7 保留，但未说明保留位的默认值（应为 0）以及接收端对保留位的处理策略（如忽略或报错），可能影响协议兼容性。",
+    "suggestion": "建议在协议中明确保留位必须为 0，并规定接收端对非零保留位的处理方式（如忽略或视为错误）。",
+    "kind": "llm",
+    "decision": "记录待办"
+  },
+  {
+    "severity": "warning",
+    "field": "msg_type",
+    "message": "消息类型 range 中 0x01-0x04 已定义，但未预留扩展空间（如 0x05-0xFF 是否保留），且未说明未知消息类型的处理策略，可能影响后续协议扩展。",
+    "suggestion": "建议在协议中明确 0x05-0xFF 为保留值，并规定接收端对未知消息类型的处理方式（如丢弃或返回错误）。",
+    "kind": "llm",
+    "decision": "记录待办"
+  },
+  {
+    "severity": "info",
+    "field": "crc16",
+    "message": "CRC16 校验范围描述为 0x0000-0xFFFF，但未说明校验覆盖的数据范围（如从 msg_type 到 alarm_flag 的所有字段），可能造成实现歧义。",
+    "suggestion": "建议在协议中明确 CRC16 校验覆盖的字节范围（例如从 msg_type 到 alarm_flag 的数据区），并注明字节序（低字节在前）。",
+    "kind": "llm",
+    "decision": "记录待办"
+  }
+]

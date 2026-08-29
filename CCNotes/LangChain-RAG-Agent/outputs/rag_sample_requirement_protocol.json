@@ -1,0 +1,112 @@
+{
+  "protocol_name": "环境监测协议",
+  "description": "用于温湿度周期性上报、电池低电量告警及设备上线通知，预留扩展位以支持未来光照传感器。",
+  "fields": [
+    {
+      "name": "msg_type",
+      "chinese_name": "消息类型",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0x01=周期上报, 0x02=告警, 0x03=上线",
+      "description": "区分不同消息类型"
+    },
+    {
+      "name": "temperature",
+      "chinese_name": "温度",
+      "type": "int16",
+      "length": 2,
+      "unit": "0.1℃",
+      "range": "-400~850",
+      "description": "实际温度 = 原始值 × 0.1℃，范围 -40.0~85.0℃"
+    },
+    {
+      "name": "humidity",
+      "chinese_name": "湿度",
+      "type": "uint8",
+      "length": 1,
+      "unit": "%",
+      "range": "0~100",
+      "description": "相对湿度，精度1%"
+    },
+    {
+      "name": "battery_voltage",
+      "chinese_name": "电池电压",
+      "type": "uint16",
+      "length": 2,
+      "unit": "mV",
+      "range": "0~65535",
+      "description": "电池电压，用于判断电量，低于阈值触发告警"
+    },
+    {
+      "name": "firmware_version",
+      "chinese_name": "固件版本号",
+      "type": "uint16",
+      "length": 2,
+      "unit": "",
+      "range": "0~65535",
+      "description": "上线消息中携带，高字节主版本，低字节次版本"
+    },
+    {
+      "name": "reserved",
+      "chinese_name": "预留扩展位",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0x00",
+      "description": "预留字节，默认0，未来可扩展光照传感器等"
+    }
+  ],
+  "timing": {
+    "report_interval": "1分钟",
+    "direction": "上行"
+  },
+  "constraints": [
+    {
+      "field": "msg_type",
+      "rule": "取值必须为0x01、0x02或0x03，其他值视为非法"
+    },
+    {
+      "field": "temperature",
+      "rule": "取值范围-400~850，对应实际温度-40.0~85.0℃"
+    },
+    {
+      "field": "humidity",
+      "rule": "取值范围0~100，对应相对湿度0%~100%"
+    },
+    {
+      "field": "battery_voltage",
+      "rule": "取值范围0~65535，单位mV，需根据实际电池特性定义低电量阈值"
+    },
+    {
+      "field": "firmware_version",
+      "rule": "仅在上线消息（msg_type=0x03）中有效，高字节主版本，低字节次版本"
+    },
+    {
+      "field": "reserved",
+      "rule": "默认值为0x00，未来扩展时需定义新取值含义"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "error",
+      "field": "temperature",
+      "message": "int16类型范围-32768~32767，但字段表仅定义-400~850，未充分利用类型容量，且未说明超出范围时的处理方式（如饱和截断或错误标记）"
+    },
+    {
+      "severity": "warning",
+      "field": "battery_voltage",
+      "message": "需求中电池电量低于20%触发告警，但字段表仅提供电压值，未定义电量百分比与电压的映射关系，可能导致告警判断不准确"
+    },
+    {
+      "severity": "warning",
+      "field": "msg_type",
+      "message": "告警消息（0x02）未明确是否包含温度、湿度字段，若告警仅携带电压，则字段表结构需按消息类型区分"
+    },
+    {
+      "severity": "warning",
+      "field": "reserved",
+      "message": "预留字段仅1字节，若未来扩展光照传感器需传输更多数据（如光照强度+状态），可能空间不足，建议预留2字节或定义扩展消息类型"
+    }
+  ]
+}

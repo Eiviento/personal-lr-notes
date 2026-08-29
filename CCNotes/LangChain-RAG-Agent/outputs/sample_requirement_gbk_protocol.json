@@ -1,0 +1,64 @@
+{
+  "protocol_name": "环境监测终端上报协议",
+  "description": "环境监测终端通过LoRa网关定时上报温湿度、电池电量，并在开机时上报上线消息及低电量告警，预留光照传感器扩展位",
+  "fields": [
+    {
+      "name": "messageType",
+      "chinese_name": "消息类型",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0x01-0x03",
+      "description": "0x01: 定时上报; 0x02: 上线消息; 0x03: 低电量告警"
+    },
+    {
+      "name": "temperature",
+      "chinese_name": "温度",
+      "type": "int16",
+      "length": 2,
+      "unit": "摄氏度",
+      "range": "-400~850",
+      "description": "实际温度值乘以10，精度0.1度"
+    },
+    {
+      "name": "humidity",
+      "chinese_name": "湿度",
+      "type": "uint16",
+      "length": 2,
+      "unit": "%RH",
+      "range": "0~1000",
+      "description": "实际湿度值乘以10，精度0.1%"
+    },
+    {
+      "name": "batteryLevel",
+      "chinese_name": "电池电量",
+      "type": "uint8",
+      "length": 1,
+      "unit": "%",
+      "range": "0~100",
+      "description": "电池剩余电量百分比"
+    },
+    {
+      "name": "firmwareVersion",
+      "chinese_name": "固件版本号",
+      "type": "string",
+      "length": 8,
+      "unit": "",
+      "range": "",
+      "description": "ASCII字符串，如'V1.0.0'，仅上线消息包含"
+    },
+    {
+      "name": "reserved",
+      "chinese_name": "预留扩展位",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0x00",
+      "description": "预留用于未来光照传感器等扩展，默认置0"
+    }
+  ],
+  "timing": {
+    "report_interval": "60s",
+    "direction": "上行"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "protocol_name": "设备位置上报协议",
+  "description": "设备定时上报位置信息至服务器",
+  "fields": [
+    {
+      "name": "longitude",
+      "chinese_name": "经度",
+      "type": "float32",
+      "length": 4,
+      "unit": "度",
+      "range": "-180.0 ~ 180.0",
+      "description": "GPS 经度坐标，东经为正"
+    },
+    {
+      "name": "latitude",
+      "chinese_name": "纬度",
+      "type": "float32",
+      "length": 4,
+      "unit": "度",
+      "range": "-90.0 ~ 90.0",
+      "description": "GPS 纬度坐标，北纬为正"
+    }
+  ],
+  "timing": {
+    "report_interval": "3s",
+    "direction": "上行"
+  }
+}

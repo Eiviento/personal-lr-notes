@@ -30,6 +30,7 @@ Phase 2.2：LCEL 管道写法进阶
 import json
 import os
 import sys
+from pathlib import Path
 
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -40,6 +41,9 @@ from langchain_openai import ChatOpenAI
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "your-api-key-here")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"
+
+# 输出目录以脚本文件位置为基准：在任何目录下运行，都写到项目根的 outputs/
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "outputs"
 
 # ─── 基础链（同 2.1） ─────────────────────────────────
 PROTOCOL_PROMPT = ChatPromptTemplate.from_messages(
@@ -186,7 +190,7 @@ def main():
         result = full_chain.invoke({"requirement": requirement})
         print_result(result)
 
-        output_path = "protocol_output_lcel.json"
+        output_path = OUTPUT_DIR / "protocol_output_lcel.json"
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2, default=str)
         print(f"✅ 完整 JSON 已保存至 {output_path}")

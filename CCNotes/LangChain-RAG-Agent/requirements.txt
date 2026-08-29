@@ -1,1 +1,10 @@
+# 安装（agent_env）：pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 openai>=1.0.0
+langchain-core
+langchain-openai
+chromadb
+langchain-chroma
+onnxruntime
+numpy
+streamlit
+langgraph

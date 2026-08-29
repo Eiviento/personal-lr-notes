@@ -14,6 +14,7 @@ Phase 1.4 实操：需求文档 → 协议字段表
 import json
 import os
 import sys
+from pathlib import Path
 
 from openai import OpenAI
 
@@ -22,6 +23,8 @@ from openai import OpenAI
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "your-api-key-here")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"  # DeepSeek v4 Pro 用 deepseek-chat
+# 输出目录以脚本文件位置为基准：在任何目录下运行，都写到项目根的 outputs/
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "outputs"
 
 # ─── Prompt 模板（融合 Phase 1.1 ~ 1.3） ─────────────
 SYSTEM_PROMPT = """\
@@ -194,7 +197,7 @@ def main():
         print_protocol_table(result)
 
         # 同时输出完整 JSON 到文件，方便后续使用
-        output_path = "protocol_output.json"
+        output_path = OUTPUT_DIR / "protocol_output.json"
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
         print(f"✅ 完整 JSON 已保存至 {output_path}")

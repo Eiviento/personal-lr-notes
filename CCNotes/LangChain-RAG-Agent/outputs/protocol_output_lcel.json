@@ -14,8 +14,8 @@
     "field_count": 3
   },
   "protocol": {
-    "protocol_name": "环境数据上报协议",
-    "description": "设备定时上报温度、湿度、电池电量",
+    "protocol_name": "环境与电量上报协议",
+    "description": "设备定时上报温度、湿度、电池电量，每秒一次",
     "fields": [
       {
         "name": "temperature",
@@ -23,7 +23,7 @@
         "type": "float32",
         "length": 4,
         "unit": "摄氏度",
-        "range": "-40~85",
+        "range": "-40~125",
         "description": "环境温度"
       },
       {
@@ -42,7 +42,7 @@
         "length": 1,
         "unit": "%",
         "range": "0~100",
-        "description": "剩余电池电量百分比"
+        "description": "电池剩余电量百分比"
       }
     ],
     "timing": {

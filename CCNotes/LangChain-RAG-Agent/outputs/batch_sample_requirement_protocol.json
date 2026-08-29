@@ -1,0 +1,122 @@
+{
+  "protocol_name": "环境监测与设备状态上报协议",
+  "description": "用于设备定时上报温湿度数据、电池低电量告警以及开机上线消息，支持未来扩展光照传感器。",
+  "fields": [
+    {
+      "name": "message_type",
+      "chinese_name": "消息类型",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0x01-0x03",
+      "description": "0x01: 定时上报, 0x02: 低电量告警, 0x03: 上线消息"
+    },
+    {
+      "name": "temperature",
+      "chinese_name": "温度",
+      "type": "int16",
+      "length": 2,
+      "unit": "0.1℃",
+      "range": "-400~850",
+      "description": "实际温度 = 值/10，精度0.1℃"
+    },
+    {
+      "name": "humidity",
+      "chinese_name": "湿度",
+      "type": "uint8",
+      "length": 1,
+      "unit": "%",
+      "range": "0~100",
+      "description": "相对湿度，精度1%"
+    },
+    {
+      "name": "battery_level",
+      "chinese_name": "电池电量",
+      "type": "uint8",
+      "length": 1,
+      "unit": "%",
+      "range": "0~100",
+      "description": "当前电池电量百分比"
+    },
+    {
+      "name": "firmware_version",
+      "chinese_name": "固件版本号",
+      "type": "uint16",
+      "length": 2,
+      "unit": "",
+      "range": "0~65535",
+      "description": "仅上线消息包含，格式为主版本号.次版本号，如0x0102表示V1.2"
+    },
+    {
+      "name": "reserved",
+      "chinese_name": "预留扩展位",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0x00",
+      "description": "预留字节，默认0x00，用于未来扩展光照传感器等"
+    }
+  ],
+  "timing": {
+    "report_interval": "60s",
+    "direction": "上行"
+  },
+  "constraints": [
+    {
+      "field": "message_type",
+      "rule": "取值范围0x01-0x03，其中0x01定时上报、0x02低电量告警、0x03上线消息"
+    },
+    {
+      "field": "temperature",
+      "rule": "int16类型，取值范围-400~850，实际温度=值/10，对应-40.0~85.0℃"
+    },
+    {
+      "field": "humidity",
+      "rule": "uint8类型，取值范围0~100，对应0%~100%"
+    },
+    {
+      "field": "battery_level",
+      "rule": "uint8类型，取值范围0~100，低于20时触发告警上报"
+    },
+    {
+      "field": "firmware_version",
+      "rule": "uint16类型，仅上线消息包含，格式为主版本号.次版本号，如0x0102表示V1.2"
+    },
+    {
+      "field": "reserved",
+      "rule": "uint8类型，默认值0x00，用于未来扩展"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "error",
+      "field": "message_type",
+      "message": "消息类型字段未定义低电量告警的触发条件，需求要求电池电量低于20%时触发告警，但字段表中未明确该阈值与message_type=0x02的关联规则"
+    },
+    {
+      "severity": "warning",
+      "field": "temperature",
+      "message": "温度字段使用int16，但需求要求精度0.1℃，当前表示范围-400~850（即-40.0~85.0℃）满足需求，但未明确超出范围时的处理方式（如饱和截断或错误标志）"
+    },
+    {
+      "severity": "warning",
+      "field": "humidity",
+      "message": "湿度字段使用uint8，取值范围0~100，但未明确超出范围（如传感器异常导致>100%）时的处理方式"
+    },
+    {
+      "severity": "warning",
+      "field": "battery_level",
+      "message": "电池电量字段未明确低电量告警的触发阈值（20%）与message_type=0x02的联动机制，建议在协议说明中补充"
+    },
+    {
+      "severity": "warning",
+      "field": "firmware_version",
+      "message": "固件版本号使用uint16，但需求仅要求包含版本号，未明确版本号编码规则（如主版本号.次版本号各占8位），建议补充说明"
+    },
+    {
+      "severity": "warning",
+      "field": "reserved",
+      "message": "预留扩展位仅1字节，未来若增加光照传感器可能需要更多扩展位，建议评估是否足够或预留更多字节"
+    }
+  ]
+}

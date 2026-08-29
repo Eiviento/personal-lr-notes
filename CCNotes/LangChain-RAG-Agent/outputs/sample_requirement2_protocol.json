@@ -1,0 +1,122 @@
+{
+  "protocol_name": "智能水表数据上报与控制协议",
+  "description": "用于智能水表每日上报累计用水量及状态信息，并支持平台远程下发开关阀指令，同时具备低电压和强磁干扰告警上报功能。",
+  "fields": [
+    {
+      "name": "report_type",
+      "chinese_name": "上报类型",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0x01=定时上报, 0x02=低电压告警, 0x03=强磁告警",
+      "description": "标识本次上报的触发原因"
+    },
+    {
+      "name": "valve_status",
+      "chinese_name": "阀门状态",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0=关, 1=开, 2=正在动作",
+      "description": "当前阀门状态"
+    },
+    {
+      "name": "cumulative_water_volume",
+      "chinese_name": "累计用水量",
+      "type": "uint32",
+      "length": 4,
+      "unit": "升",
+      "range": "0~99999999",
+      "description": "累计用水量，满量程自动清零"
+    },
+    {
+      "name": "battery_voltage",
+      "chinese_name": "电池电压",
+      "type": "uint16",
+      "length": 2,
+      "unit": "mV",
+      "range": "0~5000",
+      "description": "电池电压值，用于低电压告警判断"
+    },
+    {
+      "name": "magnetic_interference",
+      "chinese_name": "强磁干扰标志",
+      "type": "uint8",
+      "length": 1,
+      "unit": "",
+      "range": "0=无, 1=有",
+      "description": "检测到强磁干扰时置1"
+    },
+    {
+      "name": "checksum",
+      "chinese_name": "校验和",
+      "type": "uint16",
+      "length": 2,
+      "unit": "",
+      "range": "0~65535",
+      "description": "对数据包进行校验，防止传输错误"
+    }
+  ],
+  "timing": {
+    "report_interval": "每日一次，24点后随机延后数分钟",
+    "direction": "双向"
+  },
+  "constraints": [
+    {
+      "field": "report_type",
+      "rule": "取值范围必须为0x01、0x02、0x03，其他值视为非法"
+    },
+    {
+      "field": "valve_status",
+      "rule": "取值范围必须为0、1、2，其他值视为非法"
+    },
+    {
+      "field": "cumulative_water_volume",
+      "rule": "取值范围0~99999999，满量程后自动清零"
+    },
+    {
+      "field": "battery_voltage",
+      "rule": "取值范围0~5000mV，低于3200mV时触发低电压告警上报"
+    },
+    {
+      "field": "magnetic_interference",
+      "rule": "取值范围必须为0或1，为1时触发强磁告警上报"
+    },
+    {
+      "field": "checksum",
+      "rule": "校验和算法需覆盖所有字段，校验失败时不得执行阀门控制指令"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "error",
+      "field": "cumulative_water_volume",
+      "message": "字段类型为uint32，最大值为4294967295，但需求中最大量程为99999立方米（即99999000升），字段可表示范围远大于实际量程，建议将类型改为uint32但明确限制使用范围，或改用uint32并保留扩展空间，当前定义虽可满足但需在协议中明确溢出清零逻辑"
+    },
+    {
+      "severity": "warning",
+      "field": "cumulative_water_volume",
+      "message": "需求中最大量程为99999立方米（99999000升），但字段范围写为0~99999999（升），与需求不一致，需确认实际量程单位及数值"
+    },
+    {
+      "severity": "warning",
+      "field": "battery_voltage",
+      "message": "需求中低电压告警阈值为3.2V（3200mV），字段范围为0~5000mV，建议增加对低于3200mV时告警上报的明确约束，当前字段表未体现该阈值逻辑"
+    },
+    {
+      "severity": "warning",
+      "field": "checksum",
+      "message": "校验和字段仅说明防止传输错误，但需求中强调'确保传输错误时不会误触发阀门控制'，建议明确校验失败时的处理策略（如丢弃数据包、不执行控制指令）"
+    },
+    {
+      "severity": "warning",
+      "field": "report_type",
+      "message": "需求中提及'每日上报一次累计用水量'，但未包含阀门状态变化主动上报类型，当前仅3种上报类型，若阀门状态变化需主动上报，建议增加相应类型"
+    },
+    {
+      "severity": "warning",
+      "field": "valve_status",
+      "message": "需求中阀门状态包含'开、关、正在动作'，但未提及阀门状态变化时的上报机制，建议明确阀门状态变化是否触发主动上报"
+    }
+  ]
+}

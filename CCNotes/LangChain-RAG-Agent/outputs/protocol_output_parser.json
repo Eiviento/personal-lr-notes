@@ -1,0 +1,26 @@
+{
+  "fields": [
+    {
+      "name": "longitude",
+      "type": "int32",
+      "length": 4,
+      "description": "经度，单位1e-7度"
+    },
+    {
+      "name": "latitude",
+      "type": "int32",
+      "length": 4,
+      "description": "纬度，单位1e-7度"
+    },
+    {
+      "name": "speed",
+      "type": "uint16",
+      "length": 2,
+      "description": "速度，单位0.1km/h"
+    }
+  ],
+  "timing": {
+    "interval": "5秒",
+    "direction": "上行"
+  }
+}
