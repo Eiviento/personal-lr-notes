@@ -1281,3 +1281,345 @@ print(f"  模型最终答复：{response.content}")
 - **`tool.invoke()` 返回类型不可控，要 `str()` 包一层**（坑 #15）：工具返回什么类型，invoke 就返回什么——demo 的 add 返回 int，而 ToolMessage 的 content 要字符串，所以 `result = str(add.invoke(tc["args"]))` 必须包（demo_api_reference.py:236，注释"← 真正执行的是你的代码"）；4.2 里 validate_field_type 返回 str 也照样包，保证类型干净。这和 StrOutputParser 的 TextAccessor 是同一家族（坑 #15：langchain_core 1.x 返回类型与直觉不符，版本差异照实修）
 - **漏拼历史 = 模型失忆**：每次 invoke 都要把上一轮的 response 和 tool_msgs 追加进 messages 再发（`messages = messages + [response] + tool_msgs`）；漏了哪一样，模型就看不到自己的点菜或你的上菜（第 6 章 HumanMessage 词条）
 - 深挖见 [phase4_tool_calling.md](phase4_tool_calling.md)
+
+---
+
+# 第 8 章 编排
+
+LCEL 管道是直线（第 3 章）；本章的图是它的超集——State（状态）+ Node（节点）+ Edge（边）还能表达循环、分支、暂停。8.1~8.2 全程零成本（纯 Python 节点，不调模型）。
+
+### StateGraph
+
+**1. 一句话**：把流程声明成"图"：State（全局状态）+ Node（节点函数）+ Edge（边），节点只写"这一站干什么"、边决定"下一步去哪"——比 LCEL 管道多出循环、分支、暂停的能力，是管道的超集。
+
+**2. 签名**：
+
+```python
+from langgraph.graph import END, START, StateGraph
+```
+
+`inspect.signature` 原文（StateGraph 构造与三个方法各一条）：
+
+```text
+StateGraph: (self, state_schema: 'type[StateT]', context_schema: 'type[ContextT] | None' = None, *, input_schema: 'type[InputT] | None' = None, output_schema: 'type[OutputT] | None' = None, **kwargs: 'Unpack[DeprecatedKwargs]') -> 'None'
+add_node: (self, node: 'str | StateNode[NodeInputT, ContextT]', action: 'StateNode[NodeInputT, ContextT] | None' = None, *, defer: 'bool' = False, metadata: 'dict[str, Any] | None' = None, input_schema: 'type[NodeInputT] | None' = None, retry_policy: 'RetryPolicy | Sequence[RetryPolicy] | None' = None, cache_policy: 'CachePolicy | None' = None, error_handler: 'StateNode[Any, ContextT] | None' = None, destinations: 'dict[str, str] | tuple[str, ...] | None' = None, timeout: 'float | timedelta | TimeoutPolicy | None' = None, **kwargs: 'Unpack[DeprecatedKwargs]') -> 'Self'
+add_edge: (self, start_key: 'str | list[str]', end_key: 'str') -> 'Self'
+add_conditional_edges: (self, source: 'str', path: 'Callable[..., Hashable | Sequence[Hashable]] | Callable[..., Awaitable[Hashable | Sequence[Hashable]]] | Runnable[Any, Hashable | Sequence[Hashable]]', path_map: 'dict[Hashable, str] | list[str] | None' = None) -> 'Self'
+```
+
+关键参数：`state_schema`（状态 schema，必填）；`add_node(node, action)`（`action` 可为字符串函数名或函数）；`add_edge(start_key, end_key)`；`add_conditional_edges(source, path, path_map)`（`path` 返回分支键，`path_map` 映射到节点名）。`START`/`END` 是图内置哨兵常量，`g.add_edge(START, "analyze")`、`g.add_edge("merge", END)`。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| state_schema（构造入参） | type（TypedDict 等） | 必填 | 状态的"全局变量表"：所有节点共享的 dict 形状；节点只读自己需要的键、写自己产出的键 |
+| add_node 的 node / action | str + 函数 | 必填 | 注册一个节点：给节点起名 + 接节点函数（函数收 state、返回部分状态更新 dict） |
+| add_edge 的 start_key / end_key | str | 必填 | 声明一条边：前一个节点 → 后一个节点；从 `START` 出发、到 `END` 收口 |
+| add_conditional_edges 的 source / path / path_map | str + 函数 + dict | path_map 可空 | 条件边：`path` 函数按 state 返回分支键，`path_map` 把分支键映射成节点名（或 `END`） |
+
+**4. 最小示例**：
+
+```python
+print("【8.1 直线图：LCEL 管道的超集表达】")
+# demo 顶部：from operator import add as list_add（Annotated 的第二个参数 = 合并函数）
+class State(TypedDict):
+    text: str
+    log: Annotated[list, list_add]
+
+def node_A(state: State) -> dict:
+    return {"text": state["text"].upper(), "log": ["A"]}
+
+def node_B(state: State) -> dict:
+    return {"text": state["text"] + "!", "log": ["B"]}
+
+g = StateGraph(State)
+g.add_node("A", node_A)
+g.add_node("B", node_B)
+g.add_edge(START, "A")
+g.add_edge("A", "B")
+g.add_edge("B", END)
+app = g.compile()
+out = app.invoke({"text": "hello", "log": []})
+print(f"  输入 hello → 输出：{out}")
+print(f"  Annotated[list, add]：log 是追加不是覆盖 → {out['log']}")
+
+print("\n【8.2 条件边：循环直到满足条件（手写 while 的声明式版）】")
+class LoopState(TypedDict):
+    n: int
+    path: Annotated[list, list_add]
+
+def inc(state: LoopState) -> dict:
+    return {"n": state["n"] + 1, "path": ["inc"]}
+
+def check(state: LoopState):
+    return "inc" if state["n"] < 3 else END
+
+g2 = StateGraph(LoopState)
+g2.add_node("inc", inc)
+g2.add_edge(START, "inc")
+g2.add_conditional_edges("inc", check, {"inc": "inc", END: END})
+app2 = g2.compile()
+out2 = app2.invoke({"n": 0, "path": []})
+print(f"  n=0 跑完 → n={out2['n']}，path={out2['path']}（inc 跑了 3 次直到 n≥3）")
+```
+
+输出（实跑原文）：
+
+```
+【8.1 直线图：LCEL 管道的超集表达】
+  输入 hello → 输出：{'text': 'HELLO!', 'log': ['A', 'B']}
+  Annotated[list, add]：log 是追加不是覆盖 → ['A', 'B']
+
+【8.2 条件边：循环直到满足条件（手写 while 的声明式版）】
+  n=0 跑完 → n=3，path=['inc', 'inc', 'inc']（inc 跑了 3 次直到 n≥3）
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/extra_langgraph_intro.py:23,64,70,71,72,73,74,106,110,113,114,115,147`（真调版：23 = 导入；64~74 = Graph A 四步链直线图；106/110/113/114/115 = Graph B agent 循环图；147 = 真调输出）
+- `scripts/demo_api_reference.py:259,262,263,264,281,282,283,284`（demo 节 8：259/281 = 两个 StateGraph 构造；262~264 = 直线图三条边；283/284 = 循环图的入口边与条件边）
+
+**6. 原理要点**：
+
+- **图 = State + Node + Edge 三件套**：State 是贯穿全图的"全局变量表"（TypedDict 声明形状），Node 是节点函数（收 state、返回部分更新，如 `{"text": ...}`），Edge 是节点之间的路（`add_edge` 直线 / `add_conditional_edges` 条件）。8.1 里 A、B 两个节点各干各的，拼起来就是一条"直线管道"
+- **图是管道的超集**：LCEL 的 `|` 只能表达直线——前一个零件固定接后一个；图把"下一步去哪"从"组装时写死"变成"运行时可决定"：能循环（8.2 的 inc 跑了 3 次）、能分支（条件边按 state 选路）、能暂停等人工（生产里挂断点等人确认）——管道能表达的图都能表达，反过来不行
+- **`Annotated[list, add]` = 追加不覆盖**：状态合并默认是"覆盖"（节点返回的键替换旧值）；`Annotated[list, add]` 表示这个键的合并规则是"用 `add`（`operator.add`，list 加法 = 拼接）合并"——8.1 输出 `log: ['A', 'B']`：A、B 各返回 `["A"]`/`["B"]`，拼起来而不是后者覆盖前者
+- **编译后就是 Runnable**：`g.compile()` 返回的 `app` 和链一样 `.invoke`/`.stream`（4.1 词条里 extra_langgraph_intro.py:130,145 就是图真调）；真调版见 extra_langgraph_intro.py——Graph A 把 3.2 四步链声明成直线图（每步一个节点、边显式声明），Graph B 把 4.2 手写 while 工具循环声明成 agent 图（条件边 model → tools → model 循环）
+
+**7. 踩坑**：条件边函数返回的必须是**节点名或 END**（8.2 的 `check` 返回 `"inc"` 或 `END`），且 path_map 里要有对应的映射——`g2.add_conditional_edges("inc", check, {"inc": "inc", END: END})` 的写法照抄 demo：左边是 check 可能返回的分支键（`"inc"` / `END`），右边是映射到的目标（节点名 / `END`）；分支键漏映射，运行时找不到下一步去哪就报错。深挖见 [extra_langchain_langgraph.md](extra_langchain_langgraph.md)。
+
+### START
+
+**1. 一句话**：图的入口哨兵：一个内置常量，代表"图的起点"——`add_edge(START, "首节点")` 声明第一条边从入口出发，图编译后从这里开跑。
+
+**2. 签名**：
+
+```python
+from langgraph.graph import END, START, StateGraph
+```
+
+`START` 是图内置哨兵常量，没有函数签名——直接当值用：`g.add_edge(START, "analyze")`、`g.add_edge(START, "inc")`（笔记原文：`START`/`END` 是图内置哨兵常量）。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| （无） | — | — | 常量不是函数，没有参数：`add_edge(START, "首节点")` 里它就是 start_key |
+
+**4. 最小示例**（demo 节 8 摘录）：
+
+```python
+g.add_edge(START, "A")     # 8.1 直线图：入口 → 首节点 A
+g2.add_edge(START, "inc")  # 8.2 循环图：入口 → 首节点 inc
+```
+
+输出（实跑原文）：
+
+```
+【8.1 直线图：LCEL 管道的超集表达】
+  输入 hello → 输出：{'text': 'HELLO!', 'log': ['A', 'B']}
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/extra_langgraph_intro.py:23,70,113`（23 = 导入哨兵；70 = Graph A 入口边；113 = Graph B 入口边）
+- `scripts/demo_api_reference.py:29,262,283`
+
+**6. 原理要点**：为什么需要"入口哨兵"而不是直接用首节点名：图里任何节点都可能被条件边指到，入口必须是一个"不是节点"的特殊位置——它只负责"从哪开跑"，编译时以它为起点的边决定第一站。START 不产出数据、不占状态：它是位置标记，不是一站。
+
+**7. 踩坑**：入口边只连一次，`add_edge(START, 节点名)` 的第二个参数是首节点名——想换起点就换这条边的 end_key；每个图有且只有一个 START。`START`/`END` 是保留哨兵名，别拿它们当自定义节点名注册。
+
+### END
+
+**1. 一句话**：图的出口哨兵：内置常量，代表"流程到此结束"——`add_edge("末节点", END)` 收口；条件边里 `return END` 就是"这条路走到头"。
+
+**2. 签名**：
+
+```python
+from langgraph.graph import END, START, StateGraph
+```
+
+`END` 是图内置哨兵常量，没有函数签名——直接当值用：`g.add_edge("merge", END)`。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| （无） | — | — | 常量不是函数：`add_edge(..., END)` 里它是 end_key；条件边里它是 path_map 的目标 |
+
+**4. 最小示例**（demo 节 8 摘录）：
+
+```python
+g.add_edge("B", END)                       # 8.1 直线图收口：B 跑完 → 结束
+def check(state: LoopState):
+    return "inc" if state["n"] < 3 else END  # 8.2 条件边：n≥3 就返回 END（结束）
+```
+
+输出（实跑原文）：
+
+```
+【8.2 条件边：循环直到满足条件（手写 while 的声明式版）】
+  n=0 跑完 → n=3，path=['inc', 'inc', 'inc']（inc 跑了 3 次直到 n≥3）
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/extra_langgraph_intro.py:23,74,106,114`（74 = Graph A 收口；106 = should_continue 返回 END；114 = 条件边 path_map 的 END 键）
+- `scripts/demo_api_reference.py:29,264,279,284`
+
+**6. 原理要点**：END 是"终点站"：边指到它，图就停，invoke 返回最终状态。条件边里 END 有双重身份：`return END` 里的 END 是分支键，`{"inc": "inc", END: END}` 里的左 END 是"check 可能返回的分支键"、右 END 是"该分支映射到的目标（出口）"。没有 END，"不满足就继续"的循环就没有尽头——8.2 里 `state["n"] < 3` 是终止条件：n 到 3 时 check 返回 END，循环才停（输出 n=3、path 里三个 inc）。
+
+**7. 踩坑**：条件边函数在"结束"分支必须返回 END（或映射到 END）——8.2 的 `{"inc": "inc", END: END}` 把"继续"和"结束"两个分支都写全了，照抄这个写法；终止条件写错（`n < 3` 写反）才是真死循环。END 和 START 一样是内置哨兵，不用 add_node 注册。
+
+---
+
+# 第 9 章 向量
+
+chromadb 三件套：EmbeddingFunction（文本 → 向量）+ 本地 BGE 模型 + rag_db 向量库。9.1~9.2 用项目真实库做中文语义检索（本地 ONNX 推理，零成本）。
+
+### EmbeddingFunction
+
+**1. 一句话**：chroma 的"文本 → 向量"接口（协议类）：实现 `__call__(input: Documents) -> Embeddings` 就接入了 chroma——入库（upsert）和检索（query）时 chroma 自动调用它，把文本变成能算距离的向量。
+
+**2. 签名**：
+
+```python
+from chromadb import EmbeddingFunction, Documents, Embeddings
+```
+
+`inspect.signature` 原文（命令 8 输出；`-D` 是 chromadb 1.5.9 对 `Documents` 别名（`List[str]`）的渲染显示，照录原文）：
+
+```text
+EmbeddingFunction.__call__: (self, input: -D) -> List[numpy.ndarray[tuple[int, ...], numpy.dtype[Union[numpy.int32, numpy.float32]]]]
+EmbeddingFunction: <class 'chromadb.api.types.EmbeddingFunction'>
+Embeddings: typing.List[numpy.ndarray[tuple[int, ...], numpy.dtype[typing.Union[numpy.int32, numpy.float32]]]]
+Documents: typing.List[str]
+```
+
+关键参数：`EmbeddingFunction` 是协议类，实现 `__call__(input: Documents) -> Embeddings` 即接入 chroma；`Embeddings = List[numpy.ndarray]`、`Documents = List[str]`；`PersistentClient(path=...)`；`get_or_create_collection(name, embedding_function=...)` 返回 `Collection`；`Collection.query(query_texts=[...], n_results=k)`；`Collection.upsert(ids=..., documents=..., embeddings=...)`。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| input（`__call__` 唯一入参） | Documents（=`List[str]`） | 必填 | 要转向量的文档文本列表；返回的 Embeddings 与它一一对应、等长 |
+
+**4. 最小示例**（demo 节 9；`BASE_DIR` = 项目根目录，demo 顶部常量）：
+
+```python
+from chromadb import PersistentClient
+from phase4_1_rag import LocalBertEmbedding
+
+print("【9.1 EmbeddingFunction 接口：Documents 进，Embeddings 出】")
+print("  实现示例：scripts/phase4_1_rag.py 的 LocalBertEmbedding（WordPiece 分词 → ONNX 推理 → CLS 池化 → 归一化）")
+print("  接口签名：def __call__(self, input: Documents) -> Embeddings")
+client = PersistentClient(path=str(BASE_DIR / "rag_db"))
+ef = LocalBertEmbedding(str(BASE_DIR / "models/bge-small-zh"), pooling="cls")
+col = client.get_collection("protocol_templates", embedding_function=ef)
+
+print("\n【9.2 query：真实 BGE 中文语义检索】")
+hits = col.query(query_texts=["智能水表 阀门 开关控制"], n_results=2)
+for ids, metas, dists in zip(hits["ids"][0], hits["metadatas"][0], hits["distances"][0]):
+    print(f"  命中 {ids}（{metas['title']}）距离 {dists:.3f}（越小越相似）")
+print("  → '水表'语义命中水表模板（关键词搜索做不到）")
+```
+
+输出（实跑原文）：
+
+```
+【9.1 EmbeddingFunction 接口：Documents 进，Embeddings 出】
+  实现示例：scripts/phase4_1_rag.py 的 LocalBertEmbedding（WordPiece 分词 → ONNX 推理 → CLS 池化 → 归一化）
+  接口签名：def __call__(self, input: Documents) -> Embeddings
+
+【9.2 query：真实 BGE 中文语义检索】
+  命中 水表计量协议模板（水表计量协议模板）距离 0.408（越小越相似）
+  命中 环境监测协议模板（环境监测协议模板）距离 0.561（越小越相似）
+  → '水表'语义命中水表模板（关键词搜索做不到）
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/phase4_1_rag.py:18,38,104,105,116,142,144,163,175`（104 = LocalBertEmbedding 实现类；105 = 接口说明；116 = `__call__` 实现；142/144 = PersistentClient + get_or_create_collection；163/175 = upsert / query）
+- `scripts/demo_api_reference.py:294,299,300,301,304`
+
+**6. 原理要点**：
+
+- **实现 `__call__(input: Documents) -> Embeddings` 即接入 chroma**：chroma 只认这个接口——入库时拿它把文档文本算成向量存库（9.1 的 `get_collection(..., embedding_function=ef)`），检索时拿它把查询文本算成向量再比距离（9.2 的 `col.query(query_texts=[...])`）；接口收文本列表、还向量列表，一一对应。`-D` 是 chromadb 1.5.9 打印签名时对 `Documents` 的渲染，实际就是 `List[str]`
+- **内部三步，没有魔法**（phase4_1 精读见 [code_walkthrough_phase4.md](code_walkthrough_phase4.md)）：① WordPiece 分词——中文逐字成 token，英文子词最长匹配；② ONNX 推理——token ids 过神经网络，每个 token 一个向量；③ 池化 + 归一化——BGE 取 `[CLS]` 向量（`pooling="cls"`），归一化后余弦相似度 = 点积，所以 9.2 输出"距离越小越相似"
+- **9.2 是语义检索，不是关键词检索**：查询"智能水表 阀门 开关控制"没有出现"计量""协议"字样，却命中"水表计量协议模板"（距离 0.408）——向量空间里语义相近的词离得近，关键词搜索做不到（"设备位置上报"和"GPS 经纬度"没有共同关键词但语义相关）
+
+**7. 踩坑**（chroma 环境坑三连，坑 #10/#11）：
+
+- **S3 下载超时（URL 写死）→ 本地模型**：chromadb 内置 ONNX embedding 模型从 S3 下载，国内网络不通 + 下载路径在库内写死 → 从 hf-mirror 下载 `Xenova/bge-small-zh-v1.5` 的 `onnx/model.onnx` + `vocab.txt` 到 `models/bge-small-zh/`，自定义 EmbeddingFunction 本地推理，完全离线
+- **MiniLM 中文失效 → 换 BGE**：all-MiniLM-L6-v2 是英文模型，中文检索排序错乱（查"水表阀门"命中"环境监测"）→ 换 BGE-small-zh-v1.5（CLS 池化）+ 显式 `hnsw:space=cosine`，检索立刻正确
+- **换 embedding 模型必须删 rag_db 重建**：向量库里已存的向量是旧模型算的，新旧向量不在同一语义空间、算出的距离没意义——换模型后必须删掉 `rag_db/`（或重建集合）再 `phase4_1_rag.py build` 重灌，否则"检索正确"是假象（hnsw 空间参数也只在首次创建生效）
+- 深挖见 [phase4_rag.md](phase4_rag.md)（环境坑三连全记录 + 实测对比）
+
+### Embeddings
+
+**1. 一句话**：向量列表的类型别名：`Embeddings = List[numpy.ndarray]`（直观理解 `list[list[float]]`）——只是类型注释，不是运行时存在的对象。
+
+**2. 签名**：
+
+```python
+from chromadb import Embeddings
+```
+
+照录原文（命令 8 输出）：
+
+```text
+Embeddings: typing.List[numpy.ndarray[tuple[int, ...], numpy.dtype[typing.Union[numpy.int32, numpy.float32]]]]
+```
+
+关键参数：`Embeddings = List[numpy.ndarray]`（向量列表）——`__call__` 的返回值类型就是它：每个文本一个向量，几个文本进、几个向量出。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| （无） | — | — | 类型别名不是类：没有构造参数、没有方法，只用于签名里的类型注释 |
+
+**4. 最小示例**：见 EmbeddingFunction 词条的 9.1/9.2——9.2 输出的"距离"就是 Embeddings 的产物：`命中 水表计量协议模板（水表计量协议模板）距离 0.408（越小越相似）`（实跑原文）——文本进、向量出、按距离排序，全程没出现"Embeddings 对象"：别名只是注释。
+
+**5. 本项目在哪用到**：
+
+- `scripts/phase4_1_rag.py:18,38,104,105,116,142,144,163,175`（38 = 导入别名；116 = `__call__` 返回 `-> Embeddings`；175 = query 的 distances 就是向量算出来的）
+
+**6. 原理要点**：**类型别名 = 给类型起小名，不是新对象**——`Embeddings` 就是 `list[numpy.ndarray]`（一行一个向量），运行时不存在"Embeddings 类"，`isinstance(x, Embeddings)` 都无处可调。别名的价值是让接口签名可读：`-> Embeddings` 比 `-> list[list[float]]` 更懂业务——chroma 的接口签名（EmbeddingFunction / query / upsert）里到处是它，认得出它 = 读得懂签名。
+
+**7. 踩坑**：别在运行时拿类型别名做事（构造、判断类型都别指望它）——它只是注释，真正干活的是值本身（numpy 数组列表）。9.2 的 `hits` 是 dict（QueryResult：ids / metadatas / distances），不是"Embeddings 对象"；原始向量在返回结果的 `embeddings` 键里，要拿就从那取。
+
+### Documents
+
+**1. 一句话**：文档文本列表的类型别名：`Documents = List[str]`——只是类型注释，不是运行时存在的对象。
+
+**2. 签名**：
+
+```python
+from chromadb import Documents
+```
+
+照录原文（命令 8 输出）：
+
+```text
+Documents: typing.List[str]
+```
+
+关键参数：`Documents = List[str]`（文本列表）——`__call__` 的唯一入参类型就是它：要转向量的文本，一条条排在列表里。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| （无） | — | — | 类型别名不是类：没有构造参数、没有方法，只用于签名里的类型注释 |
+
+**4. 最小示例**：见 EmbeddingFunction 词条的 9.1/9.2——`col.query(query_texts=["智能水表 阀门 开关控制"], n_results=2)` 里 `query_texts` 收的就是 Documents：`["智能水表 阀门 开关控制"]` 是一个文本的列表，进 `__call__` 返回一个向量（实跑原文见 9.2 输出）。
+
+**5. 本项目在哪用到**：
+
+- `scripts/phase4_1_rag.py:18,38,104,105,116,142,144,163,175`（38 = 导入别名；116 = `__call__` 的 `input: Documents` 参数标注）
+
+**6. 原理要点**：**类型别名 = 给类型起小名，不是新对象**——`Documents` 就是 `list[str]`，运行时不存在"Documents 类"。别名的价值是让接口签名可读：`input: Documents` 比 `input: list[str]` 更懂业务——收的是"文档文本"不是任意字符串列表（EmbeddingFunction 词条签名里的 `-D` 就是 chromadb 1.5.9 对它的渲染显示）。
+
+**7. 踩坑**：别在运行时拿类型别名做事——它只是注释，真正传进来的就是普通 `list[str]`；写自定义 EmbeddingFunction 时签名照抄 `def __call__(self, input: Documents) -> Embeddings`，接口收列表、还列表，别造新类型。
