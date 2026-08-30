@@ -1,0 +1,12 @@
+设备[0]
+  VID:PID     = 04f2:b76f
+  bcdUVC      = 0000
+  序列号      = 200901010001
+  厂家        = Generic
+  产品名      = ACER HD User Facing
+  总线/地址   = 2/2
+共发现 1 台 UVC 设备
+
+uvc_find_device(0,0,NULL)      -> Success
+uvc_find_device(0xffff,0xffff) -> No such device (-4)
+uvc_find_devices 命中[0]: 04f2:b76f

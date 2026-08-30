@@ -1,0 +1,10 @@
+# 构建产物与第三方依赖（机器本地，不入库）
+libuvc/build/
+third_party/
+demos/*.exe
+demos/*.dll
+
+# 演示产出的二进制图像（文本日志保留）
+outputs/*.png
+outputs/*.bmp
+outputs/*.jpg

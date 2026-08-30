@@ -1,0 +1,6 @@
+找到摄像头
+
+打开失败（错误码见上面的 uvc_perror 输出）
+原因：设备被 Windows 系统驱动绑定，libusb 后端无法直接打开。
+解决：装 USBDK 驱动（推荐，与系统驱动共存）或插外置摄像头。
+uvc_open: Not supported (-12)

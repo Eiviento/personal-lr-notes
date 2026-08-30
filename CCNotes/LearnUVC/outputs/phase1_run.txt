@@ -1,0 +1,13 @@
+模拟一个错误: Not found (-5)
+uvc_init 返回: Success (0)
+ctx 指针: 0000000000E28DC0（非 NULL 表示工作台创建成功）
+
+-- uvc_strerror 对照表（挑几个）--
+UVC_SUCCESS        =  0 -> "Success"
+UVC_ERROR_ACCESS   =  -3 -> "Access denied"
+UVC_ERROR_TIMEOUT  =  -7 -> "Timeout"
+不存在的码 99      ->  "Unknown error"（查无此码时的兜底文字）
+
+-- uvc_perror 输出格式（打到 stderr）--
+
+uvc_exit 执行完毕（工作台已归还）

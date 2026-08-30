@@ -1,43 +1,41 @@
 # 学习进度日志
 
-## 会话信息
-- **开始时间**: 2026-07-11
-- **完成时间**: 2026-07-11
-- **学习内容**: libuvc 源码系统学习
-- **源码版本**: v0.0.7 (commit: 047920b)
-- **知识笔记**: [libuvc-knowledge-notes.md](libuvc-knowledge-notes.md)
+## 会话 1（2026-07-11，已完成）：源码级系统学习
 
----
+- **学习内容**: libuvc 源码系统学习（v0.0.7，commit 047920b）
+- **产出**: [libuvc-knowledge-notes.md](libuvc-knowledge-notes.md)
+- 完成 12 阶段 + 3 个扩展专题（XU 扩展单元、Payload 组帧、知识笔记整理），全部 ✅
 
-## 进度记录
+## 会话 2（2026-08-30，进行中）：接口级学习
+
+- **学习内容**: libuvc 全部公开接口——每个接口的作用、拿到什么数据、接口间配合关系
+- **用户要求**: 从头带学，零基础可读，代码讲解带真实运行示例
+- **环境**: ACER HD User Facing 内置摄像头；gcc 8.1.0 + cmake（E:\software\...）；libusb 待安装
+- **产出目录**: `lessons/`（每 Phase 一份文档 + api_reference.md 速查表）
+- **旧计划**: 源码级 12 阶段计划已归档进 task_plan.md v2
+
+### 进度记录
 
 | 日期 | 阶段 | 状态 | 备注 |
 |------|------|------|------|
-| 2026-07-11 | 学习计划制定 | ✅ 完成 | 已制定12阶段学习计划 |
-| 2026-07-11 | 1: UVC 规范基础 | ✅ 完成 | VC/VS 接口、单元模型、描述符体系 |
-| 2026-07-11 | 2: libuvc 架构总览 | ✅ 完成 | 文件结构、5个核心结构体、描述符树 |
-| 2026-07-11 | 3: 设备发现与打开 | ✅ 完成 | init→find→open→close→exit 完整调用链 |
-| 2026-07-11 | 4: 描述符解析 | ✅ 完成 | VC/VS extra字段解析，format/frame 二级结构 |
-| 2026-07-11 | 5: 控制传输协议 | ✅ 完成 | wValue/wIndex寻址，CT/PU/XU控制家族 |
-| 2026-07-11 | 6: 流协商机制 | ✅ 完成 | Probe/Commit协议，26/34字节控制块 |
-| 2026-07-11 | 7: 视频流传输 | ✅ 完成 | open→start, iso/bulk, altsetting选择 |
-| 2026-07-11 | 8: Payload报文协议 | ✅ 完成 | FID/EOF/PTS/SCR标志位，帧组装/双缓冲 |
-| 2026-07-11 | 9: 帧获取与回调 | ✅ 完成 | 回调模式 vs 轮询模式，uvc_frame_t结构 |
-| 2026-07-11 | 10: 资源清理 | ✅ 完成 | cancel→wait→join→free 关闭链 |
-| 2026-07-11 | 11: 帧格式转换 | ✅ 完成 | YUYV→RGB定点加速，any2rgb一键转换 |
-| 2026-07-11 | 12: 综合实战 | ✅ 完成 | example.c完整走读 + 知识笔记整理 |
-| 2026-07-11 | 扩展: XU扩展单元 | ✅ 完成 | wValue三级编码，CSID/Function ID |
-| 2026-07-11 | 扩展: Payload组帧 | ✅ 完成 | 不依赖序号的原因，异常恢复，帧头魔数 |
-| 2026-07-11 | 扩展: 知识笔记 | ✅ 完成 | 整理为 [libuvc-knowledge-notes.md](libuvc-knowledge-notes.md) |
+| 2026-08-30 | 计划制定 v2 | ✅ | 接口级 12 Phase 新路线，聚焦作用/数据/配合关系 |
+| 2026-08-30 | Phase 0: 全景地图 | ✅ | lessons/00_beginner_guide.md：主干链+四件套+分组总览 |
+| 2026-08-30 | 环境盘点 | ✅ | 摄像头 OK，gcc/cmake OK，libusb 缺失（待下载） |
+| 2026-08-30 | 编译环境搭建 | ✅ | libusb 1.0.27（清华镜像预编译包）+ libuvc v0.0.7 静态库 + example.exe 编译通过 |
+| 2026-08-30 | Phase 1: 初始化与退出 | ✅ | uvc_init/uvc_exit/strerror/perror + 真实运行（outputs/phase1_run.txt） |
+| 2026-08-30 | Phase 2: 设备发现 | ✅ | 本机实跑：04f2:b76f 枚举 + find_device + 描述符（outputs/phase2_run.txt） |
+| 2026-08-30 | Phase 3: 打开与关闭 | ✅ | 本机实跑失败路径：NOT_SUPPORTED(-12)（outputs/phase3_run.txt），D1 方案写入文档 |
+| 2026-08-30 | Phase 4~9、11 | ✅ | 文档+演示代码全部完成（待 D1 解决后实跑） |
+| 2026-08-30 | Phase 10: 帧格式转换 | ✅ | 本机实跑：8 色块验证 + BMP（outputs/phase10_run.txt + phase10_test.bmp） |
+| 2026-08-30 | api_reference 速查表 | ✅ | ~110 接口全表定稿 |
 
----
+## 完成状态（2026-08-30）
 
-## 详细会话日志
+- **全部 12 份 lessons 文档完成**（00 总纲 + phase1~11 + api_reference）
+- **11 个演示程序全部编译通过**；phase1/2/3/10 已实跑（含真实失败路径）
+- **剩余待办**：D1 解决后运行 phase4~9、11（代码零改动）；可选：装 libjpeg-turbo 重编支持 MJPEG
 
-### 2026-07-11
-- 从 GitHub 克隆 libuvc 源码 (v0.0.7)
-- 通读全部源码文件（约 4000+ 行）
-- 制定 12 阶段系统学习计划
-- 完成全部 12 阶段学习 + 3 个扩展专题
-- 记录了用户关于 XU 控制、CSID/Function ID、三级命令架构、Payload 组帧、异常恢复等问题的深入讨论
-- 输出完整知识笔记: libuvc-knowledge-notes.md
+## 待办检查点
+
+- **D1**（Phase 2 演示前）：确认摄像头访问方案（USBDK / 外置摄像头 / 先理论）
+- Phase 1 前：下载 libusb 预编译包 → 编译 libuvc（构建脚本 scripts/）
