@@ -1,0 +1,128 @@
+E:\software\OfficeWorkLife\Anaconda\envs\agent_env\lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (6.0.0.post1)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+======================================================================
+节 1：第1章 提示词
+======================================================================
+【1.1 模板定义（from_messages 用角色元组列表）】
+  ChatPromptTemplate(input_variables=['limit', 'role', 'topic'], input_types={}, partial_variables={}, messages=[SystemMessagePromptTemplate(prompt=PromptTemplate(input_variables=['limit', 'role'], input_types={}, partial_variables={}, template='你是{role}，回答必须控制在{limit}字以内。'), additional_kwargs={}), HumanMessagePromptTemplate(prompt=PromptTemplate(input_variables=['topic'], input_types={}, partial_variables={}, template='用一句话解释：{topic}'), additional_kwargs={})])
+
+【1.2 填入变量：invoke 只做格式化，不调模型】
+  [system] 你是小学老师，回答必须控制在50字以内。
+  [human] 用一句话解释：电压
+
+【1.3 缺变量 = 直接报错点名（防漏配的保护机制）】
+  KeyError: "Input to ChatPromptTemplate is missing variables {'topic', 'limit'}.  Expected: ['limit', 'role', 'topic'] Received: ['role']\nNote: if you intended {topic} to be part of the string and not a variable, please escape it with double curly braces like: '{{topic}}'.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/INVALID_PROMPT_INPUT "
+
+======================================================================
+节 2：第2章 模型
+======================================================================
+【2.1 构造参数（常用几个）】
+  model = deepseek-chat
+  base_url = <无此属性>
+  temperature = 0.3
+  max_tokens = 4096
+  request_timeout = None
+  （api_key 故意不打印）
+
+【2.2 with_retry：坏地址看自动重试（重试穷尽后放弃）】
+  观察：SDK 层与 LangChain 层各重试 → 双层重试现象
+  3 次重试后放弃：APITimeoutError（耗时 25.6s）
+  教训：429/5xx 重试有效；4xx（认证/参数）重试永远失败
+
+======================================================================
+节 3：第3章 管道
+======================================================================
+【3.1 | 运算符：把零件串成链（本质 = RunnableSequence）】
+  chain.invoke({'x': 'hello lcel'}) → 'HELLO LCEL'
+  链的类型：RunnableSequence，内部步骤：['ChatPromptTemplate', 'RunnableLambda', 'RunnableLambda']
+
+【3.2 RunnableLambda：普通函数包一层，就能进管道】
+  chain2.invoke({'x': 'hello'}) → 'HELLO!!'
+
+【3.3 RunnablePassthrough：原样透传，一个零件都不加工】
+  RunnablePassthrough().invoke('任意输入') → '任意输入'
+
+【3.4 RunnableParallel：并行分支，分支名 = 输出键名】
+  两个 1 秒分支同时跑，总耗时 1.0s → 真并行
+  输出：{'a': '分支A:睡了1秒', 'b': '分支B:睡了1秒'}
+  分支表挂在 .steps__（双下划线）：{'a': RunnableLambda(f), 'b': RunnableLambda(f)}
+
+【3.5 assign：往 dict 挂新键，旧键不动】
+  assembled.invoke({'x': 'hello lcel'}) → {'x': 'hello lcel', 'upper': 'HELLO LCEL', 'length': 10}
+
+======================================================================
+节 4：第4章 调用
+======================================================================
+【4.1 invoke：单输入单输出（点一份外卖）】
+  结果：慢（耗时 0.6s）
+
+【4.2 batch：多输入多输出，内部并发（同时点三份）】
+  3 个词的结果：['慢', '热', '小']（耗时 0.7s）
+
+【4.3 stream：逐块吐字（炒一道上一道）】
+  简单
+
+======================================================================
+节 5：第5章 解析
+======================================================================
+【5.1 StrOutputParser：AIMessage → 纯文本】
+  结果：'{"name": "测试", "count": 3}'
+  类型：TextAccessor，isinstance(s, str) = True
+  坑：langchain_core 1.x 返回 TextAccessor（str 子类）——判断用 isinstance，别用 type() == str
+
+【5.2 JsonOutputParser：AIMessage → dict】
+  结果：{'name': '测试', 'count': 3}
+  类型：dict，d['count'] + 1 = 4
+
+【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写 30 行的原理）】
+  输入含围栏与废话 → 输出：{'ok': True}
+
+======================================================================
+节 6：第6章 消息
+======================================================================
+【6.1 三种消息对象与字段】
+  SystemMessage: content='你是助手', type字段='system'
+  HumanMessage: content='你好', type字段='human'
+  ToolMessage: content='校验结果：合法', type字段='tool'，tool_call_id=call_001
+  ToolMessage 的 tool_call_id = 回执编号，模型靠它把结果和请求配对
+
+【6.2 消息相加 = 拼对话历史（列表进，模型吃列表）】
+  messages = [SystemMessage(content='你是助手', additional_kwargs={}, response_metadata={}), HumanMessage(content='你好', additional_kwargs={}, response_metadata={})]
+  → 工具循环里就是 messages = messages + [response] + tool_msgs 这样拼
+
+======================================================================
+节 7：第7章 工具
+======================================================================
+【7.1 @tool：类型注解 → JSON Schema，docstring → 使用时机】
+  工具名：add
+  给模型的描述：两个整数相加。当用户需要算加法时调用。
+  JSON Schema：{"description": "两个整数相加。当用户需要算加法时调用。", "properties": {"a": {"title": "A", "type": "integer"}, "b": {"title": "B", "type": "integer"}}, "required": ["a", "b"], "title": "add", "type": "object"}
+  代码直接调用：add.invoke({'a': 1, 'b': 2}) → 3
+
+【7.2 bind_tools + 工具循环（模型点菜 → 代码上菜 → 回传 → 汇总）】
+  模型点菜：[('add', {'a': 123, 'b': 456})]
+  代码上菜：add({'a': 123, 'b': 456}) → 579
+  模型最终答复：123 + 456 = **579**。
+
+======================================================================
+节 8：第8章 编排
+======================================================================
+【8.1 直线图：LCEL 管道的超集表达】
+  输入 hello → 输出：{'text': 'HELLO!', 'log': ['A', 'B']}
+  Annotated[list, add]：log 是追加不是覆盖 → ['A', 'B']
+
+【8.2 条件边：循环直到满足条件（手写 while 的声明式版）】
+  n=0 跑完 → n=3，path=['inc', 'inc', 'inc']（inc 跑了 3 次直到 n≥3）
+
+======================================================================
+节 9：第9章 向量
+======================================================================
+【9.1 EmbeddingFunction 接口：Documents 进，Embeddings 出】
+  实现示例：scripts/phase4_1_rag.py 的 LocalBertEmbedding（WordPiece 分词 → ONNX 推理 → CLS 池化 → 归一化）
+  接口签名：def __call__(self, input: Documents) -> Embeddings
+
+【9.2 query：真实 BGE 中文语义检索】
+  命中 水表计量协议模板（水表计量协议模板）距离 0.408（越小越相似）
+  命中 环境监测协议模板（环境监测协议模板）距离 0.561（越小越相似）
+  → '水表'语义命中水表模板（关键词搜索做不到）
+
