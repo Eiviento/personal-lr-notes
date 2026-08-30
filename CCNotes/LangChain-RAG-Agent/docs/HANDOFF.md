@@ -37,6 +37,7 @@
   - `lessons/scripts_overview.md`：全部代码速查（每份一张调用流程图 + 一句话总结）
   - `lessons/00_beginner_guide.md`：零基础总纲
   - `lessons/extra_*.md`：专题（LCEL 详解、LangChain vs LangGraph、RAG、工具调用、人工审核）
+  - `lessons/langchain_api_reference.md`：API 手册（9 章 26 词条七段式，查词条入口）
 - 途中用户自己设计出了"并行分支 + 合并汇总"模式（demo_parallel_merge.py，实测效果超过串行链）
 
 ### 工程层面
@@ -100,7 +101,7 @@ D:\CC\personal-lr-notes\CCNotes\LangChain-RAG-Agent\
 ├── requirements.txt     # 依赖清单（安装注释里有镜像命令）
 ├── .gitignore           # models/、rag_db/、__pycache__/ 不入库
 ├── docs/                # task_plan（计划）/ progress（进度+错误日志）/ findings（决策）/ HANDOFF（本文）
-├── lessons/             # 00 总纲 / code_walkthrough_×5 精读 / scripts_overview 速查 / extra_× 专题
+├── lessons/             # 00 总纲 / code_walkthrough_×5 精读 / scripts_overview 速查 / extra_× 专题 / API 手册（9 章 26 词条）
 ├── scripts/             # 13 核心 + 4 demo + extra_langgraph_intro（各自开头 docstring 就是说明书）
 ├── inputs/              # sample_requirement×2（含 GBK 副本）/ templates/（4 份 RAG 模板素材）
 ├── outputs/             # 全部产物（草稿/终稿/评审/日志）

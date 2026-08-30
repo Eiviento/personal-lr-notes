@@ -23,6 +23,7 @@
 | [phase5_deploy.md](phase5_deploy.md) | Streamlit 心智模型（重跑/session_state/cache_resource）/ UI 薄壳原则 / AppTest 冒烟 | `app.py` |
 | [extra_langchain_langgraph.md](extra_langchain_langgraph.md) | LangChain=积木箱 / LCEL 天花板 / LangGraph=图编排（循环·分支·暂停）/ 决策表 / 进阶路线 | `scripts/extra_langgraph_intro.py` |
 | [extra_lcel_explained.md](extra_lcel_explained.md) | LCEL=组装约定（a\|b = 输出接输入）/ 最小演示 / 真实数据流追踪 / 三种组合 / 四个好处 | 全部 phase2/3 脚本 |
+| [langchain_api_reference.md](langchain_api_reference.md) | **API 手册（查词条来这里）**：9 章 26 词条七段式（签名/参数表/真实输出示例/项目出处/原理/踩坑）+ 配套 demo 脚本 | `scripts/demo_api_reference.py` |
 
 约定：
 - 每个文档 = 知识点（表格优先）+ 为什么（原理）+ 踩过的坑

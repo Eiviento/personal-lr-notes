@@ -41,6 +41,10 @@ Phase 5
 - [ ] 5.3 整体串联测试，用真实同事需求文档跑一遍
 - **Status:** in_progress
 
+## 专题任务
+- [x] 专题：LangChain API 参考手册（9 章 26 词条 + demo_api_reference.py + 真实输出，全量验证通过）
+- [ ] 5.3 整体验收：用户真实需求文档全流程（仍待用户素材）
+
 ## Key Questions
 1. 选用哪个 LLM API？（Claude API vs OpenAI API vs 国产模型 API）
 2. 协议输出格式是什么？（JSON Schema / YAML / 自定义模板 / Markdown 表格）

@@ -127,9 +127,13 @@
 *Update after completing each phase or encountering errors*
 
 ### 专题：LangChain API 参考手册
-- **Status:** in_progress
+- **Status:** complete
 - **Started:** 2026-08-30
 - Actions taken:
   - 收集素材：版本基线 / 26 词条签名 / 行号引用 → docs/api_ref_notes.md
   - 编写 scripts/demo_api_reference.py（9 节，零成本优先）并全量实跑
   - 真实输出捕获至 outputs/demo_api_reference_run.log（手册示例的唯一来源）
+  - 手册 9 章完成（输出全部抄自实跑日志）
+  - 索引更新
+  - 全量验证通过
+  - 素材笔记删除
