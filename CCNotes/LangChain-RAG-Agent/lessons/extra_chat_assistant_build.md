@@ -399,6 +399,22 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 
 ---
 
+## 六·五、不上传文档的三种用法（纯对话，实录 outputs/chat_demo_transcript_paste.log）
+
+文档上传只是入口之一。三个工具参数/模型推理都能纯对话完成：
+
+| 用法 | 怎么问 | 模型干什么 |
+|------|--------|-----------|
+| ① 贴需求生成 | "请根据以下需求生成协议：智能门锁，…" | 把需求文本作为**参数**传给 generate_protocol（工具本来就有 `requirement` 参数，上传只是省打字） |
+| ② 贴字段定义校验 | "请校验这些字段定义是否符合规范：msg_type uint8 长度1字节；…" | 逐字段点菜 validate_field_type，汇总成校验表 |
+| ③ 生成后追问 | 生成完接着问"第 3 个字段对吗" | 靠上一轮历史回答/点菜（第 3 轮的机制） |
+
+2026-08-30 实跑（②的完整原文在 outputs/chat_demo_transcript_paste.log）：故意注入错误"status uint8 长度 2 字节"，模型**连点 3 次菜**（每字段一次），校验表揪出 status ❌ 不合法，并给出两条修正建议（长度改 1 或类型改 uint16）。
+
+要点：**校验是死规则，永不出错**（4.2 的 FIXED_SIZE 表）；模型负责"该不该校验、结果怎么解读"。纯对话模式下这条原则照样成立。
+
+---
+
 ## 七、AppTest 冒烟：CHAT_FAKE_AGENT 开关
 
 **做什么**：`scripts/demo_app_test.py` 用 Streamlit 的 `AppTest` 驱动真实 `app.py` 跑四件事——页面渲染无异常 / 上传文档注入成功 / 发消息后历史累积 2 条 / 侧栏占位文案。**全程不真调 API**。
