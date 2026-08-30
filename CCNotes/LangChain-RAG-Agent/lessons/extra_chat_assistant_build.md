@@ -415,6 +415,24 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 
 ---
 
+## 六·六、对话例子速查（复制即用）
+
+| # | 场景 | 你输入的话 | 模型会干什么 | 实录 |
+|---|------|-----------|-------------|------|
+| 1 | 贴需求生成 | `请根据以下需求生成协议：智能门锁，定时上报锁状态（开/关），每10秒一次，含电池电压，撬锁时立即告警` | 把需求文本当参数点菜 generate_protocol，返回协议概览 | `chat_demo_transcript_paste.log` 第 1 轮 |
+| 2 | 上传后生成 | `帮我生成协议`（先上传文档） | 点菜 generate_protocol（无参，读已上传文档） | `chat_demo_transcript.log` 第 2 轮 |
+| 3 | 贴字段表校验 | `请校验这些字段定义是否符合规范：msg_type uint8 长度1字节；status uint8 长度2字节；battery uint16 长度2字节` | 每字段点一次菜 validate_field_type，汇总校验表；注入了错误的 status 被揪出 | `chat_demo_transcript_paste.log` 第 2 轮 |
+| 4 | 贴 JSON 校验 | `请检查这个协议 JSON 有没有问题：{"fields":[{"name":"temp","type":"float32","length":8}]}` | 点菜校验 float32=8 字节 → 不合法（标准 4） | 模板（与 #3 同机制） |
+| 5 | 追问式校验 | `第一个字段的类型和字节数对吗` | 靠上一轮历史回答 + 点菜 | `chat_demo_transcript.log` 第 3 轮 |
+| 6 | 咨询（无工具） | `uint8 和 int8 有什么区别？上报温度该用哪种？` / `CRC 放帧头还是帧尾好？` | 纯推理回答——**没有工具背书，正确性靠模型**（与 4.2 的边界认知一致） | 模板 |
+| 7 | 改字段再校验 | `把 lock_state 字段改成 uint8 1字节，重新给我一份校验表` | 点菜校验 + 生成新校验表 | `chat_demo_transcript_multi.log` 第 3 轮 |
+| 8 | 总结设计要点 | `总结一下这个协议的设计要点` | 纯推理汇总（含待完善项评审） | `chat_demo_transcript_multi.log` 第 4 轮 |
+| 9 | 没文档就生成 | `帮我生成协议`（什么都不传） | 反问"是否已上传文档"——模型不知道代码里的状态（六·五的要点） | `chat_demo_transcript_no_signal.log` |
+
+彩蛋（`chat_demo_transcript_multi.log` 第 3 轮）：用户把字段说成 `status`，协议里其实叫 `lock_state`——模型**纠正了用户**、按 lock_state 校验、并请用户确认。真实 agent 该有的样子。
+
+---
+
 ## 七、AppTest 冒烟：CHAT_FAKE_AGENT 开关
 
 **做什么**：`scripts/demo_app_test.py` 用 Streamlit 的 `AppTest` 驱动真实 `app.py` 跑四件事——页面渲染无异常 / 上传文档注入成功 / 发消息后历史累积 2 条 / 侧栏占位文案。**全程不真调 API**。
