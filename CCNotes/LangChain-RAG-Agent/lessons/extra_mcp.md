@@ -120,7 +120,23 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 | 2 | 改成 `fixed_size://rules/table` 仍报同样错 | URL **scheme 不能含下划线**（RFC 3986）→ 换成连字符：`protocol-tools://fixed-size/table` |
 | 3 | 装 mcp 时提示 `veadk-python requires mcp==1.23.0` | 环境里已有包锁定旧版本；mcp 1.29.1 与项目演示不冲突，先记下不动它 |
 
-## 九、下一步可选
+## 九、独立于项目的 hello-world 示例
+
+想脱离协议项目看最纯的 MCP：`CCNotes/mcp-hello/`（项目外独立目录）——"个人工具箱"服务器（`add` / `celsius_to_fahrenheit` 两个工具 + `notes://weekly-plan` 一个资源）+ 零 LLM 客户端，实跑输出：
+
+```
+【逐个调用：输入 → 输出】
+  add{'a': 3, 'b': 5}                    →  8.0
+  add{'a': 1.5, 'b': 2.5}                →  4.0
+  celsius_to_fahrenheit{'c': 25}         →  77.0
+  celsius_to_fahrenheit{'c': 0}          →  32.0
+【读资源 notes://weekly-plan】
+周一：写协议文档 …周五：发布
+```
+
+跑法：`cd CCNotes/mcp-hello && PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python.exe client.py`
+
+## 十、下一步可选
 
 - **把本服务器插进 Claude Code / Claude Desktop**（配置文件 `mcpServers` 一项即可）——届时你在对话里就能直接"点"到项目的死规则表
 - 给公司内部系统（协议库/Wiki/测试设备）各做一个 MCP 服务器，接入任何 AI 工具
