@@ -780,3 +780,504 @@ print()
 - **RunnableLambda 是流式边界**：链上夹着普通函数（RunnableLambda）的地方，流式被挡住——Lambda 必须收齐完整输入才执行，输出也一次性给出，没法逐块吐。所以 3.3 演示打字机效果时，stream 的是没有 Lambda 的 analyze_chain（prompt | llm | StrOutputParser 全程可流式），而不是带 `RunnableLambda(merge_final)` 的 full_chain（phase3_3_batch_stream.py:75）
 
 **7. 踩坑**：分块是"生成到哪吐到哪"，别假设一次循环就收到完整回答——4.3 的 print 用 `end=""` 逐块连打，要拿完整文本得自己收块拼起来（`''.join(chunks)`）。想只流式某一段：把链拆成"可流式段（prompt | llm | parser）"和"一次性段（Lambda 处理）"，只对前者 stream——3.3 就是这么做的。
+
+---
+
+# 第 5 章 解析
+
+### StrOutputParser
+
+**1. 一句话**：把模型回复（AIMessage 对象）里的文本取出来，变成纯字符串——`prompt | llm | StrOutputParser()` 链尾最常见的一节，4.1~4.3 的 chain 就是它收尾。
+
+**2. 签名**：
+
+```python
+from langchain_core.output_parsers import StrOutputParser
+```
+
+`inspect.signature(StrOutputParser.__init__)` 原文：
+
+```text
+(self, *args: Any, **kwargs: Any) -> None
+```
+
+关键参数：无参构造 `StrOutputParser()`；把 LLM 的 AIMessage 输出转成纯字符串。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| （无） | — | — | 无参构造：`StrOutputParser()` 直接用，不需要配置 |
+
+**4. 最小示例**：
+
+```python
+fake = AIMessage(content='{"name": "测试", "count": 3}')
+print("【5.1 StrOutputParser：AIMessage → 纯文本】")
+s = StrOutputParser().invoke(fake)
+print(f"  结果：{s!r}")
+print(f"  类型：{type(s).__name__}，isinstance(s, str) = {isinstance(s, str)}")
+print("  坑：langchain_core 1.x 返回 TextAccessor（str 子类）——判断用 isinstance，别用 type() == str")
+```
+
+输出（实跑原文）：
+
+```
+【5.1 StrOutputParser：AIMessage → 纯文本】
+  结果：'{"name": "测试", "count": 3}'
+  类型：TextAccessor，isinstance(s, str) = True
+  坑：langchain_core 1.x 返回 TextAccessor（str 子类）——判断用 isinstance，别用 type() == str
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/demo_parallel_merge.py:24,69,70`
+- `scripts/phase2_3_output_parsers.py:2,7,8,14,15,22,92,93,96`（Parser 三路对比的核心）
+- `scripts/phase3_2_prompt_chain.py:12,31,107`
+- `scripts/phase5_2_robust.py:30,57`
+
+**6. 原理要点**：模型返回的是 AIMessage **对象**，不是纯文本——StrOutputParser 把里面的文本内容抽出来当字符串用，这就是链尾总挂着它的原因：`prompt | llm | StrOutputParser()` 的链，invoke 结果才是能直接打印、拼接、写文档的字符串（4.1~4.3 全是这么用）。**选型口诀**：下游要文本用 Str，要结构化用 Json（口诀详解见下词条）。
+
+**7. 踩坑**：**langchain_core 1.x 返回 TextAccessor（str 子类），判断用 isinstance 别用 type() == str**（坑 #15）——5.1 输出实证：`类型：TextAccessor，isinstance(s, str) = True`。TextAccessor 是 str 的子类：拼接、比较、格式化全正常，但 `type(s) == str` 是 False——判断"是不是字符串"一律用 isinstance；对返回类型有精确要求的代码（类型检查、序列化）别假设 `type(s) is str`。这是版本差异，报错照实修（坑 #15）。深挖见 [code_walkthrough_phase2.md](code_walkthrough_phase2.md)（精读 4：Parser 三路对比）。
+
+### JsonOutputParser
+
+**1. 一句话**：把模型回复解析成 dict（JSON 对象）：模型输出"看起来像 JSON 的文字"时，它负责变成真 dict，还内置容错——剥围栏、截废话，5.3 演示给你看。
+
+**2. 签名**：
+
+```python
+from langchain_core.output_parsers import JsonOutputParser
+```
+
+`inspect.signature(JsonOutputParser.__init__)` 原文：
+
+```text
+(self, *args: Any, **kwargs: Any) -> None
+```
+
+关键参数：无参构造 `JsonOutputParser()`；把 LLM 输出解析成 dict，内置容错（部分解析）。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| （无） | — | — | 无参构造：`JsonOutputParser()` 直接用；容错内置，不需要配置 |
+
+**4. 最小示例**：
+
+```python
+fake = AIMessage(content='{"name": "测试", "count": 3}')
+print("\n【5.2 JsonOutputParser：AIMessage → dict】")
+d = JsonOutputParser().invoke(fake)
+print(f"  结果：{d}")
+print(f"  类型：{type(d).__name__}，d['count'] + 1 = {d['count'] + 1}")
+
+print("\n【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写 30 行的原理）】")
+messy = AIMessage(content='好的，结果如下：\n```json\n{"ok": true}\n```\n以上。')
+print(f"  输入含围栏与废话 → 输出：{JsonOutputParser().invoke(messy)}")
+```
+
+输出（实跑原文）：
+
+```
+【5.2 JsonOutputParser：AIMessage → dict】
+  结果：{'name': '测试', 'count': 3}
+  类型：dict，d['count'] + 1 = 4
+
+【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写 30 行的原理）】
+  输入含围栏与废话 → 输出：{'ok': True}
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/demo_parallel_merge.py:24,72`
+- `scripts/phase2_1_langchain_basics.py:8,18,98,103,105`
+- `scripts/phase2_2_lcel_pipeline.py:35,80`
+- `scripts/phase2_3_output_parsers.py:2,8,15,22,101,102,105`
+- `scripts/phase3_1_doc_input.py:20,144`
+- `scripts/phase3_2_prompt_chain.py:14,16,31,108,109`（3.2 四步链的字段表解析）
+- `scripts/phase4_1_rag.py:39,205`
+- `scripts/phase4_3_human_review.py:32,55`
+- `scripts/phase5_2_robust.py:30,58,59`
+
+**6. 原理要点**：
+
+- **容错三件套 = 剥围栏 + 截取花括号 + 带证据报错**：模型爱给 JSON 裹代码围栏（`` ```json `` 开头、`` ``` `` 结尾）、爱在前后加废话——5.3 输入 ``好的，结果如下：\n```json\n{"ok": true}\n```\n以上。`` 照样解析出 `{'ok': True}`。三步：① 剥掉开头结尾的围栏；② 截取第一个 `{` 到最后一个 `}` 之间的部分（废话全丢）；③ 两步都不行时**带原始输出一起报错**——报错里能看到模型原话，方便定位是格式问题还是内容问题
+- **原理就是 phase1_4 手写的 30 行容错**：`scripts/phase1_4_req_to_protocol.py:128-149` 的 `_parse_response` 就是这三件事的手写版（精读见 [code_walkthrough_phase1.md](code_walkthrough_phase1.md) 第 4 块）——后来被 JsonOutputParser 替代，原理一字不差
+- **选型口诀：下游要文本用 Str，要结构化用 Json**——4.1~4.3 只要"把话说出来"（打印、拼接），用 StrOutputParser；2.2 三个校验分支、3.2 四步链要拿字段表继续加工（5.2 的 `d['count'] + 1 = 4` 就是拿解析结果当数据用），用 JsonOutputParser
+
+**7. 踩坑**：容错只救"包裹"问题，救不了 **JSON 本身畸形**（缺引号、多逗号）——那是 `json.loads` 层面的错误，三件套兜不住。根治手段在提示词：让模型"只输出 JSON、不要解释"能大幅减少容错需求（5.3 演示的就是最常见的不合法形态）。带证据报错是这套容错的第三步：phase1_4 手写版是 `ValueError(f"无法解析 LLM 输出为 JSON，原始输出：\n{raw}")`——解析失败必须把模型原文带出来，否则无从排查。深挖见 [code_walkthrough_phase2.md](code_walkthrough_phase2.md)（精读 4：Parser 三路对比）。
+
+---
+
+# 第 6 章 消息
+
+### SystemMessage
+
+**1. 一句话**：系统消息：给模型定人设、定规则的"开场白"——对话历史里通常第一条就是它（"你是协议评审工程师……"，4.2 的评审开场）。
+
+**2. 签名**：
+
+```python
+from langchain_core.messages import SystemMessage
+```
+
+`inspect.signature(SystemMessage.__init__)` 原文：
+
+```text
+SystemMessage: (self, content: str | list[str | dict[typing.Any, typing.Any]] | None = None, content_blocks: list[langchain_core.messages.content.TextContentBlock | langchain_core.messages.content.InvalidToolCall | langchain_core.messages.content.ReasoningContentBlock | langchain_core.messages.content.NonStandardContentBlock | langchain_core.messages.content.ImageContentBlock | langchain_core.messages.content.VideoContentBlock | langchain_core.messages.content.AudioContentBlock | langchain_core.messages.content.PlainTextContentBlock | langchain_core.messages.content.FileContentBlock | langchain_core.messages.content.ToolCall | langchain_core.messages.content.ToolCallChunk | langchain_core.messages.content.ServerToolCall | langchain_core.messages.content.ServerToolCallChunk | langchain_core.messages.content.ServerToolResult] | None = None, **kwargs: Any) -> None
+```
+
+关键参数：`content`（文本内容）、`content_blocks`（结构化内容块）。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| content | str / list / None | None | 消息正文；SystemMessage 传人设与规则（"你是协议评审工程师……"，phase4_2_tool_calling.py:100） |
+| content_blocks | list[内容块] | None | 结构化内容块（文本/图片/工具调用等）；普通文本消息不用管 |
+
+**4. 最小示例**：
+
+```python
+sys_msg = SystemMessage("你是助手")
+human_msg = HumanMessage("你好")
+tool_msg = ToolMessage(content="校验结果：合法", tool_call_id="call_001")
+print("【6.1 三种消息对象与字段】")
+for m in [sys_msg, human_msg, tool_msg]:
+    extra = f"，tool_call_id={m.tool_call_id}" if isinstance(m, ToolMessage) else ""
+    print(f"  {type(m).__name__}: content={m.content!r}, type字段={m.type!r}{extra}")
+print("  ToolMessage 的 tool_call_id = 回执编号，模型靠它把结果和请求配对")
+```
+
+输出（实跑原文）：
+
+```
+【6.1 三种消息对象与字段】
+  SystemMessage: content='你是助手', type字段='system'
+  HumanMessage: content='你好', type字段='human'
+  ToolMessage: content='校验结果：合法', type字段='tool'，tool_call_id=call_001
+  ToolMessage 的 tool_call_id = 回执编号，模型靠它把结果和请求配对
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/extra_langgraph_intro.py:22,93,98,140,143`（140 = 真调版的系统人设）
+- `scripts/phase4_2_tool_calling.py:10,26,76,100,105`（100 = 4.2 的评审人设开场）
+
+**6. 原理要点**：**messages 列表 = 对话历史**——模型没有记忆，每次调用你把整个列表发回去，它才"记得"前面说了什么；SystemMessage 是这条历史的"人设/规则"部分，通常第一条。6.1 输出 `type字段='system'`——消息对象自己知道自己的角色；第 1 章 ChatPromptTemplate 的角色元组（"system"/"user"）最终也编译成这些消息对象（1.1 输出里的 SystemMessagePromptTemplate 就是它的模板版）。
+
+**7. 踩坑**：人设与规则写 SystemMessage，别混进 HumanMessage——模型对两类消息的处理权重不同，规则放 human 位容易被当成对话内容稀释。对话历史只增不改：改历史里旧消息 = 篡改历史，模型无从知晓；要改人设就换新 SystemMessage 追加（拼法见 HumanMessage 词条）。
+
+### HumanMessage
+
+**1. 一句话**：用户消息：对话历史里"用户说的话"——4.2 的字段表输入、demo 7.2 的"帮我算 123 + 456"都是它。
+
+**2. 签名**：
+
+```python
+from langchain_core.messages import HumanMessage
+```
+
+`inspect.signature(HumanMessage.__init__)` 原文：
+
+```text
+HumanMessage: (self, content: str | list[str | dict[typing.Any, typing.Any]] | None = None, content_blocks: list[langchain_core.messages.content.TextContentBlock | langchain_core.messages.content.InvalidToolCall | langchain_core.messages.content.ReasoningContentBlock | langchain_core.messages.content.NonStandardContentBlock | langchain_core.messages.content.ImageContentBlock | langchain_core.messages.content.VideoContentBlock | langchain_core.messages.content.AudioContentBlock | langchain_core.messages.content.PlainTextContentBlock | langchain_core.messages.content.FileContentBlock | langchain_core.messages.content.ToolCall | langchain_core.messages.content.ToolCallChunk | langchain_core.messages.content.ServerToolCall | langchain_core.messages.content.ServerToolCallChunk | langchain_core.messages.content.ServerToolResult] | None = None, **kwargs: Any) -> None
+```
+
+关键参数：`content`（文本内容）、`content_blocks`（结构化内容块）。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| content | str / list / None | None | 消息正文；HumanMessage 传用户提问/输入（4.2 把字段表 JSON 当用户输入：phase4_2_tool_calling.py:105） |
+| content_blocks | list[内容块] | None | 结构化内容块；普通文本不用管 |
+
+**4. 最小示例**：
+
+```python
+print("\n【6.2 消息相加 = 拼对话历史（列表进，模型吃列表）】")
+msgs = [sys_msg, human_msg]
+print(f"  messages = {msgs!r}")
+print("  → 工具循环里就是 messages = messages + [response] + tool_msgs 这样拼")
+```
+
+（`sys_msg` / `human_msg` 的定义见 SystemMessage 词条的 6.1 代码。）
+
+输出（实跑原文）：
+
+```
+【6.2 消息相加 = 拼对话历史（列表进，模型吃列表）】
+  messages = [SystemMessage(content='你是助手', additional_kwargs={}, response_metadata={}), HumanMessage(content='你好', additional_kwargs={}, response_metadata={})]
+  → 工具循环里就是 messages = messages + [response] + tool_msgs 这样拼
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/extra_langgraph_intro.py:22,93,98,140,143`（143 = 真调版的用户输入）
+- `scripts/phase4_2_tool_calling.py:10,26,76,100,105`（105 = 4.2 的字段表输入）
+
+**6. 原理要点**：**messages 列表 = 对话历史，模型吃的是列表**（6.2："列表进，模型吃列表"）——`llm.invoke(messages)` 收的是消息列表，不是单个字符串；列表里每条消息一个角色，模型按顺序读。**工具循环里就是 `messages = messages + [response] + tool_msgs` 这样拼**：旧历史 + 模型这轮的回复（AIMessage）+ 工具回执（ToolMessage 们），拼成新历史再发回去——模型就是这样"看见"上菜结果的（demo_api_reference.py:239；4.2 的 run_tool_loop 同款，phase4_2_tool_calling.py:77；extra_langgraph 的工具节点也是这个套路）。
+
+**7. 踩坑**：拼历史**必须包含上一轮的 response**——只拼 tool_msgs 不拼 response，模型没看到自己发过的点菜请求，会以为结果是凭空出现的；demo 的写法 `messages = messages + [response] + tool_msgs` 三样一个不少（顺序：旧历史、模型回复、工具回执）。对话历史是只增不改的列表，追加要"带上下文"拼（`messages = messages + [...]`），别只保留新消息。
+
+### ToolMessage
+
+**1. 一句话**：工具回执消息：代码执行完工具后，把结果以消息形式回传给模型——它带着 `tool_call_id` 回执编号，模型靠它把"上菜结果"和"点菜请求"配对。
+
+**2. 签名**：
+
+```python
+from langchain_core.messages import ToolMessage
+```
+
+`inspect.signature(ToolMessage.__init__)` 原文：
+
+```text
+ToolMessage: (self, content: str | list[str | dict[typing.Any, typing.Any]] | None = None, content_blocks: list[langchain_core.messages.content.TextContentBlock | langchain_core.messages.content.InvalidToolCall | langchain_core.messages.content.ReasoningContentBlock | langchain_core.messages.content.NonStandardContentBlock | langchain_core.messages.content.ImageContentBlock | langchain_core.messages.content.VideoContentBlock | langchain_core.messages.content.AudioContentBlock | langchain_core.messages.content.PlainTextContentBlock | langchain_core.messages.content.FileContentBlock | langchain_core.messages.content.ToolCall | langchain_core.messages.content.ToolCallChunk | langchain_core.messages.content.ServerToolCall | langchain_core.messages.content.ServerToolCallChunk | langchain_core.messages.content.ServerToolResult] | None = None, **kwargs: Any) -> None
+```
+
+关键参数：`content`（文本内容）、`content_blocks`（结构化内容块）；ToolMessage 还常用 `tool_call_id=`（经 `**kwargs`）关联到模型发出的工具调用。
+
+**3. 参数表**：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| content | str / list / None | None | 工具执行结果的文本（demo：`"校验结果：合法"`、`"579"`） |
+| content_blocks | list[内容块] | None | 结构化内容块；普通文本不用管 |
+| tool_call_id | str | 回传时必填 | **回执编号**：填模型点菜请求里的 `tc["id"]`，模型靠它把结果和请求配对 |
+
+**4. 最小示例**：
+
+```python
+tool_msg = ToolMessage(content="校验结果：合法", tool_call_id="call_001")
+print("【6.1 三种消息对象与字段】")
+for m in [sys_msg, human_msg, tool_msg]:
+    extra = f"，tool_call_id={m.tool_call_id}" if isinstance(m, ToolMessage) else ""
+    print(f"  {type(m).__name__}: content={m.content!r}, type字段={m.type!r}{extra}")
+print("  ToolMessage 的 tool_call_id = 回执编号，模型靠它把结果和请求配对")
+```
+
+（完整 6.1 代码见 SystemMessage 词条，此处只摘 ToolMessage 相关行；`sys_msg` / `human_msg` 定义在上词条。）
+
+输出（实跑原文）：
+
+```
+【6.1 三种消息对象与字段】
+  SystemMessage: content='你是助手', type字段='system'
+  HumanMessage: content='你好', type字段='human'
+  ToolMessage: content='校验结果：合法', type字段='tool'，tool_call_id=call_001
+  ToolMessage 的 tool_call_id = 回执编号，模型靠它把结果和请求配对
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/extra_langgraph_intro.py:22,93,98,140,143`（93 = 工具节点说明、98 = 真调版回传 ToolMessage）
+- `scripts/phase4_2_tool_calling.py:10,26,76,100,105`（76 = 4.2 回传 `ToolMessage(content=..., tool_call_id=tc["id"])`）
+
+**6. 原理要点**：**`tool_call_id` = 回执编号，模型靠它把上菜结果和点菜请求配对**——模型发出的每条点菜请求（`response.tool_calls` 里的每一项）都带一个 id（`tc["id"]`）；代码执行完回传时，把同一个 id 写进 ToolMessage（demo 7.2：`ToolMessage(content=result, tool_call_id=tc["id"])`），模型一看编号就知道"579 是 123+456 那次请求的结果"。6.1 输出 `tool_call_id=call_001` 是演示编号，真实流程里编号来自模型请求。**一个点菜请求配一条 ToolMessage**——多个工具并行点菜时，每个请求各自一条回执、编号一一对应（demo 7.2 的循环里就是逐条 append）。
+
+**7. 踩坑**：**忘传 tool_call_id = 模型配对不上**——要么报错、要么模型把结果安到错误的请求上；id 必须原样抄模型请求里的 `tc["id"]`，不能自己编（demo 和 4.2 都是 `tool_call_id=tc["id"]` 直取）。另外 content 要**字符串**：工具返回的是函数原值（demo 的 add 返回 int），塞 ToolMessage 前要 `str()` 包一层（坑 #15 的同类问题，第 7 章工具循环词条展开）。
+
+---
+
+# 第 7 章 工具
+
+### @tool
+
+**1. 一句话**：装饰器：把普通 Python 函数变成"工具"——自动生成参数 JSON Schema（模型填参的硬约束）和使用时机描述（模型点不点菜的依据），绑定后模型就能在回复里请求调用它。
+
+**2. 签名**：
+
+```python
+from langchain_core.tools import tool
+
+@tool
+def add(a: int, b: int) -> int:
+    """两个整数相加。当用户需要算加法时调用。"""
+    return a + b
+```
+
+`inspect.signature(tool)` 原文：
+
+```text
+(name_or_callable: str | collections.abc.Callable[..., typing.Any] | None = None, runnable: Optional[langchain_core.runnables.base.Runnable[Any, Any]] = None, *args: Any, description: str | None = None, return_direct: bool = False, args_schema: type[pydantic.main.BaseModel] | type[pydantic.v1.main.BaseModel] | dict[str, typing.Any] | None = None, infer_schema: bool = True, response_format: Literal['content', 'content_and_artifact'] = 'content', parse_docstring: bool = False, error_on_invalid_docstring: bool = True, extras: dict[str, typing.Any] | None = None) -> langchain_core.tools.base.BaseTool | collections.abc.Callable[[typing.Union[collections.abc.Callable[..., typing.Any], langchain_core.runnables.base.Runnable[typing.Any, typing.Any]]], langchain_core.tools.base.BaseTool]
+```
+
+关键参数：直接 `@tool`（无括号）或 `@tool(description=..., args_schema=...)`；`infer_schema` 默认从类型注解推断参数 schema；`parse_docstring` 从 docstring 解析描述；`response_format` 可选 `'content'` 或 `'content_and_artifact'`。
+
+**3. 参数表**（常用参数；其余默认不用管）：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| name_or_callable | str / 函数 | None | 直接 `@tool` 时 = 被装饰的函数本身；`@tool("改名")` 时 = 给工具起别的名字 |
+| description | str | None | 手动指定给模型的描述；不传默认用 docstring（7.1 输出"给模型的描述" = docstring 原文） |
+| args_schema | pydantic 模型 / dict | None | 手动指定参数 Schema；不传则从类型注解推断（配合 infer_schema） |
+| infer_schema | bool | True | 从函数类型注解自动生成参数 JSON Schema（7.1 的 JSON Schema 就是这么来的） |
+| return_direct | bool | False | True = 工具结果直接当最终答复返回（不回传模型）；False（默认）= 回传模型继续推理 |
+| parse_docstring | bool | False | 从 docstring 解析参数级描述；默认 False = docstring 整体当描述 |
+
+**4. 最小示例**：
+
+```python
+@tool
+def add(a: int, b: int) -> int:
+    """两个整数相加。当用户需要算加法时调用。"""
+    return a + b
+
+print("【7.1 @tool：类型注解 → JSON Schema，docstring → 使用时机】")
+print(f"  工具名：{add.name}")
+print(f"  给模型的描述：{add.description}")
+print(f"  JSON Schema：{json.dumps(add.args_schema.model_json_schema(), ensure_ascii=False)}")
+print(f"  代码直接调用：add.invoke({{'a': 1, 'b': 2}}) → {add.invoke({'a': 1, 'b': 2})}")
+```
+
+输出（实跑原文）：
+
+```
+【7.1 @tool：类型注解 → JSON Schema，docstring → 使用时机】
+  工具名：add
+  给模型的描述：两个整数相加。当用户需要算加法时调用。
+  JSON Schema：{"description": "两个整数相加。当用户需要算加法时调用。", "properties": {"a": {"title": "A", "type": "integer"}, "b": {"title": "B", "type": "integer"}}, "required": ["a", "b"], "title": "add", "type": "object"}
+  代码直接调用：add.invoke({'a': 1, 'b': 2}) → 3
+```
+
+**5. 本项目在哪用到**：`scripts/phase4_2_tool_calling.py:41`（validate_field_type——字段校验工具：类型注解 + docstring 与 demo 的 add 同款套路）
+
+**6. 原理要点**：
+
+- **类型注解 → JSON Schema（最可靠的结构化输出）**：7.1 输出里 `"properties": {"a": {"title": "A", "type": "integer"}, "b": {"title": "B", "type": "integer"}}, "required": ["a", "b"]` 就是从 `def add(a: int, b: int) -> int` 自动生成的——参数约束由**代码声明**，不靠模型猜。这就是"最可靠的结构化输出"：模型按 Schema 填参，类型、必填都由 Schema 硬约束，模型填错是它的错，不是代码的错
+- **docstring → 使用时机说明书**：7.1 输出"给模型的描述：两个整数相加。当用户需要算加法时调用。"——docstring 告诉模型**什么时候该用这个工具**，这是模型决定"点不点菜"的依据（4.2 里 validate_field_type 的 docstring 连参数含义都写清了）
+- **装饰后仍是普通对象**：`add.invoke({'a': 1, 'b': 2}) → 3`——代码里想直接调用就调用，不用等模型
+
+**7. 踩坑**：**docstring 不写使用时机 = 模型不知道该不该用它**——描述空着或写实现细节，模型要么不点菜、要么乱点菜；docstring 面向"使用场景"写（何时用、参数是什么含义），不写实现。**类型注解别省**：不写注解也能装饰，但 infer_schema 推断不出参数类型，生成的 Schema 少了类型约束，参数质量全凭模型自觉。深挖见 [phase4_tool_calling.md](phase4_tool_calling.md)。
+
+### .bind_tools
+
+**1. 一句话**：把工具的"签名说明书"（JSON Schema + 描述）发给模型，模型从此能在这段对话里"点菜"式请求调用工具——一次绑定、多次调用；它只发请求，执行还是代码的事（第 2 章只认签名，这里是完整演示）。
+
+**2. 签名**：`inspect.signature` 原文与第 2 章词条相同（经 `ChatOpenAI` 取到；langchain_core 1.4.9 的 `Runnable` 基类上没有这个方法）：
+
+```python
+llm_tools = llm.bind_tools([add])
+```
+
+```text
+(self, tools: 'Sequence[dict[str, Any] | type | Callable | BaseTool]', *, tool_choice: 'dict | str | bool | None' = None, strict: 'bool | None' = None, parallel_tool_calls: 'bool | None' = None, response_format: '_DictOrPydanticClass | None' = None, **kwargs: 'Any') -> 'Runnable[LanguageModelInput, AIMessage]'
+```
+
+关键参数：`tools`（@tool 函数/模型/BaseTool 列表）、`tool_choice`（强制指定工具）；返回 `Runnable[LanguageModelInput, AIMessage]`——绑定后 invoke 返回 AIMessage，点菜单在 `.tool_calls` 里。
+
+**3. 参数表**（只列核心参数）：
+
+| 参数 | 类型 | 默认值 | 干什么用 |
+|------|------|--------|---------|
+| tools | list[函数/BaseTool] | 必填 | 要暴露给模型的工具；`@tool` 装饰的函数直接传入 |
+| tool_choice | dict / str / bool | None | 强制模型调用指定工具；None = 模型自己决定 |
+| strict | bool | None | 严格模式（参数严格按 Schema 校验），默认不设 |
+| parallel_tool_calls | bool | None | 是否允许模型一次点多个菜（并行工具调用），默认不设 |
+
+**4. 最小示例**：
+
+```python
+# 绑定 + 首次调用（demo 节 7 的 7.2 前半段；while 循环见"工具循环"词条）
+llm_tools = llm.bind_tools([add])
+messages = [HumanMessage("帮我算 123 + 456")]
+response = llm_tools.invoke(messages)
+# → 模型不执行，只回一个"点菜单"：response.tool_calls（打印在循环里）
+```
+
+输出（实跑原文，7.2 日志首两行）：
+
+```
+【7.2 bind_tools + 工具循环（模型点菜 → 代码上菜 → 回传 → 汇总）】
+  模型点菜：[('add', {'a': 123, 'b': 456})]
+```
+
+（完整 7.2 输出——代码上菜、最终答复——见"工具循环"词条。）
+
+**5. 本项目在哪用到**：
+
+- `scripts/phase4_2_tool_calling.py:60,61`（`llm.bind_tools([validate_field_type])`——把字段校验工具交给模型）
+- `scripts/demo_api_reference.py:228`（demo 节 7 的 `llm.bind_tools([add])`）
+
+**6. 原理要点**：bind_tools 只做一件事：**把函数的"签名说明书"发给模型**——参数 Schema（怎么填）+ 描述（什么时候用）。之后模型每次回复都可能带 `.tool_calls`（点菜单）：`[('add', {'a': 123, 'b': 456})]`——这是**请求**不是执行：模型只负责"决定要不要算、算哪两个数"，真正执行在代码（见"工具循环"词条）。demo 里温度设 0（`temperature=0`）：工具调用要确定性，别让模型随机发挥。
+
+**7. 踩坑**：`bind_tools` 不在 `Runnable` 基类上（langchain_core 1.4.9 实测 `AttributeError: type object 'Runnable' has no attribute 'bind_tools'`，见第 2 章词条）——直接 `ChatOpenAI(...).bind_tools(...)` 调用。绑定的工具名要对得上执行时的映射表：点菜单里工具名找不到对应函数，执行就 KeyError——4.2 的做法是一张 `FUNC_MAP = {"validate_field_type": validate_field_type}` 名字→函数的表（phase4_2_tool_calling.py:55）。
+
+### 工具循环
+
+**1. 一句话**：手写 while 循环把"模型点菜 → 代码执行 → 结果回传 → 再问模型"转起来，直到模型不再点菜——这是 Function Calling 的标准用法（生产环境用 LangGraph 替代手写循环，但原理就是这段循环）。
+
+**2. 签名**：无函数签名——这是**模式**（手写 while 循环），不是 API 方法：
+
+```python
+while response.tool_calls and rounds < 5:  # 上限防死循环
+    ...
+```
+
+关键参数：循环条件 `response.tool_calls`（模型有点菜请求才进循环）+ `rounds < 5`（5 轮上限防死循环）。
+
+**3. 参数表**：无参数——循环体三个关键动作：
+
+| 动作 | 代码 | 干什么用 |
+|------|------|---------|
+| 执行 | `result = str(add.invoke(tc["args"]))` | **真正执行工具的是你的代码**（模型只发了参数 JSON） |
+| 回传 | `ToolMessage(content=result, tool_call_id=tc["id"])` | 把执行结果写给模型，带上回执编号配对（第 6 章 ToolMessage） |
+| 拼历史 | `messages = messages + [response] + tool_msgs` | 旧历史 + 模型回复 + 工具回执，拼成新历史再发回去（第 6 章 HumanMessage） |
+
+**4. 最小示例**：
+
+```python
+print("\n【7.2 bind_tools + 工具循环（模型点菜 → 代码上菜 → 回传 → 汇总）】")
+llm = ChatOpenAI(
+    model=DEEPSEEK_MODEL,
+    api_key=DEEPSEEK_API_KEY,
+    base_url=DEEPSEEK_BASE_URL,
+    temperature=0,
+)
+llm_tools = llm.bind_tools([add])
+messages = [HumanMessage("帮我算 123 + 456")]
+response = llm_tools.invoke(messages)
+rounds = 0
+while response.tool_calls and rounds < 5:  # 上限防死循环
+    print(f"  模型点菜：{[(tc['name'], tc['args']) for tc in response.tool_calls]}")
+    tool_msgs = []
+    for tc in response.tool_calls:
+        result = str(add.invoke(tc["args"]))  # ← 真正执行的是你的代码
+        tool_msgs.append(ToolMessage(content=result, tool_call_id=tc["id"]))
+        print(f"  代码上菜：{tc['name']}({tc['args']}) → {result}")
+    messages = messages + [response] + tool_msgs
+    response = llm_tools.invoke(messages)
+    rounds += 1
+print(f"  模型最终答复：{response.content}")
+```
+
+输出（实跑原文）：
+
+```
+【7.2 bind_tools + 工具循环（模型点菜 → 代码上菜 → 回传 → 汇总）】
+  模型点菜：[('add', {'a': 123, 'b': 456})]
+  代码上菜：add({'a': 123, 'b': 456}) → 579
+  模型最终答复：123 + 456 = **579**。
+```
+
+**5. 本项目在哪用到**：
+
+- `scripts/phase4_2_tool_calling.py:64,68,77`（run_tool_loop：64 函数定义、68 循环条件带 5 轮上限、77 拼历史）
+- `scripts/demo_api_reference.py:232,239`（demo 节 7 的同款循环：232 循环条件、239 拼历史）
+
+**6. 原理要点**：
+
+- **模型只能请求调用，执行权永远在代码手里（安全边界）**：循环里"执行"就一行 `add.invoke(tc["args"])`——模型发来的只是参数 JSON（`{'a': 123, 'b': 456}`），算 123+456 的是你的代码。这意味着工具能干什么、不能干什么由你定义：模型再怎么"想调用"也碰不到你的文件/网络，除非你专门写一个会碰它们的工具（4.2 的 validate_field_type 只查常量表，零风险）。这是 Function Calling 与"让 AI 直接跑代码"的本质区别，也是它能安全接入业务系统的原因
+- **上限 5 轮防死循环**：循环条件 `rounds < 5`——模型万一反复点菜（陷入"再校验一次"的死循环），5 轮封顶后直接把当前回复当最终答复；没有上限，一次失控对话能无限烧 token
+- **配对靠 tool_call_id**：每条点菜请求带 `tc["id"]`，回传的 ToolMessage 写同一个 id（第 6 章 ToolMessage 词条）——模型据此把上菜结果和点菜请求对上
+- 7.2 的真实流程：`模型点菜：[('add', {'a': 123, 'b': 456})]` → `代码上菜：add({'a': 123, 'b': 456}) → 579` → `模型最终答复：123 + 456 = **579**。`——模型只负责"决定算什么"，结果全部来自代码
+
+**7. 踩坑**：
+
+- **`tool.invoke()` 返回类型不可控，要 `str()` 包一层**（坑 #15）：工具返回什么类型，invoke 就返回什么——demo 的 add 返回 int，而 ToolMessage 的 content 要字符串，所以 `result = str(add.invoke(tc["args"]))` 必须包（demo_api_reference.py:236，注释"← 真正执行的是你的代码"）；4.2 里 validate_field_type 返回 str 也照样包，保证类型干净。这和 StrOutputParser 的 TextAccessor 是同一家族（坑 #15：langchain_core 1.x 返回类型与直觉不符，版本差异照实修）
+- **漏拼历史 = 模型失忆**：每次 invoke 都要把上一轮的 response 和 tool_msgs 追加进 messages 再发（`messages = messages + [response] + tool_msgs`）；漏了哪一样，模型就看不到自己的点菜或你的上菜（第 6 章 HumanMessage 词条）
+- 深挖见 [phase4_tool_calling.md](phase4_tool_calling.md)
