@@ -155,3 +155,22 @@
   - 索引更新
   - 全量验证通过
   - 素材笔记删除
+
+### 专题：聊天助手（Streamlit 聊天窗口 + agent 大脑 + 真调实录）
+- **Status:** complete
+- **Started:** 2026-08-30
+- Actions taken:
+  - 升级 app.py 为聊天窗口：st.chat_message 气泡 / st.chat_input / st.write_stream 打字机 / 侧栏双下载，薄壳原则不变
+  - 新建 scripts/chat_agent.py 大脑：create_react_agent + 两个 @tool（generate_protocol 包整条 rag_chain 回传摘要、validate_field_type 照抄 4.2）+ SYSTEM_PROMPT 四要素；模块级状态（headless CLI 可复用）
+  - AppTest 冒烟：CHAT_FAKE_AGENT=1 假 agent 替身，不真调 API（default_timeout=30 适配冷启动 ~5.2s；file_uploader.set_value 适配 streamlit 1.62.0 元组 API）
+  - 真调实录：demo_chat_cli.py 三轮回话（闲聊 / 生成协议 / 字段校验）真调 DeepSeek，模型自主点菜两次，完整对话存 outputs/chat_demo_transcript.log
+  - 教学文档 lessons/extra_chat_assistant_build.md（三零件拼装 / create_react_agent vs 手写循环对照 / 打字机三规则 / 实跑原文 / 踩坑）+ 索引与规划文件同步
+- Files created/modified:
+  - app.py (modified: 聊天窗口重写)
+  - scripts/chat_agent.py (created)
+  - scripts/demo_app_test.py (created)
+  - scripts/demo_chat_cli.py (created)
+  - outputs/chat_demo_transcript.log (created)
+  - lessons/extra_chat_assistant_build.md (created)
+  - lessons/README.md (modified: 索引)
+  - docs/HANDOFF.md (modified: 待办 #2 完成 / 文件索引)

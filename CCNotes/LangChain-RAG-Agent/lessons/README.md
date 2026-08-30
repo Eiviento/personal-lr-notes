@@ -25,6 +25,7 @@
 | [extra_lcel_explained.md](extra_lcel_explained.md) | LCEL=组装约定（a\|b = 输出接输入）/ 最小演示 / 真实数据流追踪 / 三种组合 / 四个好处 | 全部 phase2/3 脚本 |
 | [extra_langsmith_studio.md](extra_langsmith_studio.md) | LangSmith Studio：图可视化调试器 / 独立 studio_env（3.11）/ 三配置文件 / 踩坑四连（GBK/colorama/PYTHONUTF8） | `scripts/studio_graphs.py` + `langgraph.json` |
 | [extra_chat_agent.md](extra_chat_agent.md) | 对话式 Agent：聊天窗口 = 历史+循环+UI 三零件 / 框架选型（LangGraph/Streamlit/Chainlit/Dify）/ 要不要手搓 | `scripts/demo_chat_loop.py` |
+| [extra_chat_assistant_build.md](extra_chat_assistant_build.md) | 聊天助手构建全解：三零件拼装 / create_react_agent 对照手写循环 / 打字机三规则 / 实跑对话原文 | `scripts/chat_agent.py` + `app.py` + `demo_chat_cli.py` |
 | [langchain_api_reference.md](langchain_api_reference.md) | **API 手册（查词条来这里）**：9 章 26 词条七段式（签名/参数表/真实输出示例/项目出处/原理/踩坑）+ 配套 demo 脚本 | `scripts/demo_api_reference.py` |
 
 约定：

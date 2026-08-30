@@ -27,7 +27,7 @@
 | 2 | LangChain 核心（三大核心/LCEL/Parallel/Parser） | ✅ |
 | 3 | 协议生成工作流（读文件→四步链→三种调用→验收入口） | ✅ |
 | 4 | 增强（RAG 向量检索 / Function Calling / 人在回路） | ✅ |
-| 5 | 部署（Streamlit Web UI / 重试+日志） | ✅（5.3 验收除外，见"卡在哪"） |
+| 5 | 部署（Streamlit 聊天窗口协议助手（create_react_agent + 两工具 + 打字机）/ 重试+日志） | ✅（5.3 验收除外，见"卡在哪"） |
 
 ### 教学层面：全部 18 份代码已精读
 
@@ -53,7 +53,7 @@
 **没有卡点。** 仅剩的未完成事项：
 
 1. **5.3 整体验收**（Phase 5 最后一项）：需要**用户提供一份真实的同事需求文档**，跑 `generate_protocol.py` 全流程。这一步依赖用户出素材。顺带兑现坑 #2：教学用假 Few-shot 示例/模板，届时替换成用户真实协议。
-2. **app.py 的 stream 升级**（可选）：目前 UI 用 invoke（spinner 转圈），可接 `st.write_stream` 做打字机效果（教学时讲过"首字延迟"，用户对 stream 的价值已有认知）。
+2. ✅ **app.py 的 stream 升级**：**已完成**——已随聊天助手升级一并兑现，app.py 现用 `st.write_stream` 打字机（`stream_mode="messages"` 逐 token），详见 `lessons/extra_chat_assistant_build.md` 第四、五节。
 
 ---
 
@@ -99,14 +99,14 @@
 ```
 D:\CC\personal-lr-notes\CCNotes\LangChain-RAG-Agent\
 ├── README.md            # 项目说明、目录结构、快速开始
-├── app.py               # 5.1 Web UI（streamlit run app.py）
+├── app.py               # 聊天窗口协议助手（streamlit run app.py）
 ├── requirements.txt     # 依赖清单（安装注释里有镜像命令）
 ├── langgraph.json       # LangSmith Studio 图入口（pipeline/agent 两图 → studio_graphs.py）
 ├── .env                 # Studio 环境变量（gitignore，纯 ASCII；LANGSMITH_API_KEY 待用户粘贴）
 ├── .gitignore           # models/、rag_db/、__pycache__/、.env 不入库
 ├── docs/                # task_plan（计划）/ progress（进度+错误日志）/ findings（决策）/ HANDOFF（本文）
-├── lessons/             # 00 总纲 / code_walkthrough_×5 精读 / scripts_overview 速查 / extra_× 专题 / API 手册（9 章 26 词条）
-├── scripts/             # 13 核心 + 4 demo + extra_langgraph_intro（各自开头 docstring 就是说明书）
+├── lessons/             # 00 总纲 / code_walkthrough_×5 精读 / scripts_overview 速查 / extra_× 专题（含聊天助手构建全解）/ API 手册（9 章 26 词条）
+├── scripts/             # 13 核心 + 4 demo + extra_langgraph_intro + chat_agent / demo_chat_cli / demo_app_test（各自开头 docstring 就是说明书）
 ├── inputs/              # sample_requirement×2（含 GBK 副本）/ templates/（4 份 RAG 模板素材）
 ├── outputs/             # 全部产物（草稿/终稿/评审/日志）
 ├── models/              # 本地 BGE ONNX（gitignore；重装从 hf-mirror 下载 Xenova/bge-small-zh-v1.5）
