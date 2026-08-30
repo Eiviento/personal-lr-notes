@@ -31,6 +31,8 @@
 | chromadb 文档 | https://docs.trychroma.com/ |
 | DeepSeek API（本项目模型方，OpenAI 兼容接口） | https://api-docs.deepseek.com/ |
 
+> **中文资源**：官方文档以英文为主。中文社区翻译版（内容较新，但可能滞后于英文原版）：[LangChain 教程（docs.langchain.org.cn）](https://docs.langchain.org.cn/) 与 [python.langchain.ac.cn](https://python.langchain.ac.cn/)；[DeepSeek API 文档](https://api-docs.deepseek.com/) 官方本来就是中文；LangGraph 与 chromadb 暂无官方中文版（2026-08-30 实测 /zh/ 404），以英文官方为准。
+
 ## 目录
 
 | 章 | 词条 |
