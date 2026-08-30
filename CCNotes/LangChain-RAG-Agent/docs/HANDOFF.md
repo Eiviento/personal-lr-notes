@@ -106,7 +106,7 @@ D:\CC\personal-lr-notes\CCNotes\LangChain-RAG-Agent\
 ├── .gitignore           # models/、rag_db/、__pycache__/、.env 不入库
 ├── docs/                # task_plan（计划）/ progress（进度+错误日志）/ findings（决策）/ HANDOFF（本文）
 ├── lessons/             # 00 总纲 / code_walkthrough_×5 精读 / scripts_overview 速查 / extra_× 专题（含聊天助手构建全解）/ API 手册（9 章 26 词条）
-├── scripts/             # 13 核心 + 4 demo + extra_langgraph_intro + chat_agent / demo_chat_cli / demo_app_test（各自开头 docstring 就是说明书）
+├── scripts/             # 核心脚本 + demo 系列 + chat_agent / demo_chat_cli / demo_app_test / studio_graphs 等 23 份（各自开头 docstring 就是说明书）
 ├── inputs/              # sample_requirement×2（含 GBK 副本）/ templates/（4 份 RAG 模板素材）
 ├── outputs/             # 全部产物（草稿/终稿/评审/日志）
 ├── models/              # 本地 BGE ONNX（gitignore；重装从 hf-mirror 下载 Xenova/bge-small-zh-v1.5）

@@ -7,6 +7,9 @@ app.py 的同一套大脑（chat_agent），去掉 Streamlit，在控制台里�
 用法：
   python demo_chat_cli.py                              # 交互式
   python demo_chat_cli.py <需求文档> "帮我生成协议" "第一个字段的类型对吗"   # 非交互（实录用）
+
+文档参数判定：第一个"存在且是文件且后缀为 .md/.txt"的参数；其余参数全是问题。
+文档读取复用 phase3_1 的 read_doc（编码自适应：utf-8-sig → utf-8 → gb18030）。
 """
 
 import sys
@@ -15,6 +18,7 @@ from pathlib import Path
 from langchain_core.messages import AIMessage, HumanMessage
 
 from chat_agent import build_chat_agent, set_current_doc, stream_turn
+from phase3_1_doc_input import read_doc
 
 
 def run_scripted(questions: list) -> None:
@@ -56,13 +60,14 @@ def main():
     args = sys.argv[1:]
     doc_path, questions = None, []
     for a in args:
-        if not doc_path and Path(a).exists():
+        p = Path(a)
+        if not doc_path and p.is_file() and p.suffix.lower() in (".md", ".txt"):
             doc_path = a
         else:
             questions.append(a)
 
     if doc_path:
-        set_current_doc(Path(doc_path).read_text(encoding="utf-8", errors="ignore"))
+        set_current_doc(read_doc(doc_path))
         print(f"📄 已加载文档：{doc_path}")
 
     if questions:
