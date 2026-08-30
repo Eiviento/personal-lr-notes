@@ -17,6 +17,20 @@
 
 > 版本差异属正常：不同版本细节（如 StrOutputParser 返回类型）可能不同，以本表基线与实跑输出为准。
 
+## 官方文档
+
+> 本手册讲"本项目怎么用"；查全量参数、进阶用法、最新改动看官方文档（以下链接 2026-08-30 逐一验证可达）：
+
+| 对象 | 官方文档 |
+|------|---------|
+| LangChain 概念与教程（LCEL / 组件指南） | https://docs.langchain.com/oss/python/langchain/overview |
+| LangChain Python API 参考（core 与全部集成包） | https://reference.langchain.com/python/ |
+| langchain-openai 集成包 API 参考 | https://reference.langchain.com/python/langchain-openai/ |
+| LangGraph 文档 | https://langchain-ai.github.io/langgraph/ |
+| LangGraph API 参考 | https://langchain-ai.github.io/langgraph/reference/ |
+| chromadb 文档 | https://docs.trychroma.com/ |
+| DeepSeek API（本项目模型方，OpenAI 兼容接口） | https://api-docs.deepseek.com/ |
+
 ## 目录
 
 | 章 | 词条 |
