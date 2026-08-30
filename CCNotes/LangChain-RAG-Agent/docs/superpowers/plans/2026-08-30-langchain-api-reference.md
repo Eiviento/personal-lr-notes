@@ -289,7 +289,7 @@ def section5_parsers():
     print(f"  结果：{d}")
     print(f"  类型：{type(d).__name__}，d['count'] + 1 = {d['count'] + 1}")
 
-    print("\n【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写 30 行的原理）】")
+    print("\n【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写四道保险的原理）】")
     messy = AIMessage(content='好的，结果如下：\n```json\n{"ok": true}\n```\n以上。')
     print(f"  输入含围栏与废话 → 输出：{JsonOutputParser().invoke(messy)}")
 
@@ -716,7 +716,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 - [ ] **Step 1: 追加第 5 章**
 
-`# 第 5 章 解析`，2 个词条（示例 = demo 节 5；输出抄日志 `节 5` 区间）。StrOutputParser 踩坑段必写：**langchain_core 1.x 返回 TextAccessor（str 子类），判断用 isinstance 别用 type() == str**（坑 #15，demo 5.1 输出有实证）。JsonOutputParser 原理段必写：容错三件套 = 剥围栏 + 截取花括号 + 带证据报错，原理就是 phase1_4 手写的 30 行容错。选型口诀：下游要文本用 Str，要结构化用 Json。
+`# 第 5 章 解析`，2 个词条（示例 = demo 节 5；输出抄日志 `节 5` 区间）。StrOutputParser 踩坑段必写：**langchain_core 1.x 返回 TextAccessor（str 子类），判断用 isinstance 别用 type() == str**（坑 #15，demo 5.1 输出有实证）。JsonOutputParser 原理段必写：容错三件套 = 剥围栏 + 截取花括号 + 带证据报错，原理就是 phase1_4 手写的四道保险。选型口诀：下游要文本用 Str，要结构化用 Json。
 
 - [ ] **Step 2: 追加第 6 章**
 

@@ -3,6 +3,7 @@
 > **查词条来这里**：Ctrl+F 搜类名/方法名直达。每词条七段：一句话 / 签名 / 参数表 / 最小示例（真实输出）/ 项目出处 / 原理要点 / 踩坑。
 > **概念原理**看 [00_beginner_guide.md](00_beginner_guide.md) 与 [extra_*](extra_lcel_explained.md) 专题；**逐行精读**看 code_walkthrough 系列；**按脚本查**看 [scripts_overview.md](scripts_overview.md)。
 > 最小示例的输出来源：`scripts/demo_api_reference.py` 实跑日志 `outputs/demo_api_reference_run.log`（2026-08-30 跑）。
+> 引用约定：输出块已裁掉日志开头的 `RequestsDependencyWarning` 横幅和 `====` 分隔线；内容行逐字保留。
 
 ## 版本基线
 
@@ -102,7 +103,7 @@ except KeyError as e:
 - `scripts/phase2_2_lcel_pipeline.py:36,49`
 - `scripts/phase2_3_output_parsers.py:23,36,49`
 - `scripts/phase3_1_doc_input.py:21,47`
-- `scripts/phase3_2_prompt_chain.py:32,46,59,81`（3.2 四步链的四个 Prompt 全用它）
+- `scripts/phase3_2_prompt_chain.py:32,46,59,81`（3.2 四步链的三个 Prompt 全用它，第④步是 Python 合并，不用 Prompt）
 - `scripts/phase4_1_rag.py:40`
 
 **6. 原理要点**：模板 = 半成品，invoke 只是字符串格式化（不调模型、零成本）；`{变量}` 是占位符，`{{ }}` 是转义（模板里要输出字面花括号——JSON 示例里到处是）；缺变量直接 KeyError 点名，是防漏配的保护机制（3.2 真踩过：assign 挂的键名与占位符不一致 → missing variables）。
@@ -131,7 +132,7 @@ from langchain_openai import ChatOpenAI
 
 关键参数：`__init__` 参数全部经 `**kwargs` 由 pydantic 配置（`model`、`temperature`、`api_key`、`base_url` 等），直接 `ChatOpenAI(model=..., temperature=...)` 调用。
 
-**3. 参数表**（常用构造参数，全表见 2.1 实跑验证）：
+**3. 参数表**（本项目用到的常用参数，取值见 2.1 实跑验证）：
 
 | 参数 | 类型 | 本项目传的值 | 干什么用 |
 |------|------|-------------|---------|
@@ -873,7 +874,7 @@ d = JsonOutputParser().invoke(fake)
 print(f"  结果：{d}")
 print(f"  类型：{type(d).__name__}，d['count'] + 1 = {d['count'] + 1}")
 
-print("\n【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写 30 行的原理）】")
+print("\n【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写四道保险的原理）】")
 messy = AIMessage(content='好的，结果如下：\n```json\n{"ok": true}\n```\n以上。')
 print(f"  输入含围栏与废话 → 输出：{JsonOutputParser().invoke(messy)}")
 ```
@@ -885,7 +886,7 @@ print(f"  输入含围栏与废话 → 输出：{JsonOutputParser().invoke(messy
   结果：{'name': '测试', 'count': 3}
   类型：dict，d['count'] + 1 = 4
 
-【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写 30 行的原理）】
+【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写四道保险的原理）】
   输入含围栏与废话 → 输出：{'ok': True}
 ```
 
@@ -904,7 +905,7 @@ print(f"  输入含围栏与废话 → 输出：{JsonOutputParser().invoke(messy
 **6. 原理要点**：
 
 - **容错三件套 = 剥围栏 + 截取花括号 + 带证据报错**：模型爱给 JSON 裹代码围栏（`` ```json `` 开头、`` ``` `` 结尾）、爱在前后加废话——5.3 输入 ``好的，结果如下：\n```json\n{"ok": true}\n```\n以上。`` 照样解析出 `{'ok': True}`。三步：① 剥掉开头结尾的围栏；② 截取第一个 `{` 到最后一个 `}` 之间的部分（废话全丢）；③ 两步都不行时**带原始输出一起报错**——报错里能看到模型原话，方便定位是格式问题还是内容问题
-- **原理就是 phase1_4 手写的 30 行容错**：`scripts/phase1_4_req_to_protocol.py:128-149` 的 `_parse_response` 就是这三件事的手写版（精读见 [code_walkthrough_phase1.md](code_walkthrough_phase1.md) 第 4 块）——后来被 JsonOutputParser 替代，原理一字不差
+- **原理就是 phase1_4 手写的四道保险（剥围栏 → 截取花括号 → 带证据报错）**：`scripts/phase1_4_req_to_protocol.py:128-149` 的 `_parse_response` 就是这三件事的手写版（精读见 [code_walkthrough_phase1.md](code_walkthrough_phase1.md) 第 4 块）——后来被 JsonOutputParser 替代，原理一字不差
 - **选型口诀：下游要文本用 Str，要结构化用 Json**——4.1~4.3 只要"把话说出来"（打印、拼接），用 StrOutputParser；2.2 三个校验分支、3.2 四步链要拿字段表继续加工（5.2 的 `d['count'] + 1 = 4` 就是拿解析结果当数据用），用 JsonOutputParser
 
 **7. 踩坑**：容错只救"包裹"问题，救不了 **JSON 本身畸形**（缺引号、多逗号）——那是 `json.loads` 层面的错误，三件套兜不住。根治手段在提示词：让模型"只输出 JSON、不要解释"能大幅减少容错需求（5.3 演示的就是最常见的不合法形态）。带证据报错是这套容错的第三步：phase1_4 手写版是 `ValueError(f"无法解析 LLM 输出为 JSON，原始输出：\n{raw}")`——解析失败必须把模型原文带出来，否则无从排查。深挖见 [code_walkthrough_phase2.md](code_walkthrough_phase2.md)（精读 4：Parser 三路对比）。

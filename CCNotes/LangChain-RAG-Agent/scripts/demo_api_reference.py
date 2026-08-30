@@ -178,7 +178,7 @@ def section5_parsers():
     print(f"  结果：{d}")
     print(f"  类型：{type(d).__name__}，d['count'] + 1 = {d['count'] + 1}")
 
-    print("\n【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写 30 行的原理）】")
+    print("\n【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写四道保险的原理）】")
     messy = AIMessage(content='好的，结果如下：\n```json\n{"ok": true}\n```\n以上。')
     print(f"  输入含围栏与废话 → 输出：{JsonOutputParser().invoke(messy)}")
 

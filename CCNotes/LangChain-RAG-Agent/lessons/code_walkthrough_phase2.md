@@ -10,7 +10,7 @@
 | 新导入 | 替代的原生物 |
 |--------|-------------|
 | `ChatPromptTemplate`（langchain_core.prompts） | `SYSTEM_PROMPT` 字符串 + 手拼 messages |
-| `JsonOutputParser`（langchain_core.output_parsers） | `_parse_response` 30 行容错 |
+| `JsonOutputParser`（langchain_core.output_parsers） | `_parse_response` 四道保险容错 |
 | `ChatOpenAI`（langchain_openai） | `OpenAI()` + `.chat.completions.create` |
 
 配置区与 phase1_4 完全一致（环境变量 Key、DeepSeek base_url）——换模型只改参数，从此兑现。
@@ -24,7 +24,7 @@
 ### 第 C 块：三件套组装（75~110 行）
 
 - `ChatOpenAI`：创建+调用打包成统一盒子，参数与原生完全一样（底层还是 OpenAI 协议）
-- `JsonOutputParser()`：30 行变 1 行——不是魔法，是"常见坑被 LangChain 打包维护"，你手写过所以知道它挡什么
+- `JsonOutputParser()`：四道保险变 1 行——不是魔法，是"常见坑被 LangChain 打包维护"，你手写过所以知道它挡什么
 - `chain = PROMPT | llm | parser`：三个不同类型盒子凭**统一接口**拼成 RunnableSequence（透视实验：`.steps` 依次是 ChatPromptTemplate / ChatOpenAI / JsonOutputParser）
 - 框架边界：打印、try/except、存文件**不被框架吸收**——框架帮通用，不替业务
 
@@ -129,7 +129,7 @@
 | 2 Str | `... \| StrOutputParser()` | `TextAccessor`——**str 的子类**（`isinstance str: True`），带懒转换方法 | 文本给人看/写文档/拼接 |
 | 3 Json | `... \| JsonOutputParser()` | `dict` | 数据给程序算 |
 
-彩蛋：LangChain 1.x 的 StrOutputParser 返回 `TextAccessor` 而非 `str`——判断类型用 `isinstance` 不用 `type()`。JsonOutputParser 内部就是 phase1_4 手写的 30 行容错（剥围栏 + json.loads）。
+彩蛋：LangChain 1.x 的 StrOutputParser 返回 `TextAccessor` 而非 `str`——判断类型用 `isinstance` 不用 `type()`。JsonOutputParser 内部就是 phase1_4 手写的四道保险（剥围栏 → loads → 截取花括号 → 带证据报错）。
 
 选型口诀：**下游要文本用 Str，要结构化用 Json**。
 
@@ -141,7 +141,7 @@
 |----|------|------|
 | A 导入配置 | 新面孔 `StrOutputParser` | 与 JsonOutputParser 同族 |
 | B 两份说明书 | `SUMMARY_PROMPT`（要纯文本）vs `JSON_PROMPT`（要 JSON） | **说明书的目的决定输出形态**——Parser 解析的 JSON 是说明书先要求出来的 |
-| C 三条链 | 唯一区别是"最后装了什么"：不装 / Str / Json | 路1 AIMessage（文字在 `.content`，对象还装元数据）；路2 TextAccessor（str 子类，用 `isinstance` 判断）；路3 dict（内部原理 = phase1_4 手写的 30 行容错，标准化成积木） |
+| C 三条链 | 唯一区别是"最后装了什么"：不装 / Str / Json | 路1 AIMessage（文字在 `.content`，对象还装元数据）；路2 TextAccessor（str 子类，用 `isinstance` 判断）；路3 dict（内部原理 = phase1_4 手写的四道保险，标准化成积木） |
 | D main | 默认需求值 / 函数内 import os / 双文件保存 | 演示脚本给默认值 vs 工具脚本要参数 |
 
 自测：① 模型为什么返回对象而不是字符串？② TextAccessor 用 `type()==str` 判断对不对？③ JsonOutputParser 的原理在哪份脚本手写过？

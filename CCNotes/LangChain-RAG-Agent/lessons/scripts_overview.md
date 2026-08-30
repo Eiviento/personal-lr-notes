@@ -22,7 +22,7 @@
   → json.dump 存 outputs/protocol_output.json（全程 try/except 兜底）
 ```
 
-**总结**：整个项目的地基——不装任何框架，纯 openai SDK 调 DeepSeek。先手写一遍（手拼消息、30 行容错、try 兜底），后面 LangChain 的每个盒子替代了什么就一目了然。
+**总结**：整个项目的地基——不装任何框架，纯 openai SDK 调 DeepSeek。先手写一遍（手拼消息、四道保险、try 兜底），后面 LangChain 的每个盒子替代了什么就一目了然。
 
 ---
 
@@ -35,7 +35,7 @@
 命令行 argv[1]
   → 三盒子：PROTOCOL_PROMPT（模板，{requirement} 占位符）
              llm（ChatOpenAI 统一接口）
-             parser（JsonOutputParser，= phase1_4 的 30 行容错）
+             parser（JsonOutputParser，= phase1_4 的四道保险）
   → chain = PROTOCOL_PROMPT | llm | parser      ← LCEL 管道声明
   → main: chain.invoke({"requirement": ...})    ← 一行 = 填模板+调API+解析
   → print_table() → 存 outputs/protocol_output_langchain.json

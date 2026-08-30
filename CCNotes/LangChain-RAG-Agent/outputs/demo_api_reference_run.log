@@ -74,7 +74,7 @@ E:\software\OfficeWorkLife\Anaconda\envs\agent_env\lib\site-packages\requests\__
   结果：{'name': '测试', 'count': 3}
   类型：dict，d['count'] + 1 = 4
 
-【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写 30 行的原理）】
+【5.3 JsonOutputParser 的容错：剥代码围栏 + 截取花括号（= phase1_4 手写四道保险的原理）】
   输入含围栏与废话 → 输出：{'ok': True}
 
 ======================================================================

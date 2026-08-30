@@ -12,7 +12,7 @@
 ```python
 response = client.chat.completions.create(model="deepseek-chat", messages=[...])  # 手拼消息
 raw = response.choices[0].message.content.strip()          # 拿字符串
-result = _parse_response(raw)                              # 手写 30 行 JSON 容错
+result = _parse_response(raw)                              # 手写四道保险 JSON 容错
 ```
 
 痛点：手拼消息串、手写解析容错、手写重试、换模型要改一大片代码、逻辑全揉在一个函数里没法复用。**LangChain 就是来解决这些痛点的积木箱。**
