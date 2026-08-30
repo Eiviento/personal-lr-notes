@@ -17,7 +17,7 @@
 import json
 import os
 
-from langchain_core.messages import AIMessageChunk
+from langchain_core.messages import AIMessageChunk, SystemMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
@@ -98,9 +98,20 @@ def stream_turn(agent, messages):
     """跑一轮并逐段产出。过滤规则：
     - AIMessageChunk 的 tool_calls → "🔧 调用工具 X（参数）" 标记（按 tool_call id 去重）
     - AIMessageChunk 的 str content → 逐 token 产出（最终答复）
-    - ToolMessage 的 content → 不上屏（执行细节不打扰用户）"""
+    - ToolMessage 的 content → 不上屏（执行细节不打扰用户）
+    文档已加载时，给这轮推理加一条临时系统提示（不进历史）：
+    模型不知道代码里的 _current_doc，不提示就会问"有没有文档"而不是直接点菜。"""
+    input_msgs = list(messages)
+    if _current_doc:
+        input_msgs.insert(
+            0,
+            SystemMessage(
+                "【环境提示】当前已加载一份需求文档。用户要求生成协议时，"
+                "直接调用 generate_protocol 工具（不传参数）；需要确认文档内容细节时再问用户。"
+            ),
+        )
     seen = set()
-    for chunk, _ in agent.stream({"messages": messages}, stream_mode="messages"):
+    for chunk, _ in agent.stream({"messages": input_msgs}, stream_mode="messages"):
         if isinstance(chunk, AIMessageChunk):
             for tc in chunk.tool_calls or []:
                 cid = tc.get("id")

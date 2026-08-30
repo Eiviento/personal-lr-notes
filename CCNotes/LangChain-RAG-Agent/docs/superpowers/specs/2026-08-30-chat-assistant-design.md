@@ -81,14 +81,18 @@ st.write_stream 打字机（stream_mode="messages" 逐 token）
 
 ### 4.3 打字机
 
-- `stream_mode="messages"` 出 token 级 chunk（含 tool 消息的 chunk 与 metadata-only chunk，用 `chunk.content` 过滤）
-- 工具执行期间模型不吐字（tool chunk 被过滤），工具跑完后最终答复才开始打字——这本身就是"思考→执行→回答"的可见节奏；v1 不做工具调用过程可视化，LangSmith Studio 里能看完整轨迹
+- `stream_mode="messages"` 出 token 级 chunk；`stream_turn` 过滤规则：AIMessageChunk 的 tool_calls → 输出"🔧 调用工具 X（参数）"标记（按 tool_call id 去重）；str 内容 → 逐 token 输出；ToolMessage 的 content 不上屏
+- 这样打字机里能看到完整节奏：模型思考（点菜标记）→ 工具执行 → 最终答复逐字输出——"思考→执行→回答"可见化，LangSmith Studio 里还能看更细轨迹
 - 首字延迟教学：聊天场景打字机有感（3.3/demo_stream_feel 的结论）
 
 ### 4.4 错误处理
 
 - 工具内不抛异常（返回错误文本让模型转述）——工具错误由框架回传模型，模型自己解释
 - UI 层 try/except：agent 崩溃（网络/限流）→ st.error 友好提示（沿用 5.2 的"快速失败+友好报错"原则）
+
+### 4.5 文档已加载信号
+
+- stream_turn 在 _current_doc 存在时给推理输入前置一条临时 SystemMessage（不进历史）——模型不知道代码里的状态，让它点菜必须先告诉它。
 
 ## 五、验证标准（完成定义）
 
