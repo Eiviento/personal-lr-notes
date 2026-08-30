@@ -198,7 +198,7 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 
 ### 第 1 轮：闲聊问答（无工具）
 
-```
+~~~
 📄 已加载文档：../inputs/sample_requirement.md
 👤 用户：你好，简单介绍下你自己
 🤖 助手：你好！我是你的**协议规范助手**，专门服务于通信协议工程师。😊
@@ -217,13 +217,13 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 
 有什么协议相关的问题，尽管问我吧！🚀
 ============================================================
-```
+~~~
 
 **模型在这一步做了什么**：识别这是自我介绍请求，**没点菜**（无 🔧 标记），直接按 SYSTEM_PROMPT 的角色和输出格式组织答复——能力清单 + 表格优先 + 使用小贴士。注意"完整规范可以在**侧栏下载**"：这是模型从 SYSTEM_PROMPT 学的说法，但 CLI 里并没有侧栏——**真实模型行为，原样保留**（模型把"网页版"的话术带到了控制台，说明输出格式要素生效了）。
 
 ### 第 2 轮：帮我生成协议（点菜 generate_protocol）
 
-```
+~~~
 👤 用户：帮我生成协议
 🤖 助手：好的，我来帮你生成协议。不过我需要先确认一下手头有没有需求内容。
 
@@ -341,7 +341,7 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 
 如果你需要调整字段、补充校验规则，或者对某个字段做类型校验，随时告诉我！
 ============================================================
-```
+~~~
 
 **模型在这一步做了什么**（顺序即实录顺序）：
 
@@ -351,7 +351,7 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 
 ### 第 3 轮：字段校验（点菜 validate_field_type）
 
-```
+~~~
 👤 用户：第一个字段的类型和字节数对吗
 🤖 助手：我来帮你校验第一个字段 `msg_type` 的类型和字节数是否匹配。
 
@@ -372,7 +372,7 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 
 需要我继续校验其他字段吗？比如 `temperature`（int16）或 `humidity`（uint8）等，随时告诉我！😊
 ============================================================
-```
+~~~
 
 **模型在这一步做了什么**：识别这是字段校验请求 → **点菜** `validate_field_type`（同样的 `（{}）` 流式工件，实际参数正确传入了字段名/类型/字节数，工具从 phase4_2 原样复用）→ 工具返回校验结论 → 模型把结论整理成表格答复（表格优先 + 主动追问）。整轮"点菜 → 执行 → 答复"节奏和 4.2 手写循环时的表现一致，只是循环由 create_react_agent 封装了。
 
