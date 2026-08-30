@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 models/
 rag_db/
+.env
+.langgraph_api/

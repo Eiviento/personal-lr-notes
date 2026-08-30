@@ -36,7 +36,7 @@
   - `lessons/code_walkthrough_phase1~5.md`：逐块精读（含用户追问的概念修正，如 f-string vs 占位符的准确区别、stream 首字延迟）
   - `lessons/scripts_overview.md`：全部代码速查（每份一张调用流程图 + 一句话总结）
   - `lessons/00_beginner_guide.md`：零基础总纲
-  - `lessons/extra_*.md`：专题（LCEL 详解、LangChain vs LangGraph、RAG、工具调用、人工审核）
+  - `lessons/extra_*.md`：专题（LCEL 详解、LangChain vs LangGraph、RAG、工具调用、人工审核、LangSmith Studio）
   - `lessons/langchain_api_reference.md`：API 手册（9 章 26 词条七段式，查词条入口）
 - 途中用户自己设计出了"并行分支 + 合并汇总"模式（demo_parallel_merge.py，实测效果超过串行链）
 
@@ -89,6 +89,8 @@
 | 13 | 变量名记混（phase2_1 的 `chain` ≠ phase2_2 的 `full_chain`）；RunnableParallel 分支表在 `.steps__`（双下划线） | 演示/引用前先验证，报错信息里的 "Did you mean" 就是答案 |
 | 14 | 讲 stream 说"更快" | 准确说法：总耗时一样，差别是**首字延迟**（用户追问过"没感觉"） |
 | 15 | langchain_core 1.x 细节：StrOutputParser 返回 `TextAccessor`（str 子类，用 isinstance 判断）；`tool.invoke()` 返回 str 用 `str()` 包 | 版本差异属正常，报错照实修 |
+| 16 | `langgraph dev` 要求 Python 3.11+，agent_env 是 3.10 装不上 | Studio 用独立 conda `studio_env`（3.11 + langgraph-cli[inmem] + langchain 系 + colorama），不动主环境 |
+| 17 | 中文 Windows 跑 langgraph dev 连炸三连：dotenv 按 GBK 读 .env / structlog 缺 colorama / langgraph-api 读包内文件按 GBK | `.env` 纯 ASCII；`pip install colorama`；启动命令加 `PYTHONUTF8=1` |
 
 ---
 
@@ -99,7 +101,9 @@ D:\CC\personal-lr-notes\CCNotes\LangChain-RAG-Agent\
 ├── README.md            # 项目说明、目录结构、快速开始
 ├── app.py               # 5.1 Web UI（streamlit run app.py）
 ├── requirements.txt     # 依赖清单（安装注释里有镜像命令）
-├── .gitignore           # models/、rag_db/、__pycache__/ 不入库
+├── langgraph.json       # LangSmith Studio 图入口（pipeline/agent 两图 → studio_graphs.py）
+├── .env                 # Studio 环境变量（gitignore，纯 ASCII；LANGSMITH_API_KEY 待用户粘贴）
+├── .gitignore           # models/、rag_db/、__pycache__/、.env 不入库
 ├── docs/                # task_plan（计划）/ progress（进度+错误日志）/ findings（决策）/ HANDOFF（本文）
 ├── lessons/             # 00 总纲 / code_walkthrough_×5 精读 / scripts_overview 速查 / extra_× 专题 / API 手册（9 章 26 词条）
 ├── scripts/             # 13 核心 + 4 demo + extra_langgraph_intro（各自开头 docstring 就是说明书）

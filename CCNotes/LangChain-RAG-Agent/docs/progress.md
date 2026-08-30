@@ -99,6 +99,24 @@
   - extra_langgraph_intro.py (created)
   - outputs/langgraph_demo_result.json (created)
 
+### 专题：LangSmith Studio 安装
+- **Status:** complete
+- **Started:** 2026-08-30
+- Actions taken:
+  - 调研现状：macOS 桌面版已废弃；官方形态 = 网页 Studio + 本地服务，`langgraph dev` 免 Docker
+  - 安装踩坑四连并全部解决：agent_env 3.10 装不了 [inmem]（建 studio_env 3.11）→ dotenv 按 GBK 读 .env 炸（改纯 ASCII）→ structlog 缺 colorama（补装）→ langgraph-api 读文件按 GBK 炸（PYTHONUTF8=1）
+  - 建 langgraph.json + scripts/studio_graphs.py（模块级编译图 pipeline/agent）+ .env（gitignore）
+  - 冒烟测试通过：/ok 返回 {"ok":true}，/assistants/search 两图（agent/pipeline）注册成功
+  - 知识点落盘 lessons/extra_langsmith_studio.md；HANDOFF 坑表新增 #16/#17
+- Files created/modified:
+  - langgraph.json (created)
+  - scripts/studio_graphs.py (created)
+  - .env (created, gitignored)
+  - .gitignore (modified: .env)
+  - lessons/extra_langsmith_studio.md (created)
+  - lessons/README.md (modified: 索引)
+  - docs/HANDOFF.md (modified: 坑表/产物/文件索引)
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
