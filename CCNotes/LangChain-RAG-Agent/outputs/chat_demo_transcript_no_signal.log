@@ -1,0 +1,5 @@
+E:\software\OfficeWorkLife\Anaconda\envs\agent_env\lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (6.0.0.post1)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+👤 用户：帮我生成协议
+🤖 助手：我需要先确认一下需求内容。请问您是否已经上传了需求文档？如果没有，请把需求内容直接贴出来，我就可以为您生成协议规范。
+exit=0

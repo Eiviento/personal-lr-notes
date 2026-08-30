@@ -17,7 +17,7 @@
 
 ```
 聊天窗口（st.chat_input / st.chat_message 气泡渲染历史）
-   │ messages 存 st.session_state（重跑不丢）
+   │ 历史 messages 存 session_state（重跑不丢）
    ▼
 create_react_agent(llm, tools=[generate_protocol, validate_field_type], prompt=SYSTEM)
    │ 模型"思考"：要不要调工具？
@@ -42,25 +42,25 @@ st.write_stream 打字机（stream_mode="messages" 逐 token）
 
 - `generate_protocol(requirement: str) -> str`（@tool）：
   - docstring 告诉模型使用时机："用户要求生成/起草协议时调用。参数可选，不传则用当前已上传的文档。"
-  - 参数为空 → 读 `st.session_state["current_doc"]`；仍为空 → 返回错误文本"还没有上传需求文档"（让模型转述给用户，而非抛异常）
+  - 参数为空 → 读模块级 `_current_doc`（由 `chat_agent.set_current_doc()` 注入）；仍为空 → 返回错误文本"还没有上传需求文档"（让模型转述给用户，而非抛异常）
   - 执行：`rag_chain.invoke({"requirement": text})`（4.1 的链，默认带 RAG）
   - 返回：紧凑摘要文本（协议名 / 字段清单 name:type / 约束条数 / 评审 warning 条数）——长结果不整段塞回模型（省 token）
-  - 副作用：完整结果 + render_markdown 存 `st.session_state["last_protocol"]` / `["last_md"]`（下载按钮用）
+  - 副作用：完整结果存模块级 `_last_result`，app.py 用 `chat_agent.get_last_protocol()` 读取（下载按钮用；render_markdown 在 app.py 侧调用）
 - `validate_field_type(field_name, field_type, length)`：从 `phase4_2_tool_calling` 导入，不改一行
 - `SYSTEM_PROMPT`：协议助手人设（四要素：角色=资深协议工程师助手；指令=可聊天可办事，生成协议用工具；上下文=已上传文档情况由工具自己读；输出格式=中文、简洁、表格优先）
 - `build_chat_agent()`：`create_react_agent(llm, [两个工具], prompt=SYSTEM_PROMPT)`；llm 复用 `phase3_2_prompt_chain.llm`（或重建同参数实例，避免跨脚本耦合——用重建，参数同 2.1）
 
 ### app.py 接口
 
-- `st.chat_message("user"/"assistant")` 渲染 `st.session_state["messages"]`（Human/AIMessage 对，SystemMessage 由 create_react_agent 内部挂）
-- 上传控件在聊天框上方：`decode_doc`（沿用现有编码自适应）→ 存 `session_state["current_doc"]` → `st.info` 提示已加载
+- `st.chat_message("user"/"assistant")` 渲染历史 messages（Human/AIMessage 对，app.py 存 session_state；SystemMessage 由 create_react_agent 内部挂）
+- 上传控件在聊天框上方：`decode_doc`（沿用现有编码自适应）→ `chat_agent.set_current_doc()` 注入模块级状态 → `st.info` 提示已加载
 - `st.chat_input` 新消息 → 追加 HumanMessage → 流式生成：
   ```python
   def stream_agent(agent, messages):
       for chunk, _ in agent.stream({"messages": messages}, stream_mode="messages"):
           if chunk.content:
               yield chunk.content
-  full = st.write_stream(stream_agent(agent, st.session_state["messages"]))
+  full = st.write_stream(stream_agent(agent, history_messages))  # history_messages：app.py 持有的历史（Human/AIMessage 列表，存 session_state）
   ```
   `st.write_stream` 返回值 = 完整文本 → 追加 AIMessage(full) 进历史
 - 侧栏：`last_protocol` 存在时显示 JSON / Markdown 双下载（沿用现有 render_markdown）
@@ -70,7 +70,7 @@ st.write_stream 打字机（stream_mode="messages" 逐 token）
 
 ### 4.1 会话历史
 
-- `st.session_state["messages"] = []` 初始化（Human/AIMessage 两类）
+- app.py 初始化历史 `messages = []`（Human/AIMessage 两类，存 session_state）
 - 每轮：`messages = messages + [HumanMessage(q)]` → 全量传给 agent → 追加 AIMessage(full)
 - 历史本质已在 `lessons/extra_chat_agent.md` 三、讲清，构建文档引用之
 
