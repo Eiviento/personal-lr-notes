@@ -28,6 +28,7 @@
 | [extra_chat_assistant_build.md](extra_chat_assistant_build.md) | 聊天助手构建全解：三零件拼装 / create_react_agent 对照手写循环 / 打字机三规则 / 实跑对话原文 | `scripts/chat_agent.py` + `app.py` + `demo_chat_cli.py` |
 | [langchain_api_reference.md](langchain_api_reference.md) | **API 手册（查词条来这里）**：9 章 26 词条七段式（签名/参数表/真实输出示例/项目出处/原理/踩坑）+ 配套 demo 脚本 | `scripts/demo_api_reference.py` |
 | [extra_mcp.md](extra_mcp.md) | MCP：工具/数据的 USB-C 标准插头 / 架构三件套 / 三原语 / 与 Function Calling 对比 / 实操走查（零 LLM 成本） | `scripts/demo_mcp_server.py` + `demo_mcp_client.py` |
+| [extra_thread_vs_coroutine.md](extra_thread_vs_coroutine.md) | **基础补课**：线程 vs 协程（MCP/async 代码的地基）——厨房类比 / 对比表 / GIL / 三实验实测 / 三大坑 / 读懂 MCP 客户端的 async 行 | `scripts/extra_thread_vs_coroutine.py` |
 
 约定：
 - 每个文档 = 知识点（表格优先）+ 为什么（原理）+ 踩过的坑
