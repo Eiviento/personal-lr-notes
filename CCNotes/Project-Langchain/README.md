@@ -21,7 +21,7 @@
 |-------|------|------|
 | 0 | 项目骨架 + API 探针核验 | 🔄 进行中 |
 | 1 | 拆开黑盒：白盒 ReAct（手写 StateGraph 对照 create_react_agent） | ✅ |
-| 2 | 阀门与护栏（recursion_limit / 超时 / 错误回流 / 死循环治理） | ⬜ |
+| 2 | 阀门与护栏（recursion_limit / 重复熔断 / 异常回流） | ✅ |
 | 3 | 记忆与状态（checkpointer 持久化 / 多会话 / token 治理） | ⬜ |
 | 4 | 可靠性与人在回路（interrupt 退款审批 / 防幻觉验证） | ⬜ |
 | 5 | 观察与评估（eval 集 / 单变量回归调优） | ⬜ |
