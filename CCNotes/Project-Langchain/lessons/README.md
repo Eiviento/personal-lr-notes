@@ -4,7 +4,7 @@
 
 | 文档 | 覆盖内容 | 对应脚本 |
 |------|---------|---------|
-| lesson_agent1_whitebox.md（W1 待写） | 拆开黑盒：agent=循环 / StateGraph 三件套 / 手写 vs create_react_agent | `scripts/agent1_whitebox.py` |
+| lesson_agent1_whitebox.md | 拆开黑盒：agent=循环（LLM 调用=工具执行+1）/ 运行时图揭示 4 节点 4 边 / 手写白盒对照 / 检索漏检案例 | `scripts/agent1_whitebox.py` |
 | lesson_agent2_guardrails.md（W2 待写） | 阀门与护栏：recursion_limit / 超时 / 错误回流 / 死循环治理 | `scripts/agent2_guardrails.py` |
 | lesson_agent3_memory.md（W3 待写） | 记忆与状态：checkpointer / 多会话 / token 治理 | `scripts/agent3_memory.py` |
 | lesson_agent4_reliability.md（W4 待写） | 可靠性与人在回路：interrupt 人工审批 / 防幻觉 | `scripts/agent4_interrupt.py` |
