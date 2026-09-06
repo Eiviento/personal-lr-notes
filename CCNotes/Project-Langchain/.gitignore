@@ -1,0 +1,15 @@
+# 密钥——永不入库
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# 运行时产物（教学证据的结论性内容落盘 lessons/ 而非 outputs/）
+outputs/
+
+# agent 运行时状态
+.rivet/
+
+# 本地测试临时
+tests/tmp/
