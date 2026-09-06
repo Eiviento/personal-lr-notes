@@ -4,6 +4,7 @@
 
 | 文档 | 覆盖内容 | 对应脚本 |
 |------|---------|---------|
+| qa_notes_20260906.md | **学习日志（2026-09-06）**：用户问题链 Q&A×12（tool vs MCP / 黑盒白盒 / call_model / 条件边等）+ Python 语法速查 + LangGraph 概念速查——后续知识手册生长点 | 全部 |
 | lesson_agent1_whitebox.md | 拆开黑盒：agent=循环（LLM 调用=工具执行+1）/ 运行时图揭示 4 节点 4 边 / 手写白盒对照 / 检索漏检案例 | `scripts/agent1_whitebox.py` |
 | lesson_agent2_guardrails.md | 阀门与护栏：recursion_limit 大坝 / 重复熔断闸门 / 异常回流（默认只兜 ToolInvocationError 的实测坑） | `scripts/agent2_guardrails.py` |
 | lesson_agent3_memory.md（W3 待写） | 记忆与状态：checkpointer / 多会话 / token 治理 | `scripts/agent3_memory.py` |
