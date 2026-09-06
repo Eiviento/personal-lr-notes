@@ -26,3 +26,8 @@
 ### F4: 无头 worker 读不了 E:\site-packages
 - **事实**：两个 code_scout 因 E: 越出工作区被结构性阻断（无审批通道）。
 - **应对**：教学源码取证一律用 `inspect.getsource`（运行时拿源码文本），绕过文件授权。
+
+### F7: SqliteSaver 装包决策落地（2026-09-06，W3）
+- **决策**：用户同意 → `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple langgraph-checkpoint-sqlite` 已装，版本 **3.1.1**。
+- **实测 API 形态**（import + inspect）：`langgraph.checkpoint.sqlite` 仅导出**同步 `SqliteSaver`**，**无 `AsyncSqliteSaver`**；`SqliteSaver.from_conn_string(conn_string)` 是**生成器工厂**（返回 `Iterator[SqliteSaver]`），用法 `with SqliteSaver.from_conn_string(...) as saver:`。与 0.x 教程的 `SqliteSaver(conn)` 构造不同，教学代码按 3.x 形态写。
+- **probe_api.py 基线已更新**：SqliteSaver expected False→True；AsyncSqliteSaver 保持 False（包未导出）。探针验证 exit 0 = 与新基线一致。

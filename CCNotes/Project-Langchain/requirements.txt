@@ -7,4 +7,5 @@ langchain>=1.3
 langchain-openai>=1.3
 langgraph>=1.2
 langgraph-prebuilt>=1.1
+langgraph-checkpoint-sqlite>=3
 python-dotenv

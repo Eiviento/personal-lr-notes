@@ -7,10 +7,11 @@ Agent 深度研学项目 API 基线探针（W0 硬闸门资产）
 用法（Windows 控制台必须 UTF-8 前缀）：
   PYTHONIOENCODING=utf-8 <agent_env python> scripts/probe_api.py
 
-基线说明（2026-09-06 实测）：
-  - langgraph.checkpoint.sqlite 在 1.2.9 主包中不存在（SqliteSaver 拆分到独立包
-    langgraph-checkpoint-sqlite，agent_env 未装）——属已知缺失，expected=False。
-    若将来安装该包，本探针会红并提示更新基线（即 W3 持久化方案的决策点信号）。
+基线说明（2026-09-06 更新）：
+  - 初版：langgraph.checkpoint.sqlite 在 1.2.9 主包中不存在（SqliteSaver 拆分到独立包）。
+  - W3 决策落地：已 pip 安装 langgraph-checkpoint-sqlite 3.1.1（清华镜像，用户同意）。
+    实测该版本仅导出同步 SqliteSaver（from_conn_string 生成器工厂），无 AsyncSqliteSaver。
+    故 SqliteSaver expected=True，AsyncSqliteSaver expected=False（保持缺失预期）。
 """
 
 import importlib
@@ -24,8 +25,8 @@ EXPECTED: dict[tuple[str, str], bool] = {
     ("langchain.agents", "create_agent"): True,
     ("langgraph.checkpoint.memory", "MemorySaver"): True,
     ("langgraph.checkpoint.memory", "InMemorySaver"): True,
-    ("langgraph.checkpoint.sqlite", "SqliteSaver"): False,  # 需独立包，见 docstring
-    ("langgraph.checkpoint.sqlite", "AsyncSqliteSaver"): False,
+    ("langgraph.checkpoint.sqlite", "SqliteSaver"): True,  # W3 已装 langgraph-checkpoint-sqlite 3.1.1
+    ("langgraph.checkpoint.sqlite", "AsyncSqliteSaver"): False,  # 3.1.1 仅同步版，无 Async 导出
     ("langgraph.types", "interrupt"): True,
     ("langgraph.types", "Command"): True,
     ("langgraph.graph", "StateGraph"): True,

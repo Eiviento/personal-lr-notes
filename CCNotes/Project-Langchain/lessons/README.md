@@ -7,7 +7,7 @@
 | qa_notes_20260906.md | **学习日志（2026-09-06）**：用户问题链 Q&A×12（tool vs MCP / 黑盒白盒 / call_model / 条件边等）+ Python 语法速查 + LangGraph 概念速查——后续知识手册生长点 | 全部 |
 | lesson_agent1_whitebox.md | 拆开黑盒：agent=循环（LLM 调用=工具执行+1）/ 运行时图揭示 4 节点 4 边 / 手写白盒对照 / 检索漏检案例 | `scripts/agent1_whitebox.py` |
 | lesson_agent2_guardrails.md | 阀门与护栏：recursion_limit 大坝 / 重复熔断闸门 / 异常回流（默认只兜 ToolInvocationError 的实测坑） | `scripts/agent2_guardrails.py` |
-| lesson_agent3_memory.md（W3 待写） | 记忆与状态：checkpointer / 多会话 / token 治理 | `scripts/agent3_memory.py` |
+| lesson_agent3_memory.md | 记忆与状态：LLM 无记忆/记忆在框架(checkpointer)/thread_id 会话钥匙/MemorySaver→SqliteSaver 跨进程/token 治理三策略 | `scripts/agent3_memory.py` |
 | lesson_agent4_reliability.md（W4 待写） | 可靠性与人在回路：interrupt 人工审批 / 防幻觉 | `scripts/agent4_interrupt.py` |
 | lesson_agent5_eval.md（W5 待写） | 观察与评估：eval 集 / 单变量回归调优 | `scripts/agent5_eval.py` |
 | lesson_agent6_scale.md（W6 待写） | 规模化：V2 迁移 / subgraph | `scripts/agent6_scale.py` |
