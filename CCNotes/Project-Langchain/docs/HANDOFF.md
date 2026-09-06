@@ -20,17 +20,9 @@
 
 - 项目骨架：README / AGENTS.md / .rivet.md / requirements.txt / .env.example / .gitignore
 - data：knowledge.txt（FAQ）+ orders.json（假订单库，含 SO-9999 不存在订单供防幻觉测试）
-- **API 运行时探针（硬闸门，9/10 通过）**：
-  - ✓ `langgraph.prebuilt.create_react_agent`（**注意：签名含 `version: Literal['v1','v2']='v2'`，默认 v2**）
-  - ✓ `langgraph.prebuilt.ToolNode`（含 handle_tool_errors）/ `tools_condition`
-  - ✓ `langchain.agents.create_agent`（**V2 已存在**，参数 system_prompt/middleware/state_schema/checkpointer）
-  - ✓ `langgraph.checkpoint.memory.MemorySaver` / `InMemorySaver`
-  - ✗ `langgraph.checkpoint.sqlite` **IMPORT FAIL**——SqliteSaver 在独立包 `langgraph-checkpoint-sqlite`，agent_env 未装
-  - ✓ `langgraph.types.interrupt` / `Command(resume=...)`
-  - ✓ `langgraph.graph.StateGraph` / `START` / `END`
-  - ✓ `langchain_core.messages.trim_messages`
-- 环境：agent_env = Python 3.10.19 / langchain-core 1.4.9 / langchain 1.3.14 / langgraph 1.2.9 / langgraph-prebuilt 1.1.0
-- 探针脚本留存：`.rivet/scratch/probe_langgraph.py`
+- **API 运行时探针（硬闸门）**：`scripts/probe_api.py` 内置 14 符号基线（13 个应在 + sqlite 组 2 个已知缺失），实测与基线不符才非零退出（fail-closed）。2026-09-06 重跑与基线一致。复跑命令见 README。
+  - 关键事实：`langgraph.prebuilt.create_react_agent`（签名含 `version: Literal['v1','v2']='v2'`）、`ToolNode`（含 handle_tool_errors）、`langchain.agents.create_agent`（V2 已存在）、`MemorySaver`/`InMemorySaver`、`interrupt`/`Command`、`trim_messages` 均存在；**唯一缺失组 `langgraph.checkpoint.sqlite`**（SqliteSaver 拆分到独立包 `langgraph-checkpoint-sqlite`，agent_env 未装）
+- 环境：agent_env = Python 3.10.19 / langchain-core 1.4.9 / langchain 1.3.14 / langgraph 1.2.9 / langgraph-prebuilt 1.1.0 / python-dotenv 已装
 
 ## 四、当前卡点 / 待用户处理
 

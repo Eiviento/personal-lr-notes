@@ -33,9 +33,11 @@
 
 ```bash
 # 1. 配置 API Key：把 .env.example 复制为 .env，填入 DEEPSEEK_API_KEY
-# 2. 运行脚本（Windows 控制台需 UTF-8 前缀）
-PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python.exe scripts/agent1_whitebox.py
+# 2. 核验环境与教学基线一致（exit 0 = 就绪；失败会非零退出并列出差异）
+PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python.exe scripts/probe_api.py
 ```
+
+> 各 Phase 的可运行脚本（agent1_whitebox.py 起）随进度表就绪——当前可用脚本见 `scripts\` 目录。
 
 ## 目录结构
 

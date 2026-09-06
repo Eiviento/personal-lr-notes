@@ -15,6 +15,14 @@
 - **事实**：shell env unset，新项目无 .env。
 - **影响**：W1 API 环节前需用户配 .env（参照 .env.example）。零成本假 agent 演示不受影响。
 
+### F5: SO-9999 反例改用"库中无此单"（审查修复）
+- **问题**：初版 orders.json 把 SO-9999 实现为数组内 `status=not_found` 的真实行——线性查找会命中并返回"存在但状态特殊"的歧义信号，弱代理了"查无此单"。
+- **修复**：删除该行。防幻觉/诚实测试用**库里不存在的订单号**（如 SO-0000），由 get_order_status 查找不到返回"未找到"承载。数据形状与真实语义对齐。
+
+### F6: DEEPSEEK_API_KEY 不在 LangChain-RAG-Agent\.env
+- **事实**：该 .env（325B）仅含 LANGSMITH_API_KEY；Windows cmd 环境变量也无 DEEPSEEK_API_KEY。
+- **推论**：LangChain-RAG-Agent 跑 API 脚本时的 key 来自会话内临时设置（未持久化），或 key 另存他处。新项目 .env 待用户提供 DEEPSEEK_API_KEY 值后补入。脚本统一用 python-dotenv load_dotenv() 加载。
+
 ### F4: 无头 worker 读不了 E:\site-packages
 - **事实**：两个 code_scout 因 E: 越出工作区被结构性阻断（无审批通道）。
 - **应对**：教学源码取证一律用 `inspect.getsource`（运行时拿源码文本），绕过文件授权。

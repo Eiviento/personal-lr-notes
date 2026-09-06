@@ -34,13 +34,6 @@
       "status": "processing",
       "order_date": "2026-09-05",
       "refund_eligible": true
-    },
-    {
-      "order_id": "SO-9999",
-      "product": "(不存在订单——用于测试 agent 诚实回答找不到的场景)",
-      "price": 0,
-      "status": "not_found",
-      "refund_eligible": false
     }
   ]
 }
