@@ -20,7 +20,7 @@
 | 5 评估 | agent5_eval.py | eval 集 + 判据 + 单变量回归（V1 6/7 vs V2 7/7） |
 | 6 规模化 | agent6_scale.py | create_agent V2 迁移（0 警告）/ subgraph |
 
-**教学资产**：`lessons/qa_notes_20260906.md` = 用户问题链 Q1-Q16 + Python 语法速查 + 概念速查（知识手册生长点）。README 进度表全 ✅。`outputs/` 全部实跑日志（gitignore）。probe_api.py 环境基线（fail-closed）。
+**教学资产**：`lessons/qa_notes_20260906.md` = 用户问题链 Q1-Q18 + Python 语法速查 + 概念速查（含 P5 判据分层、P6 V2 迁移/subgraph 白话讲解——知识手册生长点）。README 进度表全 ✅。`outputs/` 全部实跑日志（gitignore）。probe_api.py 环境基线（fail-closed）。
 
 ## 三、跑通环境
 
