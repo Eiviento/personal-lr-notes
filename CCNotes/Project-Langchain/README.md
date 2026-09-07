@@ -25,7 +25,7 @@
 | 3 | 记忆与状态（checkpointer 持久化 / 多会话 / token 治理） | ✅ |
 | 4 | 可靠性与人在回路（interrupt 退款审批 / 防幻觉验证） | ✅ |
 | 5 | 观察与评估（eval 集 / 单变量回归调优） | ✅ |
-| 6 | 规模化与版本演进（create_agent V2 迁移 / subgraph） | ⬜ |
+| 6 | 规模化与版本演进（create_agent V2 迁移 / subgraph） | ✅ |
 
 ## 快速开始
 

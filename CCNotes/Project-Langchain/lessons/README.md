@@ -10,6 +10,6 @@
 | lesson_agent3_memory.md | 记忆与状态：LLM 无记忆/记忆在框架(checkpointer)/thread_id 会话钥匙/MemorySaver→SqliteSaver 跨进程/token 治理三策略 | `scripts/agent3_memory.py` |
 | lesson_agent4_reliability.md | 可靠性与人在回路：interrupt 暂停恢复（依赖 checkpointer）/ 审批 approve+deny / 防幻觉验证节点（工具核对拦编造） | `scripts/agent4_interrupt.py` |
 | lesson_agent5_eval.md | 观察与评估：eval 集+判据 / 单变量回归实测（V1 6/7 vs V2 7/7，诱导 case 显差异）/ 判据防假阴假阳三迭代 / 调优方法论总纲 | `scripts/agent5_eval.py` |
-| lesson_agent6_scale.md（W6 待写） | 规模化：V2 迁移 / subgraph | `scripts/agent6_scale.py` |
+| lesson_agent6_scale.md | 规模化与版本演进：create_react_agent→create_agent 迁移对照（prompt→system_prompt）/ subgraph 子图拆父图 | `scripts/agent6_scale.py` |
 
 **前置知识**（姊妹项目 LangChain-RAG-Agent）：Tool Calling（phase4_2）、LangGraph 概念（extra_langgraph_intro）、对话 Agent 三零件（extra_chat_agent）、聊天助手构建（extra_chat_assistant_build）。
