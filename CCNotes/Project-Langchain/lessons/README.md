@@ -11,5 +11,6 @@
 | lesson_agent4_reliability.md | 可靠性与人在回路：interrupt 暂停恢复（依赖 checkpointer）/ 审批 approve+deny / 防幻觉验证节点（工具核对拦编造） | `scripts/agent4_interrupt.py` |
 | lesson_agent5_eval.md | 观察与评估：eval 集+判据 / 单变量回归实测（V1 6/7 vs V2 7/7，诱导 case 显差异）/ 判据防假阴假阳三迭代 / 调优方法论总纲 | `scripts/agent5_eval.py` |
 | lesson_agent6_scale.md | 规模化与版本演进：create_react_agent→create_agent 迁移对照（prompt→system_prompt）/ subgraph 子图拆父图 | `scripts/agent6_scale.py` |
+| lesson_agent7_webapp.md | **客服工作台（综合）**：把 6 机制拼进可交互系统——web 无状态↔agent 长时运行的 thread_id 桥 / checkpointer 即真相源 / 工具内 interrupt（P4 升级）/ UI 只渲染面向用户的消息 | `scripts/agent7_webapp.py` + `app.py` |
 
 **前置知识**（姊妹项目 LangChain-RAG-Agent）：Tool Calling（phase4_2）、LangGraph 概念（extra_langgraph_intro）、对话 Agent 三零件（extra_chat_agent）、聊天助手构建（extra_chat_assistant_build）。

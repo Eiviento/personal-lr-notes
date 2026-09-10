@@ -31,3 +31,19 @@
 - **决策**：用户同意 → `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple langgraph-checkpoint-sqlite` 已装，版本 **3.1.1**。
 - **实测 API 形态**（import + inspect）：`langgraph.checkpoint.sqlite` 仅导出**同步 `SqliteSaver`**，**无 `AsyncSqliteSaver`**；`SqliteSaver.from_conn_string(conn_string)` 是**生成器工厂**（返回 `Iterator[SqliteSaver]`），用法 `with SqliteSaver.from_conn_string(...) as saver:`。与 0.x 教程的 `SqliteSaver(conn)` 构造不同，教学代码按 3.x 形态写。
 - **probe_api.py 基线已更新**：SqliteSaver expected False→True；AsyncSqliteSaver 保持 False（包未导出）。探针验证 exit 0 = 与新基线一致。
+
+## 2026-09-08（Phase 7 客服工作台）
+
+### F8: V2 create_agent + checkpointer + 工具内 interrupt 组合成立（方案 A）
+- **事实**（`.rivet/scratch/probe_p7_api.py`，agent_env 实测，exit 0）：
+  - H1：`langchain.agents.create_agent` 签名含 `checkpointer`（完整参数：model/tools/system_prompt/middleware/response_format/state_schema/context_schema/checkpointer/store/interrupt_before/interrupt_after/debug/name/cache/transformers）
+  - H2：工具函数内直接调 `interrupt({...})` → 图暂停，invoke 返回 `__interrupt__`；`Command(resume="approved")` 同 thread 恢复，`interrupt()` 返回 resume 值 ✅
+  - H3：V2 create_agent 与 `langgraph.checkpoint.sqlite.SqliteSaver`（3.1.1 同步）组合编译成功 ✅
+- **影响**：Phase 7 主图采用方案 A（V2 create_agent 一条龙），无需退回 P4 的手写 StateGraph。P4 的 interrupt 在**节点**里，P7 首次验证在**工具**里——这是真实 ReAct agent 里审批落点的正确位置。
+- **探针首跑假失败教训**：H2 首次报 ❌ 并非机制不支持，而是探针自身缺陷——① 假模型 `bind_tools()` 未接受 create_agent 传入的 `tool_choice` 关键字；② 假模型发的 tool_call `args={}` 缺工具必填参数，pydantic 校验在 interrupt **之前**就报错。修复探针（`**kwargs` + 传参）后全 ✅。**归族**：验证"机制支持性"时，须确认失败发生在被测机制层，而非测试脚手架自身的错误。
+
+### F9: streamlit 已可用 + UI 渲染噪音坑（Phase 7 实测）
+- **事实**：agent_env 已装 streamlit 1.62（姊妹项目 requirements 含）；`browser_debug` 自带 chromium 未装，改用系统 Chrome `--remote-debugging-port=9222` + `connect_url` 连 CDP 成功。
+- **UI 坑**：真实 LLM 的一条用户消息内部 jsonl 会 produce「带 tool_calls 的中间 AIMessage + ToolMessage（工具原始返回）+ 最终答复」；初版 UI 全渲染 → 界面出现英文 preamble 与订单原始数据。修复 = 只渲染 `HumanMessage` 与「无 tool_calls 的 AIMessage」。见 lesson_agent7 第六节。
+- **streamlit rerun 坑**：审批按钮回调里若手动渲染 resume 结果又 `st.rerun()`，rerun 后从 checkpointer 拉的历史会重复渲染一次。修复 = 回调只 resume+清 pending+rerun，结果由 rerun 后的历史渲染带出（印证"checkpointer 即真相源"）。
+

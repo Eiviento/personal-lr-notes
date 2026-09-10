@@ -9,3 +9,4 @@ langgraph>=1.2
 langgraph-prebuilt>=1.1
 langgraph-checkpoint-sqlite>=3
 python-dotenv
+streamlit>=1.62

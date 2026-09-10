@@ -26,6 +26,7 @@
 | 4 | 可靠性与人在回路（interrupt 退款审批 / 防幻觉验证） | ✅ |
 | 5 | 观察与评估（eval 集 / 单变量回归调优） | ✅ |
 | 6 | 规模化与版本演进（create_agent V2 迁移 / subgraph） | ✅ |
+| 7 | 客服工作台（把 6 机制拼成可交互 Streamlit Demo：thread_id 桥 / 工具内 interrupt 审批） | ✅ |
 
 ## 快速开始
 
@@ -42,9 +43,10 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 ## 目录结构
 
 ```
+├── app.py       # Phase 7 Streamlit 薄壳 UI（业务零逻辑，只做渲染与状态搬运）
 ├── docs/        # HANDOFF / progress / findings / superpowers(计划与规格)
 ├── lessons/     # 每 Phase 一份知识点文档（零基础可读，含实跑证据）
-├── scripts/     # agent1_whitebox → agent6_scale 逐步演进（每份 docstring 说明书）
+├── scripts/     # agent1_whitebox → agent7_webapp 逐步演进（每份 docstring 说明书）
 ├── data/        # knowledge.txt（FAQ）+ orders.json（假订单库）
 ├── outputs/     # 实跑日志与产物（gitignore，教学证据引用时标注"单次实跑未挑选"）
 └── tests/       # 零成本冒烟（假 agent 模式，不真调 API）
