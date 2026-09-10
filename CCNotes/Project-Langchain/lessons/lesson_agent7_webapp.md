@@ -22,7 +22,9 @@ UI（无状态，每次重跑）                  agent（有状态，长时运�
   只记一把钥匙                            记忆/断点真相都在这里
 ```
 
-**关键设计决策：状态真相源 = checkpointer，不是 `st.session_state`。** 对比姊妹项目 `LangChain-RAG-Agent\app.py`：那里每轮把整个 messages 列表全量重发给无状态 agent（消息历史存在前端 session_state）。Phase 7 反过来——历史存在后端的 checkpointer，前端刷新后调 `get_history` 从 checkpointer 拉回来渲染。这就是"重启/刷新不丢"的真相所在。
+**关键设计决策：状态真相源 = checkpointer，不是 `st.session_state`。** 对比姊妹项目 `LangChain-RAG-Agent\app.py`：那里每轮把整个 messages 列表全量重发给无状态 agent（消息历史存在前端 session_state）。Phase 7 反过来——历史存在后端的 checkpointer，UI 渲染时调 `get_history` 从 checkpointer 拉回来。
+
+**但要小心一个半真半假的推论**：光有 checkpointer 还不足以"刷新不丢"。`thread_id` 本身若只存在 `st.session_state`，F5 刷新会重置它 → 换新 thread → checkpointer 里的旧对话就找不回了（**本项目实测踩过这个坑**，见第六节坑 7）。所以 P7 把 `thread_id` 持久化到 **URL query param**（`?thread_id=xxx`）——刷新后从 URL 恢复同一 thread。**一句话结论**：checkpointer（存对话）× thread_id 持久化（存钥匙）= 真的刷新不丢；少一样都白搭。
 
 ## 三、把 6 个机制拼起来的三处接线
 
@@ -120,6 +122,7 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 4. **streamlit rerun 时序**：审批按钮的回调里若手动渲染恢复结果、又 `st.rerun()`，rerun 后从 checkpointer 拉的历史会**再渲染一遍**，导致重复。修复：回调里只 `resume` + 清 pending + `rerun`，让 rerun 后的历史渲染自然带出结果。**这本身就印证了"checkpointer 即真相源"——结果不需要手动搬，它已在真相源里。**
 5. **端口占用**：`kill` dev server 后端口未立即释放，换端口重起即可。
 6. **streamlit 条件 import 的 NameError（用户实跑抓到）**：`import uuid` 写在 `if "thread_id" not in st.session_state:` 块内 → 点「🆕 新建会话」报 `NameError: name 'uuid' is not defined`。**根因**：streamlit 每次交互**重新执行整个脚本**（模块命名空间重建），但 `st.session_state` **跨 rerun 持久**——首次运行后 thread_id 已在，该 if 分支不再进入，`import uuid` 被跳过，后续用 uuid 就报错。**修复**：import 一律放模块顶部。**教训**：这也是 AppTest 的覆盖缺口——原冒烟没点过「新建会话」，补上回归断言后先 RED（复现同一 NameError）再 GREEN（见 findings F10）。**通用规律**：streamlit 脚本里任何"条件才执行"的语句都要警惕 rerun 语义。
+7. **刷新丢历史（用户实跑抓到）**：F5 刷新后 thread 变、历史清空（用户反馈"历史会话没看到"）。**根因**：`thread_id` 只存 `st.session_state`，刷新即重置 → 换新 thread → checkpointer 里的旧对话找不回。**修复**：thread_id 持久化到 URL query param（`?thread_id=xxx`），刷新从 URL 恢复同一 thread。**教训**：初稿写"刷新不丢"是**未验证的断言**——只测了"消息存进 checkpointer"，没测"刷新后 UI 能否找回"；checkpointer 存了数据 ≠ UI 能找回，必须连 thread_id 一起持久化（见 findings F11）。**测机制要测完整链路，不能只测一半就下结论。**
 
 ## 七、延伸方向（本 Phase 未做，供后续选）
 

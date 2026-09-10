@@ -54,4 +54,12 @@
 - **测试缺口**：原 AppTest 只覆盖「渲染/发消息/审批/批准」，未覆盖「点新建会话」→ 漏网。已补回归断言（点击后断言无异常 + thread_id 变更），修复前该断言 RED（复现同一 NameError），修复后 GREEN。
 - **教训**：streamlit 脚本里 import 一律放模块顶部——rerun 重建命名空间，任何"条件才执行"的 import 都可能在某次 rerun 被跳过。
 
+### F11: 刷新丢历史——thread_id 未持久化（Phase 7 用户实跑抓到）
+- **现象**（用户："历史会话没看到"）：F5 刷新页面后 thread_id 变、聊天历史清空。
+- **根因**：`thread_id` 只存 `st.session_state`，而 session_state 绑定浏览器会话，**F5 刷新即重置** → 生成新 thread → 虽然旧对话仍在 checkpointer 里，UI 却找不回那个 thread。**checkpointer 存了数据 ≠ UI 能找回**。
+- **实测**（browser_debug + Chrome CDP）：修复前刷新 thread `web-344f3790` → `web-0e816de0`（历史丢）；修复后 URL `?thread_id=web-bd20b0b6` 刷新不变、历史保留。
+- **修复**：thread_id 持久化到 URL query param（`st.query_params`），刷新后从 URL 恢复同一 thread；新建会话同步更新 URL。附带好处：把带 `?thread_id=` 的 URL 分享出去即接续同一会话。
+- **教训（重要）**：lesson 初稿写"刷新不丢"是**未验证的断言**——当时只测了"消息存在 checkpointer"，没测"刷新后 UI 能否找回"。真相是：checkpointer 只是数据存档，**thread_id 本身也必须持久化**，两者齐备才叫"刷新不丢"。测机制要测完整链路，不能只测一半就下结论。
+
+
 

@@ -54,11 +54,15 @@ def get_agent():
 agent = get_agent()
 
 # ─── 会话管理：thread_id = web 会话的钥匙 ─────────────────
-# uuid 必须在模块顶部 import：streamlit 每次交互都重新执行整个脚本，而若 import
-# 写在下面的 if 块内，rerun 时 thread_id 已存在 → 该分支不进入 → uuid 未定义，
-# 点「新建会话」就会 NameError（实测坑，见 findings F10）。
+# uuid 在模块顶部 import（见 findings F10）。
+# thread_id 持久化到 URL query param：st.session_state 绑定浏览器会话，F5 刷新即重置，
+# 只存 session_state 的话刷新后换成新 thread → 看不到旧对话（实测坑 F11）。URL 是持久的，
+# 刷新后从 URL 恢复同一 thread → 历史由 checkpointer 拉回，"刷新不丢"才真正成立。
+_qp_tid = st.query_params.get("thread_id")
 if "thread_id" not in st.session_state:
-    st.session_state["thread_id"] = f"web-{uuid.uuid4().hex[:8]}"
+    st.session_state["thread_id"] = _qp_tid or f"web-{uuid.uuid4().hex[:8]}"
+if st.query_params.get("thread_id") != st.session_state["thread_id"]:
+    st.query_params["thread_id"] = st.session_state["thread_id"]
 
 # 上一轮遗留的待审卡片（rerun 后仍要显示，直到用户点批准/拒绝）
 if "pending_card" not in st.session_state:
@@ -68,11 +72,13 @@ with st.sidebar:
     st.header("💬 会话")
     st.write(f"当前 thread：`{st.session_state['thread_id']}`")
     if st.button("🆕 新建会话", use_container_width=True, key="new_chat"):
-        st.session_state["thread_id"] = f"web-{uuid.uuid4().hex[:8]}"
+        new_tid = f"web-{uuid.uuid4().hex[:8]}"
+        st.session_state["thread_id"] = new_tid
+        st.query_params["thread_id"] = new_tid
         st.session_state["pending_card"] = None
         st.rerun()
     st.divider()
-    st.caption("新会话 = 换新 thread_id → checkpointer 里是全新对话（会话隔离）。")
+    st.caption("新会话 = 换新 thread_id → checkpointer 里是全新对话（会话隔离）。地址栏 `?thread=` 记录当前会话，刷新不丢。")
 
 
 # ─── 历史渲染：从 checkpointer 拉当前 thread 全部消息 ─────

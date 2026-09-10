@@ -79,7 +79,17 @@ def main():
     assert tid_before != tid_after, f"新建会话应换新 thread_id，实际 {tid_before} == {tid_after}"
     print(f"✓ 点新建会话：thread_id {tid_before} → {tid_after}")
 
-    print("\n✅ AppTest 冒烟通过：渲染 / 历史累积 / 审批卡片出现与消失 / 恢复结果 / 新建会话 / 无异常")
+    # 5. 刷新恢复：新实例（模拟新浏览器会话，session_state 为空）+ URL 带 thread_id
+    #    → 应从 URL 恢复同一 thread（回归 F11：曾因 thread_id 只存 session_state 而刷新丢历史）
+    at2 = AppTest.from_file(str(APP), default_timeout=30)
+    at2.query_params["thread_id"] = "web-persist99"
+    at2.run()
+    assert not at2.exception, f"URL 恢复渲染异常：{at2.exception}"
+    assert at2.session_state["thread_id"] == "web-persist99", \
+        f"应从 URL 恢复 thread_id，实际 {at2.session_state['thread_id']}"
+    print("✓ 刷新恢复：URL ?thread_id=web-persist99 → 恢复同一 thread")
+
+    print("\n✅ AppTest 冒烟通过：渲染 / 历史累积 / 审批卡片出现与消失 / 恢复结果 / 新建会话 / 刷新恢复 / 无异常")
 
 
 if __name__ == "__main__":
