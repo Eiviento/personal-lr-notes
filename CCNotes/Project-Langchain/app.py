@@ -21,6 +21,7 @@ AppTest 冒烟（零 API）：
 
 import os
 import sys
+import uuid
 from pathlib import Path
 
 import streamlit as st
@@ -53,8 +54,10 @@ def get_agent():
 agent = get_agent()
 
 # ─── 会话管理：thread_id = web 会话的钥匙 ─────────────────
+# uuid 必须在模块顶部 import：streamlit 每次交互都重新执行整个脚本，而若 import
+# 写在下面的 if 块内，rerun 时 thread_id 已存在 → 该分支不进入 → uuid 未定义，
+# 点「新建会话」就会 NameError（实测坑，见 findings F10）。
 if "thread_id" not in st.session_state:
-    import uuid
     st.session_state["thread_id"] = f"web-{uuid.uuid4().hex[:8]}"
 
 # 上一轮遗留的待审卡片（rerun 后仍要显示，直到用户点批准/拒绝）
@@ -64,7 +67,7 @@ if "pending_card" not in st.session_state:
 with st.sidebar:
     st.header("💬 会话")
     st.write(f"当前 thread：`{st.session_state['thread_id']}`")
-    if st.button("🆕 新建会话", use_container_width=True):
+    if st.button("🆕 新建会话", use_container_width=True, key="new_chat"):
         st.session_state["thread_id"] = f"web-{uuid.uuid4().hex[:8]}"
         st.session_state["pending_card"] = None
         st.rerun()

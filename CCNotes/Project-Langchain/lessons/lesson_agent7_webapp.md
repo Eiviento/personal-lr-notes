@@ -119,6 +119,7 @@ PYTHONIOENCODING=utf-8 E:/software/OfficeWorkLife/Anaconda/envs/agent_env/python
 3. **UI 渲染噪音**（见第三节接线 3）：`ToolMessage`/中间 `AIMessage` 不该上屏。
 4. **streamlit rerun 时序**：审批按钮的回调里若手动渲染恢复结果、又 `st.rerun()`，rerun 后从 checkpointer 拉的历史会**再渲染一遍**，导致重复。修复：回调里只 `resume` + 清 pending + `rerun`，让 rerun 后的历史渲染自然带出结果。**这本身就印证了"checkpointer 即真相源"——结果不需要手动搬，它已在真相源里。**
 5. **端口占用**：`kill` dev server 后端口未立即释放，换端口重起即可。
+6. **streamlit 条件 import 的 NameError（用户实跑抓到）**：`import uuid` 写在 `if "thread_id" not in st.session_state:` 块内 → 点「🆕 新建会话」报 `NameError: name 'uuid' is not defined`。**根因**：streamlit 每次交互**重新执行整个脚本**（模块命名空间重建），但 `st.session_state` **跨 rerun 持久**——首次运行后 thread_id 已在，该 if 分支不再进入，`import uuid` 被跳过，后续用 uuid 就报错。**修复**：import 一律放模块顶部。**教训**：这也是 AppTest 的覆盖缺口——原冒烟没点过「新建会话」，补上回归断言后先 RED（复现同一 NameError）再 GREEN（见 findings F10）。**通用规律**：streamlit 脚本里任何"条件才执行"的语句都要警惕 rerun 语义。
 
 ## 七、延伸方向（本 Phase 未做，供后续选）
 

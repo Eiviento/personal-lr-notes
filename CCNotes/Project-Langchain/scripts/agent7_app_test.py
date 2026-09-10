@@ -71,7 +71,15 @@ def main():
     assert any("批准" in str(t) for t in texts3), f"批准后应渲染恢复结果，实际：{texts3}"
     print(f"✓ 点批准：卡片消失，恢复结果渲染（气泡文本 {len(texts3)} 条）")
 
-    print("\n✅ AppTest 冒烟通过：渲染 / 历史累积 / 审批卡片出现与消失 / 恢复结果 / 无异常")
+    # 4. 点新建会话 → 换新 thread_id（回归：曾因 uuid 条件 import 在 rerun 时报 NameError）
+    tid_before = at.session_state["thread_id"]
+    at.button(key="new_chat").click().run()
+    assert not at.exception, f"新建会话后异常：{at.exception}"
+    tid_after = at.session_state["thread_id"]
+    assert tid_before != tid_after, f"新建会话应换新 thread_id，实际 {tid_before} == {tid_after}"
+    print(f"✓ 点新建会话：thread_id {tid_before} → {tid_after}")
+
+    print("\n✅ AppTest 冒烟通过：渲染 / 历史累积 / 审批卡片出现与消失 / 恢复结果 / 新建会话 / 无异常")
 
 
 if __name__ == "__main__":

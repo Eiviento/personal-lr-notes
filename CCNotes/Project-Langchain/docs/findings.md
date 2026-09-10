@@ -47,3 +47,11 @@
 - **UI 坑**：真实 LLM 的一条用户消息内部 jsonl 会 produce「带 tool_calls 的中间 AIMessage + ToolMessage（工具原始返回）+ 最终答复」；初版 UI 全渲染 → 界面出现英文 preamble 与订单原始数据。修复 = 只渲染 `HumanMessage` 与「无 tool_calls 的 AIMessage」。见 lesson_agent7 第六节。
 - **streamlit rerun 坑**：审批按钮回调里若手动渲染 resume 结果又 `st.rerun()`，rerun 后从 checkpointer 拉的历史会重复渲染一次。修复 = 回调只 resume+清 pending+rerun，结果由 rerun 后的历史渲染带出（印证"checkpointer 即真相源"）。
 
+### F10: streamlit 条件 import 导致 NameError（Phase 7 用户实跑抓到的 bug）
+- **现象**（用户实跑）：点侧栏「🆕 新建会话」→ `NameError: name 'uuid' is not defined`（app.py:68）。
+- **根因**：`import uuid` 写在 `if "thread_id" not in st.session_state:` 块内。streamlit 每次交互**重新执行整个脚本**（模块命名空间重建），而 `st.session_state` **跨 rerun 持久**——首次运行后 thread_id 已在，if 分支不再进入 → `import uuid` 不再执行 → 点新建会话时用到 uuid 即 NameError。
+- **修复**：`import uuid` 移到模块顶部；给按钮加 `key="new_chat"` 便于测试定位。
+- **测试缺口**：原 AppTest 只覆盖「渲染/发消息/审批/批准」，未覆盖「点新建会话」→ 漏网。已补回归断言（点击后断言无异常 + thread_id 变更），修复前该断言 RED（复现同一 NameError），修复后 GREEN。
+- **教训**：streamlit 脚本里 import 一律放模块顶部——rerun 重建命名空间，任何"条件才执行"的 import 都可能在某次 rerun 被跳过。
+
+
