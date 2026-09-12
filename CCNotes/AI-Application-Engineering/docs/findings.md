@@ -1,0 +1,29 @@
+# Findings — 决策与踩坑
+
+## 2026-09-12·Wave 0 环境探针
+
+### F1: 环境可用性实测（决定阶段 1-6 技术选型）
+
+**探针**：`.rivet\scratch\probe_env.py`（Project-Langchain 的 scratch），agent_env 解释器，单次实跑 exit 0。
+
+| 能力 | 结果 | 对计划的影响 |
+|------|------|-------------|
+| FastAPI 0.133.1 | ✅ agent_env 已装 | 阶段 1/5 的 API 服务直接可用，无需安装 |
+| uvicorn 0.41.0 | ✅ | 服务可起 |
+| pydantic 2.12.5 / httpx 0.28.1 | ✅ | 请求校验 + 异步客户端 |
+| chromadb 1.5.9 | ✅ | 阶段 1 向量库（复用 LangChain-RAG-Agent 经验） |
+| psycopg2 2.9.10 | ✅ | 阶段 5 关系库客户端 |
+| PostgreSQL 服务（5432 开放） | ✅ 本机在跑 | 阶段 5 持久化可行，无需装 |
+| redis-py（客户端） | ✗ ModuleNotFoundError | 阶段 5 缓存 → 降级内存/文件方案；需时装 `redis` + 服务 |
+| 5432/6379/6333 端口 | pg ✅ / redis ✗ / qdrant ✗ | 缓存与向量库服务需自行启动或降级 |
+| Docker | ✗ PATH 无 docker | 阶段 5 部署 → 降级「本地多进程编排脚本」；需时装 Docker Desktop |
+| **NVIDIA RTX 4060 Laptop 8GB** | ✅ | **阶段 6 可做小模型 LoRA/QLoRA**（8GB 显存适配 0.5B~1.5B 模型） |
+| qdrant-client | ✗ | 阶段 1 向量库备选，按需安装 |
+
+**结论**：六个阶段**全部可推进**。无硬阻塞，只有两处降级（Redis 缓存、Docker 部署），均已在本手册标注替代方案。GPU 到位使阶段 6 从「只能演示」升级为「可真跑」。
+
+### F2: 学习项目的定位边界（防重复）
+
+- 旧三项目 = **理解层**（机制是什么）：LangChain-RAG-Agent / Project-Langchain / mcp-hello1
+- 本项目 = **生产层**（怎么组装成系统）：可部署/可观测/可扩展/可并发
+- 复用而非重写：LLM 封装、工具定义、eval 判据、MCP 代码从旧项目搬，不重新发明

@@ -1,0 +1,23 @@
+# 环境与密钥
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+
+# 运行时产物
+outputs/
+*.db
+*.sqlite3
+*.log
+
+# 向量库 / 模型大文件（不入库）
+models/
+rag_db/
+chroma_db/
+*.index
