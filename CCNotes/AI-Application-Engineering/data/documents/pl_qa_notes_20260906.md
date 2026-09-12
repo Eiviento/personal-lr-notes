@@ -1,0 +1,148 @@
+# 今日学习笔记（2026-09-06 · W1/W2 精读答疑 + Python 语法速查）
+
+> 用途：本笔记是"Agent 深度研学"第一课（Phase 1 拆黑盒 + Phase 2 护栏）的**答疑与语法补课记录**。
+> 后续制作完整学习流程/知识手册时，本文是"常见疑问 + Python 语法"两个章节的素材底稿。
+> 教学项目，零基础可读：做什么 / 为什么 / 不做会怎样。
+
+---
+
+## 一、今天精读了什么
+
+| 文件 | 内容 | 状态 |
+|------|------|------|
+| `scripts/agent1_whitebox.py`（245 行） | 黑盒 create_react_agent + 手写白盒 StateGraph + 检索 n-gram 修复 | 逐段精读完毕 |
+| `scripts/agent2_guardrails.py`（242 行） | 三类护栏实验：recursion_limit / 重复熔断 / 异常回流 | 概念讲毕，慢镜头演示过 |
+| `.rivet/scratch/graph_walkthrough.py` | 熔断图"慢镜头"逐帧演示（FakeLLM，零 API） | 实跑 exit 0 |
+| `.rivet/scratch/graph_api_probe.py` | StateGraph 方法清单 + 自定义节点名 + 条件边路由演示 | 实跑 exit 0 |
+| `.rivet/scratch/py_syntax_demo.py` | Python 语法四演示（函数当值/闭包/@tool/类型标注） | 实跑 exit 0 |
+
+运行证据（outputs\，gitignore 不入库）：`agent1_blackbox_run.log`、`agent1_whitebox_run.log`、`agent2_guardrails_run.log`
+
+---
+
+## 二、今天问的问题与答案（Q&A 速查）
+
+### Q1. 项目里的 tool 是 function calling 还是 MCP？
+**是 function calling（Tool Calling），不是 MCP。** 分层看：function calling = 模型怎么"请求执行工具"（`tool_calls` 输出协议，P1 的"点菜"）；MCP = 工具"从哪来/怎么被统一管理"的 server-client 标准。本项目工具（`search_knowledge` 等）就是本进程里的 Python 函数，走 function calling；MCP 工具最终被模型调用时底层**仍然走 function calling**——MCP 是工具的供应方式之一。一句话：模型侧永远是 function calling，MCP 只决定工具由谁提供。
+
+### Q2. LangChain 与大模型厂商直调 API 的区别？
+**LangChain 底层调的就是厂商 API（`ChatOpenAI` 内部是 openai client），区别在封装层。** 厂商直调：一个函数=一次对话，返回原始结构；换厂商重写调用层。LangChain：统一 `.invoke()` 接口（换模型只改参数）+ LCEL 管道/图编排（状态/循环/工具回填帮你管）+ 工具 schema 自动生成。代价：多一层抽象=黑盒+版本迁移（如 create_react_agent 弃用警告）。**判断：单次简单调用选直调；要换模型/接工具/跑 agent 循环/RAG 才上框架。**
+
+### Q3. agent 一轮对话里 LLM 被调几次？
+**LLM 调用次数 = 工具执行次数 + 1**（最后一次不点菜，直接回答）。查 SO-1003 那轮 = 2 次：第 1 次决策"点菜"（输出 tool_calls），第 2 次拿到工具结果后"收尾回答"。tools 节点只执行 Python 函数，不调 LLM。
+
+### Q4. add_node / add_edge / add_conditional_edges 是什么写法？
+LangGraph 的**画图 API**：`add_node(名, 函数)`=放干活节点（函数本体，不执行）；`add_edge(A,B)`=固定箭头（无条件直行）；`add_conditional_edges(A, 路由函数)`=信号灯路口（执行完 A 先问路由函数"下一步去哪"，按返回值走）。图=数据（可检查/可持久化/可加节点），不是硬编码流程。比喻：add_node=摆机器，add_edge=传送带，add_conditional_edges=装传感器的分叉口。
+
+### Q5. 黑盒没用 graph、白盒才用？
+**反了——黑盒内部就是一张图。** 运行时证据：`create_react_agent(...)` 返回类型 `CompiledStateGraph`，`get_graph()` 显示 `__start__/agent/tools/__end__` 4 节点 4 边。区别只是"图谁搭的"：黑盒官方函数内部替你 add_node/add_edge；白盒你自己搭。**图是 agent 的底层机制，不是白盒专属。** 手写白盒的意义：①证明封装无魔法 ②拿改装权（加熔断/记忆/审批都要在图上加）③读懂报错。
+
+### Q6. 为什么白盒里还有一个 call_model？
+**call_model 不是"另一个模型"，它就是 agent 节点本尊**（唯一调 DeepSeek 的地方）。`add_node("agent", call_model)` 把函数挂到叫 "agent" 的节点上，图跑到该节点就回调它。嵌套在 build 函数内=闭包，让它"记住"外层 `llm_with_tools`（否则看不到局部变量）。节点名是标签（日志里的 `[agent]` 前缀），函数是干活的人。
+
+### Q7. StateGraph(AgentState) 这行必须吗？
+**必须——它是地基。** 后面所有 add_xxx 的 `graph` 都指向它；`AgentState` 参数声明状态形状 + 合并规则（`Annotated[list, add_messages]`=消息追加不覆盖）。不亲手写也行（黑盒内部写了），但**图不可能凭空出现**。比喻：打地基出图纸→砌墙→竣工验收（compile）。
+
+### Q8. 用 create_react_agent 就不用自己定义这个类了？
+对。它帮你省掉 `AgentState` + `StateGraph` + 4 个 add + `compile()` 整套，用 `model/tools/prompt` 三参数替代。但注意"不自己定义 ≠ 不存在"——它内部有官方预置的默认状态（messages+add_messages）。**黑盒参数旋钮够用就用黑盒；要加自定义判定（熔断）/加状态字段（记忆、审批）就回手写。**
+
+### Q9. `def fragile_lookup(order_id: str) -> str:` 的 str 是什么？
+**类型标注（type hint），不是强制类型约束。** Python 动态类型，传错不报错（与 C++ 编译期检查不同），标注是给"人/IDE/@tool"看的说明书。关键：`@tool` 会**读类型标注生成工具 schema**（`str`→`{"type":"string"}`）发给模型——标错类型，模型就可能填错参数。
+
+### Q10. StateGraph 还有别的方法吗 / 条件边逻辑 / 节点名可改？
+- 方法：核心就 add_node/add_edge/add_conditional_edges + compile；其余（add_sequence/set_entry_point/set_node_defaults 等）是便捷/进阶，主线已学全。
+- 条件边逻辑：`add_conditional_edges(起点, 路由函数)`——路由函数**吃 state，返回一个节点名字符串**，引擎按返回值走。实测：`decide` 返回 `"bump"`(自环)或 `"big"`。
+- 节点名：**任意字符串可自定义**（实测 greet/farewell 跑通）。三条规则：①名字唯一、引用一致 ②`START`/`END` 保留哨兵不可占用 ③**坑：prebuilt `tools_condition` 写死返回 `"tools"`**——工具节点不叫 tools 会找不到节点报错。
+
+### Q11. 这些图逻辑用到 langgraph 了吗？
+逻辑本身（函数+if/while）纯 Python 能写（实测跑出同样结果），langgraph 给的是**引擎 + 状态管理 + 工程护栏**：消息自动合并、循环自动跑+recursion_limit、stream 逐帧观察、图可重组、checkpoint 记忆（P3）、interrupt（P4）。业务函数不用它也能跑，但工程能力全靠它。
+
+### Q12. 循环里到底做了什么 / 执行是哪行代码？
+- 慢镜头 9 帧：只有 agent 节点（帧1/3/6/9）调 LLM 4 次（收到消息 2→4→7→10 条，模型无状态全量重喂），其余帧是 tools 执行 / breaker 注入提示。熔断=tools 后路由检测同工具同参数重复→绕去 breaker 注入"请停止"提示→回 agent 收尾。
+- 触发执行的就是 **`for step in agent.stream(...)` 那一行**——前面全是在"画图/描述"，这一行才"点火"。节点函数（call_model 等）是被 LangGraph 引擎回调的，你的代码没有手动调它们。`stream`=逐帧看（教学），`invoke`=一次拿结果（生产）。
+
+---
+
+## 三、Python 语法速查（C++ 工程师视角，零基础可读）
+
+> 配套可跑演示：`.rivet/scratch/py_syntax_demo.py`
+
+| 语法 | 是什么 | C++ 类比 | 本项目出现处 |
+|------|--------|---------|-------------|
+| 函数名不带括号 = 值 | 函数可存变量/字典/当参数传，不执行 | 函数指针 / lambda 对象 | `add_node("agent", call_model)` |
+| 函数名+括号 = 调用 | 才真正执行 | 调用运算符 | `call_model(state)` |
+| def 嵌套 + return 内层 | 闭包/工厂：内层记住外层变量 | lambda 捕获 `[n]` | `build_whitebox_agent` 内定义 call_model |
+| `@tool` 装饰器 | 等价 `search_knowledge = tool(search_knowledge)`：把函数交给 tool 处理再赋回 | 包装器/wrapper | 三个工具函数头上 |
+| `def f(x: str) -> str:` | 类型标注=说明书（非强制），给人和 @tool 读 | 注释而非编译期类型 | 所有工具签名 |
+| `class S(TypedDict): messages: ...` | 定义 dict 形状，运行时就是普通 dict | struct 形状（但非硬约束） | `AgentState` |
+| `Annotated[list, add_messages]` | 类型+元数据；元数据给框架读（合并规则） | 无直接对应 | `AgentState.messages` |
+| `*state["messages"]` | 解包：把列表元素摊开拼进新列表 | 容器展开 | call_model 拼消息 |
+| `if __name__ == "__main__":` | 直接被运行才执行 main；被 import 只借函数 | 无（main 函数约定） | 每个脚本末尾 |
+| `[SystemMessage(...), *state["messages"]]` | 列表字面量 + 解包 | 初始化列表 | call_model |
+
+**读代码总口诀**：先认"定义（def/class/@）还是调用（名后有括号）"；再认"传的是值还是函数本体（名后无括号）"。
+
+---
+
+## 四、LangGraph 概念速查（今天建立的完整心智）
+
+1. **agent = 循环不是一次调用**：模型点菜(tool_calls) → 代码执行 → 结果回传 → 再决策，直到不点菜。LLM 调用 = 工具执行 + 1。
+2. **agent 底层都是图**（黑盒白盒同构）：`agent`(模型决策)/`tools`(执行) 两干活节点 + `START`/`END` 哨兵 + 条件分流边 + `tools→agent` 回环。
+3. **状态靠 add_messages 追加累积**——模型无状态，每轮全量重喂（token 随对话/工具轮数膨胀，P3 治理）。
+4. **护栏三件**：recursion_limit(步数大坝) / 重复熔断(同工具同参数闸门) / ToolNode handle_tool_errors(异常回流，**默认只兜 ToolInvocationError，业务异常要显式 True**)。
+5. **搭图七步**：StateGraph → add_node×N → add_edge(START→首个) → add_conditional_edges(路由) → add_edge(回环) → compile → stream/invoke。
+
+---
+
+## 五、后续知识手册建议结构（基于本笔记可扩展）
+
+1. **LangGraph 基础**：图/节点/边/状态/循环 → 每课配最小可跑例
+2. **画图 API 手册**：add_node/add_edge/add_conditional_edges/compile + 条件路由函数写法
+3. **Python 语法补课**：本文第三节扩展（装饰器原理、闭包、TypedDict 实战）
+4. **常见疑问 FAQ**：本文第二节逐条扩展成图文
+5. **每 Phase 精读笔记**：对接 lesson_agent1/2 已有内容，后续 P3-P6 续写
+
+> 每次学习会话结束，把"问过的问题 + 答错/绕过的点"追加到本文第二、三节——它是你个人知识手册的生长点。
+
+---
+
+## 补充问答（2026-09-06 晚间 · W3 续跑）
+
+### Q13. 代码里所有 """docstring""" 模型都能看到吗？
+**不能。docstring 不会自己"飘"给模型，给了的唯一路径是有人主动搬进请求。** 三种命运：
+| 三引号在哪 | 谁读 | 模型看得到吗 |
+|-----------|------|-------------|
+| 模块/类/普通函数 docstring（FakeLLM、call_model） | 只有程序员（IDE） | ❌ 永远不会 |
+| `@tool` 函数 docstring | **langchain 装饰时读 → 变成工具 description → bind_tools 发模型** | ✅ 真 agent 看得到 |
+| SystemMessage 字符串 | 本来就是消息内容 | ✅ |
+判断标准：docstring 是否必要，取决于有没有框架主动读它塞给模型。真模型看不到 FakeLLM 类的 docstring——它不是 @tool，没人搬。（证据：`search_knowledge.description` 开头 = docstring 原文）
+
+### Q14. `def __init__(self, ...)` 相当于 C++ 构造函数吗？
+**是。self = 显式 this。** 对照：`__init__(self, name="FakeLLM")` = 构造函数+默认实参；`self.name = name` = `this->name = name`；`FakeLLM()` = `FakeLLM llm;`。三个差异：① self 显式写在定义里、调用时不传（Python 自动绑定实例）；② 实例变量不预先声明，`self.x =` 首次赋值才诞生（忘初始化→AttributeError）；③ 无构造函数重载，用默认参数/`@classmethod` 实现多形态。
+
+### Q15. FakeLLM 的 `bind_tools` 为什么只 return self？invoke 的 self 呢？
+**鸭子类型的最小接口实现。** 图代码只要求对象"有 bind_tools 和 invoke 方法"（不检查是不是真模型）——FakeLLM 为了装成模型必须有这俩方法，但实现可以很空：`bind_tools` 接受 tools 后原样返回自己（`bound is llm` 实测 True），invoke 只打印计数。真模型 bind_tools 返回"记住工具的新对象"，FakeLLM 不需要真绑（不真调工具）所以返回自己最省事。**invoke 的 self 调用时不传**（`llm.invoke(msgs)`），self 由 Python 自动把 llm 塞进去；invoke 需要 self 是因为要读写实例状态（`self.calls += 1`）。**框架只看接口不看实现**——这也是 FakeLLM 能零成本验证框架机制的原理。
+
+
+### Q16. app.invoke(...) 是什么作用？
+**"运行图"的启动键**——把一份输入喂给编译好的图，让 LangGraph 引擎按画的拓扑从头跑到尾，返回最终 state。它是 Runnable 统一接口家族的成员（`chain.invoke` / `llm.invoke` / `agent.invoke` 同一套"喂输入→拿输出"）。
+- 输入 = state 初始值（图 schema 要哪些键填哪些）；`config` 里放 thread_id（会话钥匙）、recursion_limit（护栏）等。
+- **不是"调一次函数"**：invoke 让引擎跑完整条路径（agent→tools→agent→…→END），自己直接调 call_model 只是单步。
+- P4 中断场景最能说明"跑到哪"：第一次 `app.invoke({...})` 跑到 interrupt **暂停返回**（state 带 `__interrupt__`，没跑完）；第二次 `app.invoke(Command(resume=...))` 从断点续跑到 END。
+- **vs stream**：stream = 慢速跑、每过完一个节点吐一帧（教学看中间过程 W1/W2）；invoke = 一键跑完只给最终 state（P3/P4 跑真实流程）。同一个图，两个开关，只是看不看中间过程。
+
+
+### Q17（P5 追问）判据 2/3 也调用模型吗？不调用只是字符串匹配？
+**对，纯字符串匹配，打分环节零模型调用**（判据 1 是工具名比对、2/3 是 `关键词 in 回答` 子串检查）。唯一调模型的只有 agent 跑出回答那次。这是评估的**黄金分层**，不是偷懒：
+| | 纯规则匹配 | LLM 打分(LLM-as-judge) |
+|---|---|---|
+| 成本 | 零 token、毫秒 | 每题一次 API，贵 |
+| 可复现 | 同回答永远同分 | 有随机性 |
+| 可定位 | FAIL 能精确说"缺哪词/踩哪禁词" | 笼统"质量不高" |
+| 识别 | 只认字面（近义认不出，实测） | 懂语义 |
+**判断标准**：能写成"该不该/有没有/含不含"→ 用规则；只有"好不好/有没有帮助"这类语义质量 → 才值得 LLM judge。本课三次判据 bug（"没有找到"vs"未找到"假阴性、"处理中"礼貌转述假阳性、"2026"真实日期误伤）全是纯匹配固有弱点的实证——对策是同义词组+特征词精确化，天花板永远在（语义等价认不出）。
+
+### Q18（P6 重讲记录）第六阶段到底做什么？
+**P6 = 软件升级 + 代码拆分两个大白话主题**：
+1. **软件升级（V2 迁移）**：框架弹"create_react_agent 搬家到 langchain.agents、旧地址 V2.0 删除"的弃用警告 → 教升级。实测迁移只需改两处：import 换一行 + 参数名 `prompt`→`system_prompt`，其余全不动；旧版 1 条警告、新版 0 条。**看到弃用警告别无视——改一行就升级完，拖到真删了才麻烦。**
+2. **代码拆分（subgraph）**：图太大就拆成"几张独立小图 + 一张调度总图"，像拆函数：订单小图/政策小图各自先单独测好，总图先分类再路由交给对应小图。实测"查 SO-1003"→订单小图、"七天无理由"→政策小图都正确。**好处：小图可单测、可复用、加新功能=加个小图+总图一个分支，旧的不动。**
