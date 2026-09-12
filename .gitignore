@@ -1,0 +1,22 @@
+# 仓库根 .gitignore —— 全仓库通用
+# 目的：阻止各项目下 agent 的 .rivet/ 运行时状态冒进暂存区（曾一度展开 ~90 个文件，
+# 含数据库/记忆库/缓存，几乎被误推到公开仓库）。
+
+# ── agent 运行时目录（会话状态，持续变化，不入库）──
+**/.rivet/artifacts/
+**/.rivet/backups/
+**/.rivet/cache/
+**/.rivet/knowledge/
+**/.rivet/tmp/
+**/.rivet/scratch/
+**/.rivet/skills/_drafts/
+
+# ── agent 数据库与运行时文件 ──
+**/.rivet/meridian.db
+**/.rivet/meridian.db-shm
+**/.rivet/meridian.db-wal
+**/.rivet/.templates-init-sentinel
+
+# 说明：以下 .rivet 内容**有意保留**（稳定、有价值，不忽略）——
+#   .rivet.md（项目 agent 配置）、.rivet/plans/（计划文档）、
+#   .rivet/skills/*/SKILL.md（技能定义）、.rivet/constellation.json
