@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HTTP 传文件 · 交互式演示</title>
+<style>
+  :root{
+    --bg:#0e1320; --card:#161d2c; --card2:#1b2436; --line:#2a3548;
+    --fg:#e7ecf6; --dim:#8b98ad; --accent:#4da3ff; --accent2:#7c5cff;
+    --ok:#39d98a; --bad:#ff6b6b; --warn:#ffd166;
+    --mono:ui-monospace,SFMono-Regular,Consolas,"Cascadia Mono","Microsoft YaHei",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);
+       font:15px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;
+       padding:28px 18px 90px}
+  .wrap{max-width:1000px;margin:0 auto}
+  header h1{font-size:26px;margin:0 0 6px}
+  header p{color:var(--dim);margin:0 0 6px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+        padding:18px 20px;margin:0 0 20px}
+  .card h2{font-size:17px;margin:0 0 4px;display:flex;align-items:center;gap:9px}
+  .card h2 .n{display:inline-flex;width:26px;height:26px;border-radius:8px;flex:none;
+       background:linear-gradient(135deg,var(--accent),var(--accent2));
+       color:#fff;font-size:13px;align-items:center;justify-content:center}
+  .card .desc{color:var(--dim);font-size:13.5px;margin:2px 0 12px}
+  label{font-size:13.5px;color:var(--dim);display:block;margin:10px 0 4px}
+  input[type=text],textarea{width:100%;background:var(--card2);border:1px solid var(--line);
+       border-radius:9px;color:var(--fg);padding:9px 11px;font:14px/1.6 var(--mono);outline:none}
+  input[type=text]:focus,textarea:focus{border-color:var(--accent)}
+  textarea{resize:vertical}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+  button{background:var(--card2);color:var(--fg);border:1px solid var(--line);
+       border-radius:9px;padding:8px 14px;font-size:13.5px;cursor:pointer;transition:.15s}
+  button:hover{border-color:var(--accent);background:#1f2a40}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff}
+  button.primary:hover{filter:brightness(1.1)}
+  pre{background:#0a0e18;border:1px solid var(--line);border-radius:9px;padding:12px 14px;
+       overflow:auto;font:12.5px/1.7 var(--mono);margin:12px 0 0;white-space:pre-wrap;word-break:break-all}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)} .dim{color:var(--dim)}
+  .chk{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--fg);margin-top:10px;cursor:pointer}
+  code.inl{background:#0a0e18;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font:12.5px var(--mono)}
+  .flexline{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:12px}
+  img.prev{max-width:200px;border:1px solid var(--line);border-radius:8px;background:#0a0e18;padding:4px}
+  .note{font-size:12.5px;color:var(--dim);margin-top:10px;border-left:3px solid var(--line);padding-left:10px}
+  a.dl{color:var(--accent);text-decoration:none;border-bottom:1px dashed var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>HTTP 传文件 · 交互式演示</h1>
+  <p>把「表单 / 二进制 / base64 / Content-Type」用点击的方式看清楚。</p>
+  <p class="dim">全部在本地运行、不联网。双击本文件用浏览器打开即可。</p>
+</header>
+
+<!-- ===================== 1 ===================== -->
+<section class="card">
+  <h2><span class="n">1</span>一段数据有多层「身份」</h2>
+  <div class="desc">同一段文字，在「字符 → 码点 → UTF-8 字节 → base64」每一层长什么样。</div>
+  <label>输入文本</label>
+  <textarea id="c1-in" rows="2">Man 你好 😀</textarea>
+  <pre id="c1-out"></pre>
+  <div class="note">注意 😀 一个「字符」占 4 个 UTF-8 字节；而英文 1 字符只占 1 字节。这正是「字符数」和「字节数」不是一回事的原因。</div>
+</section>
+
+<!-- ===================== 2 ===================== -->
+<section class="card">
+  <h2><span class="n">2</span>base64 编码 / 解码与 <code class="inl">=</code> 填充</h2>
+  <div class="desc">每 3 字节 → 4 个字符；不够 3 的整数倍就用 <code class="inl">=</code> 补齐。观察长度变化。</div>
+  <label>输入文本</label>
+  <input type="text" id="c2-in" value="Man" />
+  <div class="row">
+    <button class="primary" id="c2-enc">编码 →base64</button>
+    <button id="c2-dec">解码 ←base64</button>
+  </div>
+  <pre id="c2-out"></pre>
+</section>
+
+<!-- ===================== 3 ===================== -->
+<section class="card">
+  <h2><span class="n">3</span>「误伤」现场：二进制直接当文本会坏掉</h2>
+  <div class="desc">把一段含特殊字节的数据直接塞进文本层（比如 JSON 字符串），会发生什么？再看 base64 为什么安全。</div>
+  <label>选择一段「危险字节」</label>
+  <div class="row" id="c3-samples"></div>
+  <div class="flexline">
+    <div style="flex:1;min-width:300px">
+      <div class="desc" style="margin:0 0 4px"><b>路线 A：直接当字符串</b></div>
+      <pre id="c3-raw"></pre>
+    </div>
+    <div style="flex:1;min-width:300px">
+      <div class="desc" style="margin:0 0 4px"><b>路线 B：先 base64 再放</b></div>
+      <pre id="c3-b64"></pre>
+    </div>
+  </div>
+  <div class="note" id="c3-verdict"></div>
+</section>
+
+<!-- ===================== 4 ===================== -->
+<section class="card">
+  <h2><span class="n">4</span>multipart/form-data 报文长什么样</h2>
+  <div class="desc">带一个文本字段 + 一个文件字段。观察 boundary 分隔、每段自带头部，以及「危险文件名」如何注入新头部。</div>
+  <label>字段名</label>
+  <input type="text" id="c4-field" value="file" />
+  <label>文件名</label>
+  <input type="text" id="c4-name" value="hello.txt" />
+  <label>文件内容（文本演示）</label>
+  <input type="text" id="c4-content" value="hello world" />
+  <label class="chk"><input type="checkbox" id="c4-danger" /> 使用「危险文件名」注入演示（文件名里塞 CRLF + 引号）</label>
+  <label class="chk"><input type="checkbox" id="c4-showcrlf" checked /> 把不可见的 CRLF 显示成 ⏎</label>
+  <div class="row"><button class="primary" id="c4-gen">生成报文</button></div>
+  <pre id="c4-out"></pre>
+  <div class="note">真实传输里 CRLF 就是换行；这里为了让你看清「注入点」才把它显示成符号。</div>
+</section>
+
+<!-- ===================== 5 ===================== -->
+<section class="card">
+  <h2><span class="n">5</span>同一段字节，Content-Type 决定它的「命运」</h2>
+  <div class="desc">下面按钮用的是<b>同一份 PNG 字节</b>，只是服务器声明的类型不同。看浏览器如何分别处置。</div>
+  <div class="row">
+    <button class="primary" id="c5-png">以 <code class="inl">image/png</code> 处理</button>
+    <button id="c5-txt">以 <code class="inl">text/plain</code> 处理</button>
+    <button id="c5-bin">以 <code class="inl">application/octet-stream</code> 处理</button>
+  </div>
+  <div class="flexline">
+    <div id="c5-stage"></div>
+  </div>
+  <pre id="c5-out"></pre>
+  <div class="note">这就是「Content-Type 是给浏览器的处理提示」：同样的字节，声明成图片就显示、声明成文本就是乱码文本、声明成二进制流就触发下载。</div>
+</section>
+
+<!-- ===================== 6 ===================== -->
+<section class="card">
+  <h2><span class="n">6</span>响应里带文件：base64 内联 vs 下载 URL</h2>
+  <div class="desc">两种都能让前端拿到文件。点击对比「响应 JSON 长什么样」以及「前端要写多少代码」。</div>
+  <div class="row">
+    <button class="primary" id="c6-a">方案 A：JSON 内联 base64</button>
+    <button class="primary" id="c6-b">方案 B：JSON 返回下载地址</button>
+  </div>
+  <div class="flexline">
+    <div style="flex:1;min-width:320px">
+      <pre id="c6-json"></pre>
+    </div>
+    <div style="flex:1;min-width:280px" id="c6-stage"></div>
+  </div>
+  <pre id="c6-code"></pre>
+</section>
+
+<!-- ===================== 7 ===================== -->
+<section class="card">
+  <h2><span class="n">7</span>charset 陷阱：同一串字节，不同编码不同结果</h2>
+  <div class="desc">这段字节 <code class="inl">C4 E3 BA C3</code> 在 GBK 里是「你好」。用 UTF-8 解会怎样？</div>
+  <div class="row">
+    <button class="primary" id="c7-utf8">按 UTF-8 解码</button>
+    <button class="primary" id="c7-gbk">按 GBK 解码</button>
+  </div>
+  <pre id="c7-out"></pre>
+  <div class="note">HTTP 的 <code class="inl">Content-Type: text/html; charset=gbk</code> 里那个 charset 参数，决定的就是「用哪张码表翻译字节」。表选错 → 乱码。</div>
+</section>
+
+</div>
+
+<script>
+"use strict";
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const enc = new TextEncoder();
+  const decUTF8 = new TextDecoder("utf-8");
+
+  function bytesToHex(u8, sep = " "){
+    return Array.from(u8).map(b => b.toString(16).padStart(2, "0")).join(sep);
+  }
+  function u8ToB64(u8){
+    let s = "";
+    for (const b of u8) s += String.fromCharCode(b);
+    return btoa(s);
+  }
+  function b64ToU8(b64){
+    return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  }
+  function esc(s){
+    return s.replace(/[&<>]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;" }[c]));
+  }
+  // 把控制字符可视化
+  function vis(s){
+    return s.replace(/[\u0000-\u001f\u007f-\u009f]/g, c =>
+      "⟨U+" + c.codePointAt(0).toString(16).toUpperCase().padStart(4, "0") + "⟩"
+    ).replace(/\uFFFD/g, "⟨U+FFFD �⟩");
+  }
+  // 用 canvas 造一份真实的 PNG 字节
+  function makePngBytes(){
+    const c = document.createElement("canvas");
+    c.width = 160; c.height = 100;
+    const g = c.getContext("2d");
+    const grd = g.createLinearGradient(0, 0, 160, 100);
+    grd.addColorStop(0, "#4da3ff"); grd.addColorStop(1, "#7c5cff");
+    g.fillStyle = grd; g.fillRect(0, 0, 160, 100);
+    g.fillStyle = "#ffffff"; g.font = "bold 22px sans-serif";
+    g.fillText("PNG", 54, 58);
+    const b64 = c.toDataURL("image/png").split(",")[1];
+    return b64ToU8(b64);
+  }
+
+  /* ---------- 卡片 1 ---------- */
+  function renderC1(){
+    const txt = $("c1-in").value;
+    const u8 = enc.encode(txt);
+    const chars = Array.from(txt);
+    const cps = chars.map(ch => "U+" + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")).join(" ");
+    $("c1-out").textContent =
+      "字符（码点）数量 : " + chars.length + "\n" +
+      "码点序列         : " + cps + "\n" +
+      "UTF-8 字节数     : " + u8.length + "\n" +
+      "字节 (hex)       : " + bytesToHex(u8) + "\n" +
+      "base64           : " + u8ToB64(u8);
+  }
+  $("c1-in").addEventListener("input", renderC1);
+
+  /* ---------- 卡片 2 ---------- */
+  function c2enc(){
+    const txt = $("c2-in").value;
+    const u8 = enc.encode(txt);
+    const b64 = u8ToB64(u8);
+    const pad = (b64.match(/=+$/) || [""])[0].length;
+    const groups = Math.ceil(u8.length / 3);
+    $("c2-out").textContent =
+      "原文          : " + txt + "\n" +
+      "字节数        : " + u8.length + "\n" +
+      "字节 (hex)    : " + bytesToHex(u8) + "\n" +
+      "base64        : " + b64 + "\n" +
+      "base64 长度   : " + b64.length + "  (= 3字节一组 → " + groups + " 组 → 每组 4 字符)\n" +
+      "末尾 = 数量   : " + pad + "   (补齐 4 的倍数用)";
+  }
+  function c2dec(){
+    const s = $("c2-in").value.trim();
+    try{
+      const u8 = b64ToU8(s);
+      $("c2-out").textContent =
+        "base64 输入 : " + s + "\n" +
+        "解码字节    : " + bytesToHex(u8) + "\n" +
+        "还原文本    : " + decUTF8.decode(u8);
+    }catch(e){
+      $("c2-out").textContent = "解码失败：" + e.message + "\n（输入的字符不合法，或长度不是 4 的倍数）";
+    }
+  }
+  $("c2-enc").addEventListener("click", c2enc);
+  $("c2-dec").addEventListener("click", c2dec);
+  $("c2-in").addEventListener("keydown", e => { if (e.key === "Enter") c2enc(); });
+
+  /* ---------- 卡片 3 ---------- */
+  const SAMPLES = [
+    { name: "0x00 空字节",      bytes: [0x48, 0x69, 0x00, 0x21] },              // "Hi\0!"
+    { name: "0x0A 换行",        bytes: [0x61, 0x0A, 0x62] },                    // "a\nb"
+    { name: "0xFF 非法 UTF-8",  bytes: [0xE4, 0xBD, 0xA0, 0xFF] },              // "你" + 0xFF
+    { name: '0x22 双引号',      bytes: [0x22, 0x5C, 0x22] }                     // "\"\\\""
+  ];
+  function renderC3(sample){
+    const u8 = new Uint8Array(sample.bytes);
+
+    // 路线 A：直接当字符串（有损）
+    const lossy = decUTF8.decode(u8);           // 不含 { fatal:true }，非法字节变 U+FFFD
+    const back = enc.encode(lossy);
+    let same = back.length === u8.length;
+    if (same){ for (let i = 0; i < u8.length; i++) if (back[i] !== u8[i]) { same = false; break; } }
+    const asJson = JSON.stringify({ data: lossy });
+
+    $("c3-raw").textContent =
+      "原始字节        : " + bytesToHex(u8) + "\n" +
+      "解码成文本      : \"" + vis(lossy) + "\"\n" +
+      "再编码回字节    : " + bytesToHex(back) + "\n" +
+      (same
+        ? "往返一致        : 是 ✓ （这段恰好全是合法 UTF-8）"
+        : "往返一致        : 否 ✗  数据已损坏，且原字节无法还原！") + "\n\n" +
+      "放进 JSON 字符串 :\n" + asJson;
+
+    // 路线 B：base64
+    const b64 = u8ToB64(u8);
+    const back2 = b64ToU8(b64);
+    let same2 = back2.length === u8.length;
+    if (same2){ for (let i = 0; i < u8.length; i++) if (back2[i] !== u8[i]) { same2 = false; break; } }
+    $("c3-b64").textContent =
+      "原始字节        : " + bytesToHex(u8) + "\n" +
+      "base64          : " + b64 + "\n" +
+      "从 base64 还原  : " + bytesToHex(back2) + "\n" +
+      (same2 ? "往返一致        : 是 ✓  （字节一个不差）"
+             : "往返一致        : 否 ✗（这不该发生）") + "\n\n" +
+      "放进 JSON 字符串 :\n" + JSON.stringify({ data: b64 });
+
+    const v = $("c3-verdict");
+    if (same){
+      v.className = "note";
+      v.textContent = "这段字节恰好都是合法 UTF-8，往返侥幸一致——但不是所有二进制都这么幸运。换个样例看 0xFF 那个。";
+    }else{
+      v.className = "note bad";
+      v.textContent = "结论：路线 A 把二进制直接当文本，非法字节被 U+FFFD 替换，往返后字节对不上——数据「悄悄」坏了。路线 B 用 base64，字节一个不差。这就是 JSON 里传文件要先 base64 的原因。";
+    }
+  }
+  const c3btns = $("c3-samples");
+  SAMPLES.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.textContent = s.name;
+    b.addEventListener("click", () => renderC3(s));
+    c3btns.appendChild(b);
+  });
+
+  /* ---------- 卡片 4 ---------- */
+  function renderC4(){
+    const field = $("c4-field").value || "file";
+    const danger = $("c4-danger").checked;
+    const name = danger ? 'a"b\r\nX-Injected: evil.txt' : ($("c4-name").value || "hello.txt");
+    const content = $("c4-content").value;
+    const boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
+    const CRLF = "\r\n";
+    const body =
+      "--" + boundary + CRLF +
+      'Content-Disposition: form-data; name="' + field + '"; filename="' + name + '"' + CRLF +
+      "Content-Type: text/plain" + CRLF +
+      CRLF +
+      content + CRLF +
+      "--" + boundary + "--" + CRLF;
+
+    const head =
+      "POST /upload HTTP/1.1" + CRLF +
+      "Host: api.example.com" + CRLF +
+      "Content-Type: multipart/form-data; boundary=" + boundary + CRLF +
+      "Content-Length: <由浏览器计算>" + CRLF +
+      CRLF;
+    const full = head + body;
+    const show = $("c4-showcrlf").checked ? vis(full) : full;
+    $("c4-out").textContent = show;
+  }
+  $("c4-gen").addEventListener("click", renderC4);
+  ["c4-field","c4-name","c4-content","c4-danger","c4-showcrlf"].forEach(id =>
+    $(id).addEventListener("input", renderC4));
+
+  /* ---------- 卡片 5 ---------- */
+  function c5(type){
+    const bytes = makePngBytes();
+    const blob = new Blob([bytes], { type: type });
+    const url = URL.createObjectURL(blob);
+    const stage = $("c5-stage");
+    stage.innerHTML = "";
+    let out = "同一份字节（PNG），声明类型 = " + type + "\n字节前 16 个: " + bytesToHex(bytes.slice(0, 16)) + " ...\n\n";
+
+    if (type === "image/png"){
+      const img = document.createElement("img");
+      img.className = "prev"; img.src = url; img.alt = "png";
+      stage.appendChild(img);
+      out += "→ 浏览器按图片解码并渲染（这就是你平时看到的图片）。";
+    } else if (type === "text/plain"){
+      const t = decUTF8.decode(bytes);
+      out += "→ 浏览器当成纯文本，把 PNG 字节强行按 UTF-8 解释，得到一堆乱码：\n\n\"" + vis(t.slice(0, 60)) + " ...\"\n\n（字节没变，只是「解释方式」变了。）";
+      const pre = document.createElement("pre");
+      pre.textContent = vis(t.slice(0, 200));
+      stage.appendChild(pre);
+    } else {
+      out += "→ 浏览器不认识它，触发「下载」而不是显示。点下面链接试试：";
+      const a = document.createElement("a");
+      a.className = "dl"; a.href = url; a.download = "demo.png";
+      a.textContent = "⬇ 下载 demo.png";
+      stage.appendChild(a);
+    }
+    $("c5-out").textContent = out;
+  }
+  $("c5-png").addEventListener("click", () => c5("image/png"));
+  $("c5-txt").addEventListener("click", () => c5("text/plain"));
+  $("c5-bin").addEventListener("click", () => c5("application/octet-stream"));
+
+  /* ---------- 卡片 6 ---------- */
+  function c6a(){
+    const bytes = makePngBytes();
+    const b64 = u8ToB64(bytes);
+    // 服务器「返回」的 JSON 响应
+    const resJson = { fileName: "demo.png", mimeType: "image/png", size: bytes.length, content: b64 };
+    const resText = JSON.stringify(resJson, null, 2);
+
+    // 前端处理：解析 JSON → 取 base64 → 手动解码 → 生成 Blob
+    const parsed = JSON.parse(resText);
+    const raw = b64ToU8(parsed.content);
+    const blob = new Blob([raw], { type: parsed.mimeType });
+    const url = URL.createObjectURL(blob);
+
+    $("c6-json").textContent = "// 响应体（Content-Type: application/json）\n" + resText.slice(0, 900) + (resText.length > 900 ? "\n... (base64 很长，截断显示)" : "");
+    const stage = $("c6-stage");
+    stage.innerHTML = "";
+    const img = document.createElement("img");
+    img.className = "prev"; img.src = url; img.alt = "a";
+    stage.appendChild(img);
+
+    $("c6-code").textContent =
+      "// 前端要写这么多：\n" +
+      "const obj = await res.json();                 // 解析 JSON\n" +
+      "const bytes = atob(obj.content);              // base64 → 字符串\n" +
+      "const u8 = Uint8Array.from(bytes, c => c.charCodeAt(0));\n" +
+      "const blob = new Blob([u8], { type: obj.mimeType });  // 再拼回文件\n\n" +
+      "✓ 特点：一次拿全、原子性强；✗ 体积 +33%、不能流式、多一道手工解码。";
+  }
+  function c6b(){
+    const bytes = makePngBytes();
+    // 模拟对象存储里已经放好的文件
+    const blob0 = new Blob([bytes], { type: "image/png" });
+    const downloadUrl = URL.createObjectURL(blob0);   // 真实场景是 https://.../abc?sign=...
+    const resJson = {
+      fileName: "demo.png", mimeType: "image/png", size: bytes.length,
+      downloadUrl: downloadUrl, expiresAt: "2026-06-14T12:00:00Z"
+    };
+    const resText = JSON.stringify(resJson, null, 2);
+
+    $("c6-json").textContent = "// 响应体（Content-Type: application/json）\n" + resText;
+
+    const stage = $("c6-stage");
+    stage.innerHTML = "<div class='dim' style='font-size:13px'>前端去 fetch 这个 downloadUrl …</div>";
+
+    fetch(downloadUrl)
+      .then(r => r.blob())
+      .then(b => {
+        const url = URL.createObjectURL(b);
+        const img = document.createElement("img");
+        img.className = "prev"; img.src = url; img.alt = "b";
+        stage.appendChild(img);
+      })
+      .catch(e => { stage.appendChild(document.createTextNode("加载失败：" + e.message)); });
+
+    $("c6-code").textContent =
+      "// 前端只要做这个：\n" +
+      "const obj = await res.json();                 // 解析 JSON（轻）\n" +
+      "const blob = await (await fetch(obj.downloadUrl)).blob();  // 文件走独立通道\n\n" +
+      "✓ 特点：JSON 轻、文件可流式/可缓存/可断点续传、省内存；\n" +
+      "✓ 大文件首选；downloadUrl 常是「预签名 URL」（自带签名与过期时间）。";
+  }
+  $("c6-a").addEventListener("click", c6a);
+  $("c6-b").addEventListener("click", c6b);
+
+  /* ---------- 卡片 7 ---------- */
+  function c7(label){
+    const u8 = new Uint8Array([0xC4, 0xE3, 0xBA, 0xC3]);
+    let result, note;
+    try{
+      result = new TextDecoder(label).decode(u8);
+    }catch(e){
+      result = "解码器不可用：" + e.message;
+    }
+    if (label === "gbk"){ note = "✓ 正确！GBK 表里 C4E3=「你」、BAC3=「好」。"; $("c7-out").className = "ok"; }
+    else { note = "✗ 用错码表 → 这些字节在 UTF-8 里不是合法序列，全成了替换字符。"; $("c7-out").className = "bad"; }
+    $("c7-out").textContent =
+      "字节        : " + bytesToHex(u8) + "\n" +
+      "用 " + label.toUpperCase() + " 解码 : \"" + vis(result) + "\"\n\n" + note;
+  }
+  $("c7-utf8").addEventListener("click", () => c7("utf-8"));
+  $("c7-gbk").addEventListener("click", () => c7("gbk"));
+
+  /* ---------- 初始化 ---------- */
+  renderC1();
+  c2enc();
+  renderC3(SAMPLES[2]);   // 默认展示 0xFF 这个「会坏」的样例
+  renderC4();
+  $("c5-out").textContent = "点上面的按钮试试。";
+  $("c6-json").textContent = "点上面的按钮，看两种响应分别长什么样。";
+  $("c6-code").textContent = "";
+  $("c7-out").textContent = "点上面的按钮试试。";
+})();
+</script>
+</body>
+</html>
