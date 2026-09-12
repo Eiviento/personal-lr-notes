@@ -27,3 +27,12 @@
 - 旧三项目 = **理解层**（机制是什么）：LangChain-RAG-Agent / Project-Langchain / mcp-hello1
 - 本项目 = **生产层**（怎么组装成系统）：可部署/可观测/可扩展/可并发
 - 复用而非重写：LLM 封装、工具定义、eval 判据、MCP 代码从旧项目搬，不重新发明
+
+## 2026-09-12 · 阶段 1 实施中发现
+
+### F3: DEEPSEEK_API_KEY 失效（401，环境问题）
+- **现象**：Wave4 真实 API 端到端问答时，`/qa` 返回 500，服务端日志 `openai.AuthenticationError: 401 ... api key is invalid`（尾号 a3b2）。
+- **排查**：① shell 环境变量无 `DEEPSEEK_API_KEY`（无污染）；② 加载的是 `../Project-Langchain/.env`；③ 用该 .env 的 key 直连 DeepSeek → 同样 401。→ **key 本身失效**（可能过期/轮换/欠费），非代码问题。
+- **影响**：Wave4 的「真实 DeepSeek 生成」环节**未完成验证**；但检索链路在服务端日志中显示正常（请求走到 `generator.generate` 才 401，说明检索成功返回候选）。HTTP 层由 TestClient 假件覆盖、检索质量由评估报告覆盖。
+- **处置**：待用户更新 key 后，重跑 `scripts/ask.py "问题"` 补验证。不假装通过。
+

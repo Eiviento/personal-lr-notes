@@ -1,0 +1,25 @@
+{
+  "note": "初版评测集：问题 → 应命中文档（data/documents 下的实际文件名）。标注由作者人工完成，属初版，可由用户复核调整。评估指标依赖此标注质量。",
+  "cases": [
+    {"q": "agent 的本质就是一个循环吗", "relevant": ["pl_lesson_agent1_whitebox.md"]},
+    {"q": "recursion_limit 是用来限制什么的", "relevant": ["pl_lesson_agent2_guardrails.md"]},
+    {"q": "checkpointer 有什么用", "relevant": ["pl_lesson_agent3_memory.md", "pl_lesson_agent7_webapp.md"]},
+    {"q": "thread_id 怎么实现多会话隔离", "relevant": ["pl_lesson_agent3_memory.md"]},
+    {"q": "怎么让对话在程序重启后不丢", "relevant": ["pl_lesson_agent3_memory.md"]},
+    {"q": "怎么让 agent 在写操作前停下来等人工审批", "relevant": ["pl_lesson_agent4_reliability.md"]},
+    {"q": "如何防止模型编造不存在的订单号", "relevant": ["pl_lesson_agent4_reliability.md"]},
+    {"q": "eval 集和判据是怎么建的", "relevant": ["pl_lesson_agent5_eval.md"]},
+    {"q": "单变量回归实验怎么设计", "relevant": ["pl_lesson_agent5_eval.md"]},
+    {"q": "怎么判断检索系统好不好", "relevant": ["pl_lesson_agent5_eval.md"]},
+    {"q": "create_react_agent 怎么迁移到 create_agent", "relevant": ["pl_lesson_agent6_scale.md"]},
+    {"q": "subgraph 子图有什么用处", "relevant": ["pl_lesson_agent6_scale.md"]},
+    {"q": "Streamlit 里 thread_id 为什么要存进 URL", "relevant": ["pl_lesson_agent7_webapp.md"]},
+    {"q": "LCEL 是什么", "relevant": ["lc_extra_lcel_explained.md"]},
+    {"q": "RAG 的三件套是什么", "relevant": ["lc_phase4_rag.md"]},
+    {"q": "MCP 里 server 和 client 是什么关系", "relevant": ["lc_extra_mcp.md"]},
+    {"q": "Function Calling 和 MCP 有什么区别", "relevant": ["lc_extra_mcp.md"]},
+    {"q": "LangSmith Studio 怎么用", "relevant": ["lc_extra_langsmith_studio.md"]},
+    {"q": "工具调用的循环是怎么写的", "relevant": ["lc_phase4_tool_calling.md"]},
+    {"q": "prompt 的四要素是什么", "relevant": ["lc_phase1_prompt_basics.md"]}
+  ]
+}

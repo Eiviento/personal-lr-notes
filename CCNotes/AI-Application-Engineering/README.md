@@ -67,7 +67,15 @@ AI-Application-Engineering\
 
 > 探针脚本与完整输出见 `.rivet\scratch\probe_env.py`（属 Project-Langchain 的 scratch，一次实跑）
 
-## 运行方式（各阶段就绪后补充）
+## 阶段 1 成果（DocQA · 已实现）
+
+- **模块**：`src/rag/{splitter,embedder,store,bm25,retriever,reranker,generator}.py` + `src/api/main.py` + `src/evaluation/evaluate.py`
+- **测试**：`tests/` 26 个单测全绿（零成本假件，不调 API）
+- **评估**：`scripts/run_eval.py` → 混合检索 hit_rate/recall = 1.00（20 题）最优；降级 rerank 反而拖低 MRR（详见 `lessons/lesson_01..04`）
+- **服务**：`uvicorn src.api.main:create_app --factory --port 8000`；客户端 `scripts/ask.py "问题"`
+- ⚠️ **真实 DeepSeek 生成环节未验证**：API key 失效（401），检索链路正常（见 `lessons/lesson_04_eval_api.md`）
+
+## 运行方式
 
 - 解释器：`E:\software\OfficeWorkLife\Anaconda\envs\agent_env\python.exe`
 - 脚本一律加 UTF-8 前缀：`PYTHONIOENCODING=utf-8 <python> <script>`（Windows GBK 坑）
