@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG 原理讲义 · 向量化 / 检索 / 融合</title>
+<style>
+/* ============ 主题变量 ============ */
+*{box-sizing:border-box}
+:root{
+  color-scheme:light;
+  --bg:#f6f7f9; --panel:#ffffff; --panel-2:#fbfcfd;
+  --text:#1f2328; --dim:#59636e; --faint:#8b949e;
+  --border:#e3e6ea; --border-strong:#d0d7de;
+  --accent:#4f46e5; --accent-2:#6366f1; --accent-soft:#eef0ff;
+  --green:#1a7f37; --green-soft:#e8f5ec; --green-bd:#b7e0c2;
+  --blue:#0969da; --blue-soft:#e7f1fc; --blue-bd:#b6d7f7;
+  --red:#cf222e; --red-soft:#fdecee; --red-bd:#f5c2c7;
+  --amber:#9a6700; --amber-soft:#fff6e0; --amber-bd:#f0d9a0;
+  --code-bg:#0d1117; --code-text:#e6edf3; --code-dim:#8b949e;
+  --shadow:0 1px 2px rgba(27,31,36,.06),0 4px 14px rgba(27,31,36,.06);
+  --radius:12px; --sb:284px;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,"Courier New",monospace;
+}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0d1117; --panel:#161b22; --panel-2:#1c2128;
+  --text:#e6edf3; --dim:#9aa4ae; --faint:#6e7681;
+  --border:#2b3138; --border-strong:#3d444d;
+  --accent:#8b93ff; --accent-2:#a5abff; --accent-soft:#1b2136;
+  --green:#57d38a; --green-soft:#12261a; --green-bd:#1f4d31;
+  --blue:#6cb6ff; --blue-soft:#0f2033; --blue-bd:#1c4067;
+  --red:#ff8188; --red-soft:#2b1518; --red-bd:#5c2228;
+  --amber:#e3b341; --amber-soft:#2a220f; --amber-bd:#57471a;
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 6px 20px rgba(0,0,0,.38);
+}
+/* ============ 基础 ============ */
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--sans); font-size:16.5px; line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+  display:grid; grid-template-columns:var(--sb) minmax(0,1fr);
+}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.35; font-weight:700; letter-spacing:-.01em}
+p{margin:.7em 0}
+::selection{background:var(--accent-soft)}
+/* ============ 侧边栏 ============ */
+.sidebar{position:sticky; top:0; height:100vh; overflow-y:auto; background:var(--panel); border-right:1px solid var(--border); padding:22px 16px 40px; z-index:40}
+.brand{display:flex; gap:11px; align-items:center; margin:2px 6px 18px}
+.logo{width:38px; height:38px; border-radius:11px; flex:none; display:grid; place-items:center; font-size:19px; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-2)); box-shadow:var(--shadow)}
+.brand-title{font-weight:700; font-size:15px; line-height:1.2}
+.brand-sub{font-size:12px; color:var(--faint); margin-top:2px}
+.theme-toggle{width:100%; margin:0 0 16px; padding:8px 12px; cursor:pointer; font:inherit; font-size:13.5px; color:var(--dim); background:var(--panel-2); border:1px solid var(--border); border-radius:9px; display:flex; align-items:center; justify-content:center; gap:7px; transition:.15s}
+.theme-toggle:hover{color:var(--text); border-color:var(--border-strong)}
+#toc{font-size:14px}
+#toc a{display:block; color:var(--dim); padding:5px 10px; border-radius:7px; text-decoration:none; border-left:2px solid transparent; transition:.12s}
+#toc a:hover{color:var(--text); background:var(--panel-2)}
+#toc .toc-sec{font-weight:700; color:var(--text); margin-top:14px; font-size:13.5px; padding:6px 10px; letter-spacing:.02em}
+#toc .toc-sub{padding-left:22px; font-size:13px}
+#toc a.active{color:var(--accent); background:var(--accent-soft); border-left-color:var(--accent); font-weight:600}
+.menu-btn{display:none; position:fixed; top:14px; left:14px; z-index:60; width:44px; height:44px; border-radius:12px; cursor:pointer; background:var(--panel); color:var(--text); border:1px solid var(--border); font-size:19px; box-shadow:var(--shadow)}
+/* ============ 主区 ============ */
+main{width:100%; max-width:880px; margin:0 auto; padding:56px 40px 120px; min-width:0}
+section{scroll-margin-top:24px; margin-bottom:64px}
+.lesson-head{border-bottom:2px solid var(--border); padding-bottom:16px; margin-bottom:26px}
+.lesson-head h2{margin:0; font-size:29px}
+.lesson-meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+.chip{font-size:12.5px; padding:3px 10px; border-radius:999px; background:var(--panel); border:1px solid var(--border); color:var(--dim)}
+.chip code{font-size:12px; color:var(--accent); background:none; padding:0}
+h3{font-size:20px; margin:2em 0 .5em; padding-left:12px; border-left:4px solid var(--accent); border-radius:2px}
+h4{font-size:16.5px; margin:1.4em 0 .4em}
+.lead{font-size:17px; color:var(--dim)}
+/* ============ 卡片 / 提示 ============ */
+.card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin:16px 0; box-shadow:var(--shadow)}
+.card-title{font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:8px}
+.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.callout{border-radius:var(--radius); padding:13px 16px; margin:16px 0; border:1px solid; font-size:15.5px}
+.callout .c-title{font-weight:700; margin-bottom:3px; display:flex; gap:7px; align-items:center}
+.callout p{margin:.25em 0}
+.c-warn{background:var(--amber-soft); border-color:var(--amber-bd)}
+.c-warn .c-title{color:var(--amber)}
+.c-info{background:var(--blue-soft); border-color:var(--blue-bd)}
+.c-info .c-title{color:var(--blue)}
+.c-ok{background:var(--green-soft); border-color:var(--green-bd)}
+.c-ok .c-title{color:var(--green)}
+.c-bad{background:var(--red-soft); border-color:var(--red-bd)}
+.c-bad .c-title{color:var(--red)}
+/* ============ 徽章 ============ */
+.badge{display:inline-block; font-size:12.5px; font-weight:700; padding:2px 9px; border-radius:999px; line-height:1.6}
+.b-green{background:var(--green-soft); color:var(--green); border:1px solid var(--green-bd)}
+.b-blue{background:var(--blue-soft); color:var(--blue); border:1px solid var(--blue-bd)}
+.b-red{background:var(--red-soft); color:var(--red); border:1px solid var(--red-bd)}
+.b-amber{background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber-bd)}
+/* ============ 表格 ============ */
+.tbl-wrap{overflow-x:auto; margin:16px 0; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel)}
+table{border-collapse:collapse; width:100%; font-size:14.5px}
+th,td{padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top}
+th{background:var(--panel-2); font-weight:700; font-size:13.5px; color:var(--dim); white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel-2)}
+td code,p code,li code{font-family:var(--mono); font-size:.87em; background:var(--accent-soft); color:var(--accent); padding:1.5px 5px; border-radius:5px}
+/* ============ 代码块 ============ */
+.code{position:relative; margin:16px 0; border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); background:var(--code-bg)}
+.code-head{display:flex; align-items:center; justify-content:space-between; padding:7px 12px; background:#161b22; border-bottom:1px solid #21262d}
+.code-lang{font-size:12px; color:var(--code-dim); font-family:var(--mono); letter-spacing:.03em}
+.copy-btn{font:inherit; font-size:12px; cursor:pointer; color:var(--code-dim); background:transparent; border:1px solid #30363d; border-radius:6px; padding:2px 9px; transition:.15s}
+.copy-btn:hover{color:var(--code-text); border-color:#484f58}
+.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-family:var(--mono); font-size:13.5px; line-height:1.65; color:var(--code-text)}
+.code pre .cm{color:var(--code-dim)}
+/* ============ 手算块 ============ */
+.hand{font-family:var(--mono); font-size:13px; line-height:1.75; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:13px 16px; overflow-x:auto; white-space:pre; margin:14px 0}
+/* ============ 排名条 ============ */
+.rank{display:flex; align-items:center; gap:10px; padding:7px 12px; border-radius:9px; background:var(--panel); border:1px solid var(--border); margin:6px 0; font-size:14px}
+.rank .rk{font-weight:800; color:var(--faint); min-width:24px}
+.rank .sc{font-family:var(--mono); font-size:12.5px; color:var(--accent); min-width:88px}
+.rank .nm{font-weight:600}
+.rank.hit{border-color:var(--green-bd); background:var(--green-soft)}
+.rank.dim{opacity:.5}
+/* ============ 原理路线 ============ */
+.flow{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:20px 0; padding:18px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow)}
+.flow-node{flex:none; padding:9px 14px; border-radius:9px; background:var(--panel-2); color:var(--dim); font-weight:600; font-size:14px; border:1px solid var(--border)}
+.flow-node small{display:block; font-weight:400; font-size:11.5px; color:var(--faint)}
+.flow-node.on{background:var(--accent-soft); color:var(--accent); border-color:var(--accent)}
+.flow-arrow{color:var(--faint); font-size:17px; font-weight:700}
+/* ============ 问答卡 ============ */
+.qa-list{display:grid; gap:10px; margin:16px 0}
+details.qa{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden}
+details.qa>summary{cursor:pointer; padding:13px 18px 13px 44px; position:relative; font-weight:600; font-size:15.5px; list-style:none; transition:.12s}
+details.qa>summary::-webkit-details-marker{display:none}
+details.qa>summary::before{content:"?"; position:absolute; left:14px; top:50%; transform:translateY(-50%); width:21px; height:21px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:13px; font-weight:800; display:grid; place-items:center}
+details.qa>summary::after{content:"+"; position:absolute; right:16px; top:50%; transform:translateY(-50%); color:var(--faint); font-size:19px; transition:.2s}
+details.qa[open]>summary::after{content:"−"}
+details.qa[open]>summary{background:var(--panel-2); border-bottom:1px solid var(--border)}
+details.qa>summary:hover{color:var(--accent)}
+.qa-body{padding:14px 18px 16px 44px; font-size:15px; color:var(--dim)}
+.qa-body strong{color:var(--text)}
+/* ============ 通用折叠 ============ */
+details.fold{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); margin:16px 0; overflow:hidden}
+details.fold>summary{cursor:pointer; padding:12px 18px; font-weight:700; font-size:15px; list-style:none}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"▸"; color:var(--accent); margin-right:9px; display:inline-block; transition:.2s}
+details.fold[open]>summary::before{transform:rotate(90deg)}
+details.fold[open]>summary{border-bottom:1px solid var(--border)}
+.fold-body{padding:6px 18px 16px}
+/* ============ 来源/其他 ============ */
+.source{font-size:13.5px; color:var(--faint); border-left:3px solid var(--border-strong); padding:4px 0 4px 12px; margin:14px 0}
+.src-file{font-family:var(--mono); font-size:12.5px; color:var(--accent)}
+/* ============ hero ============ */
+.hero{background:linear-gradient(135deg,var(--accent-soft),transparent 70%); border:1px solid var(--border); border-radius:18px; padding:30px 30px 26px; margin-bottom:34px}
+.hero h1{margin:0 0 10px; font-size:34px; letter-spacing:-.02em}
+.hero .lead{margin:0; max-width:60ch}
+.hero .tags{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px}
+/* ============ 导航卡 ============ */
+.nav-cards{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0}
+a.nav-card{display:block; padding:15px 17px; border-radius:var(--radius); background:var(--panel); border:1px solid var(--border); text-decoration:none; color:inherit; transition:.15s}
+a.nav-card:hover{text-decoration:none; border-color:var(--accent); transform:translateY(-2px); box-shadow:var(--shadow)}
+a.nav-card .nc-kicker{font-size:12px; font-weight:800; color:var(--accent); letter-spacing:.05em}
+a.nav-card .nc-title{font-weight:700; margin:4px 0 3px}
+a.nav-card .nc-desc{font-size:13.5px; color:var(--dim)}
+footer{color:var(--faint); font-size:13.5px; border-top:1px solid var(--border); padding-top:22px; margin-top:40px}
+footer .dot{color:var(--border-strong); margin:0 7px}
+/* ============ 响应式 ============ */
+@media (max-width:980px){
+  body{grid-template-columns:1fr}
+  .sidebar{position:fixed; top:0; left:0; width:284px; height:100vh; transform:translateX(-100%); transition:transform .25s ease; box-shadow:var(--shadow)}
+  .sidebar.open{transform:none}
+  .menu-btn{display:grid; place-items:center}
+  main{padding:70px 20px 90px; max-width:100%}
+  .grid-2,.nav-cards{grid-template-columns:1fr}
+  .hero h1{font-size:26px}
+  .lesson-head h2{font-size:23px}
+}
+@media (min-width:981px){ .menu-btn{display:none} }
+</style>
+</head>
+<body>
+
+<button class="menu-btn" id="menu-btn" aria-label="打开目录">☰</button>
+
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <span class="logo">◎</span>
+    <div>
+      <div class="brand-title">RAG 原理讲义</div>
+      <div class="brand-sub">向量化 · 检索 · 融合</div>
+    </div>
+  </div>
+  <button class="theme-toggle" id="theme-toggle"><span id="theme-icon">🌙</span><span id="theme-label">切换到深色</span></button>
+  <nav id="toc">
+    <a href="#home" class="toc-sec">🏠 开始</a>
+    <a href="#h-use" class="toc-sub">这份讲义怎么用</a>
+    <a href="#h-map" class="toc-sub">全链路地图</a>
+    <a href="#vec" class="toc-sec">① 向量化</a>
+    <a href="#v-intuition" class="toc-sub">直觉：文本变成箭头</a>
+    <a href="#v-steps" class="toc-sub">三步机制</a>
+    <a href="#v-cos" class="toc-sub">余弦相似度</a>
+    <a href="#v-e1" class="toc-sub">实验 e1：玩具向量</a>
+    <a href="#v-e2" class="toc-sub">实验 e2：真实模型</a>
+    <a href="#retr" class="toc-sec">② 检索</a>
+    <a href="#r-two" class="toc-sub">两条完全不同的路</a>
+    <a href="#r-bm25" class="toc-sub">BM25 在算什么</a>
+    <a href="#r-e3" class="toc-sub">实验 e3：两路对照</a>
+    <a href="#fuse" class="toc-sec">③ 融合</a>
+    <a href="#f-why" class="toc-sub">为什么不能相加</a>
+    <a href="#f-rrf" class="toc-sub">RRF：只看排名</a>
+    <a href="#f-e4" class="toc-sub">实验 e4：手算 vs 代码</a>
+    <a href="#f-k" class="toc-sub">k 是什么</a>
+    <a href="#wrap" class="toc-sec">④ 串起来</a>
+    <a href="#w-code" class="toc-sub">回到 src\rag</a>
+    <a href="#w-next" class="toc-sub">自己动手</a>
+  </nav>
+</aside>
+
+<main>
+
+  <section id="home">
+    <div class="hero">
+      <h1>RAG 原理讲义</h1>
+      <p class="lead">看得懂 <span class="src-file">src\rag\</span> 的代码，但不确定「向量化 / 检索 / 融合」到底在干什么？这份讲义把三个原理从<strong>直觉 → 公式 → 真实输出</strong>讲一遍，每个原理都配一个能亲手跑的实验。</p>
+      <div class="tags">
+        <span class="badge b-blue">零外部依赖 · 可离线</span>
+        <span class="badge b-green">4 个可跑实验</span>
+        <span class="badge b-amber">讲义里每个数字都来自实跑</span>
+      </div>
+    </div>
+
+    <h3 id="h-use">这份讲义怎么用</h3>
+    <p>三种用法，按你的习惯挑：</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>你想</th><th>怎么做</th></tr></thead>
+        <tbody>
+          <tr><td>先建立整体印象</td><td>从上往下顺着读，每节的「实验」段落贴的是脚本真实输出</td></tr>
+          <tr><td>边读边验证</td><td>开着终端，读到哪个实验就跑哪个：<code>PYTHONIOENCODING=utf-8 &lt;python&gt; notes-rag\examples\eN_*.py</code></td></tr>
+          <tr><td>动手改</td><td>改脚本里的句子 / 向量 / 榜单，重跑，看数字怎么变——这是理解最快的方式</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout c-info">
+      <div class="c-title">📌 关于「玩具」与「真实」</div>
+      <p>真实模型的向量是 <strong>512 维</strong>，你既看不见也算不动。所以每个原理都用<strong>双轨</strong>讲：先用能一眼算完的「玩具例子」把公式看清，再换项目真实在跑的模型/代码，看它在真实数据上的行为。</p>
+    </div>
+
+    <h3 id="h-map">全链路地图</h3>
+    <p>完整的 RAG 是这样一条线。<strong>这份讲义只讲中间三个</strong>（切分你已懂，生成不涉及检索原理）：</p>
+    <div class="flow">
+      <div class="flow-node">切分<small>chunking</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node on">① 向量化<small>embedding</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node on">② 检索<small>retrieval（两路）</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node on">③ 融合<small>RRF</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node">重排<small>rerank</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node">生成<small>generation</small></div>
+    </div>
+    <p class="source">对应代码：① <span class="src-file">src\rag\embedder.py</span> · ② <span class="src-file">src\rag\store.py</span> + <span class="src-file">src\rag\bm25.py</span> · ③ <span class="src-file">src\rag\retriever.py</span>（其中的 <code>reciprocal_rank_fusion</code>）</p>
+
+    <h3>三个原理，一句话预告</h3>
+    <div class="nav-cards">
+      <a class="nav-card" href="#vec"><div class="nc-kicker">① 向量化</div><div class="nc-title">把文本变成箭头</div><div class="nc-desc">意思相近的文本，箭头指向相近的方向。相似度 = 夹角的余弦。</div></a>
+      <a class="nav-card" href="#retr"><div class="nc-kicker">② 检索</div><div class="nc-title">两条互补的路</div><div class="nc-desc">向量路懂语义但抓不住术语；BM25 抓术语但不懂语义。</div></a>
+      <a class="nav-card" href="#fuse"><div class="nc-kicker">③ 融合</div><div class="nc-title">把两路合成一路</div><div class="nc-desc">分数尺度不同不能相加——RRF 干脆扔掉分数，只看排名。</div></a>
+      <a class="nav-card" href="#wrap"><div class="nc-kicker">④ 串起来</div><div class="nc-title">回到 src\rag 的代码</div><div class="nc-desc">三个原理落到哪几个文件、哪个函数，一眼对上。</div></a>
+    </div>
+  </section>
+
+  <section id="vec">
+    <div class="lesson-head">
+      <h2>① 向量化：把文本变成箭头</h2>
+      <div class="lesson-meta">
+        <span class="chip">代码 <code>src\rag\embedder.py</code></span>
+        <span class="chip">实验 <code>examples\e1_vector_basics.py</code></span>
+        <span class="chip">实验 <code>examples\e2_embedding_real.py</code></span>
+      </div>
+    </div>
+
+    <h3 id="v-intuition">直觉：每个文本是一根箭头</h3>
+    <p>向量化要解决的问题是：<strong>怎么让计算机知道「两句话意思差不多」？</strong></p>
+    <p>办法是给每个文本造一个「坐标」——但更准确的比喻是<strong>一根从原点射出去的箭头</strong>。模型被训练成：<strong>意思相近的文本，箭头指向相近的方向</strong>。于是「像不像」这个模糊的问题，变成了「两根箭头夹角大不大」这个能算的问题。</p>
+    <div class="callout c-info">
+      <div class="c-title">💡 为什么是「方向」不是「距离」</div>
+      <p>一句话写长一点、短一点，箭头会变长变短，但<strong>方向不变</strong>——意思没变。所以衡量相似度要看去向（夹角），而不是长度（距离）。这就是「余弦相似度」的由来。</p>
+    </div>
+
+    <h3 id="v-steps">三步机制（把 embedder.py 拆开）</h3>
+    <p><code>embedder.py</code> 里的 <code>_embed_one()</code> 其实只做了三件事，没有魔法：</p>
+    <div class="flow">
+      <div class="flow-node on">1 分词<small>WordPiece</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node on">2 前向推理<small>ONNX / BGE</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node on">3 池化 + 归一化<small>取 [CLS]</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node">一根单位箭头<small>512 维</small></div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>步</th><th>做什么</th><th>为什么</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1 分词</strong></td><td>把文本切成 token，再查词表换成数字 id（中文基本逐字切，英文按子词）</td><td>模型只认数字，不认字</td></tr>
+          <tr><td><strong>2 前向推理</strong></td><td>把 id 序列喂进神经网络，每个位置吐出一个向量</td><td>这是「懂语义」的地方——权重是从海量语料学来的</td></tr>
+          <tr><td><strong>3 池化 + 归一化</strong></td><td>取 <code>[CLS]</code> 位置那个向量当整句代表，再除以自己的模长</td><td>归一化让箭头长度变成 1——<strong>于是点积就等于余弦</strong>，排序省一次除法</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="source">对应代码：<span class="src-file">src\rag\embedder.py</span> 的 <code>WordPieceTokenizer.encode()</code> / <code>_embed_one()</code></p>
+
+    <h3 id="v-cos">余弦相似度：夹角的余弦</h3>
+    <p>两个向量 <code>a</code>、<code>b</code> 的余弦相似度：</p>
+    <div class="hand">cos(a, b) = (a · b) / (|a| × |b|)
+          = 点积 / (a 的长度 × b 的长度)</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>cos 值</th><th>两根箭头的关系</th><th>含义</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>完全同向</td><td>意思基本一样</td></tr>
+          <tr><td>0</td><td>垂直</td><td>毫不相关</td></tr>
+          <tr><td>−1</td><td>完全反向</td><td>意思相反（实际文本里很少见）</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout c-ok">
+      <div class="c-title">✅ 关键性质</div>
+      <p>归一化之后 <code>|a| = |b| = 1</code>，公式的分母变成 1——<strong>于是 点积 == 余弦相似度</strong>。这就是 <code>embedder.py</code> 最后一步归一化、以及检索时直接用点积排序的原因。</p>
+    </div>
+
+    <h3 id="v-e1">实验 e1：玩具向量（能手算）</h3>
+    <p>先用一个 3 维的例子把公式走通。想象三个轴是 <code>[技术, 生活, 情感]</code>，文档 <code>doc_a</code> 很像查询、<code>doc_c</code> 基本无关。</p>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">python notes-rag\examples\e1_vector_basics.py  → 真实输出</span><button class="copy-btn">复制</button></div>
+      <pre>cos(query, doc_a)
+  = (1.0*0.9 + 0.0*0.1 + 0.0*0.0) / (1.0000 * 0.9055)
+  = 0.9000 / 0.9055
+  = 0.9939
+
+三个文档与 query 的相似度（降序 = 检索返回的顺序）
+  #1  doc_a   cos = 0.9939   向量=[0.9, 0.1, 0.0]
+  #2  doc_b   cos = 0.7620   向量=[0.6, 0.5, 0.1]
+  #3  doc_c   cos = 0.0000   向量=[0.0, 0.1, 0.9]</pre>
+    </div>
+    <p>你看，<strong>「检索」的全部就是这样</strong>：算 query 和每个文档的余弦，按分数从高到低排，取前 K 个。真实系统里剩下的都是工程（存哪儿、怎么加速、多路融合）。</p>
+    <p>同一份输出还验证了那条关键性质——归一化后的点积与余弦<strong>逐行相等</strong>：</p>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">e1 输出 · 归一化验证</span><button class="copy-btn">复制</button></div>
+      <pre>文档        归一化后的点积    余弦相似度
+doc_a             0.9939        0.9939
+doc_b             0.7620        0.7620
+doc_c             0.0000        0.0000</pre>
+    </div>
+
+    <h3 id="v-e2">实验 e2：真实模型（512 维）</h3>
+    <p>换项目真正在跑的 <strong>BGE-small-zh</strong>（本地 ONNX 推理）。维度从 3 跳到 512，但道理没变。</p>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">python notes-rag\examples\e2_embedding_real.py  → 真实输出</span><button class="copy-btn">复制</button></div>
+      <pre>模型：bge-small-zh    向量维度 = 512
+
+配对相似度（余弦）
+  '设备位置上报' vs 'GPS 经纬度'          -> +0.4463   [无共同字，但语义相关]
+  '设备位置上报' vs '今天天气怎么样'       -> +0.3487   [无关（对照组）]
+  '用户偏好深色主题' vs '用户喜欢深色界面'  -> +0.8131   [换词同义]</pre>
+    </div>
+    <p>第一行就是向量检索最要害的价值：<strong>「设备位置上报」和「GPS 经纬度」没有一个字相同，模型却认为它们相关（0.446）</strong>，明显高于无关组（0.349）。关键词检索在这里必然失手——它找不到任何共同词。</p>
+    <div class="callout c-warn">
+      <div class="c-title">⚠️ 一个必须诚实说的观察</div>
+      <p>看完整的相似度矩阵（同一份输出）：</p>
+      <div class="hand">         0       1       2       3       4
+[0]  1.000   0.446   0.349   0.436   0.438
+[1]  0.446   1.000   0.247   0.335   0.358
+[2]  0.349   0.247   1.000   0.363   0.335
+[3]  0.436   0.335   0.363   1.000   0.813
+[4]  0.438   0.358   0.335   0.813   1.000</div>
+      <p>「设备位置上报」vs「GPS 经纬度」是 0.446，而它 vs「用户偏好深色主题」是 <strong>0.436</strong>——<strong>只差 0.01</strong>。</p>
+      <p>也就是说：真实 embedding 的相似度<strong>普遍挤在一起</strong>，绝对值的直觉很不可靠。<strong>有意义的是排序，不是分数本身</strong>——这也解释了为什么下一节的融合要「扔掉分数」。</p>
+    </div>
+  </section>
+
+  <section id="retr">
+    <div class="lesson-head">
+      <h2>② 检索：两条完全不同的路</h2>
+      <div class="lesson-meta">
+        <span class="chip">代码 <code>src\rag\store.py</code> · <code>src\rag\bm25.py</code></span>
+        <span class="chip">实验 <code>examples\e3_retrieval.py</code></span>
+      </div>
+    </div>
+
+    <h3 id="r-two">两条完全不同的路</h3>
+    <p>「检索」听起来是一个动作，其实项目里跑了<strong>两套完全不同的算法</strong>，它们的思路毫无共同点：</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th></th><th>向量路</th><th>BM25 路</th></tr></thead>
+        <tbody>
+          <tr><td><strong>怎么算</strong></td><td>把 query 也编码成箭头，和每个块的箭头算余弦</td><td>统计「query 里的词在这个块里出现了几次」</td></tr>
+          <tr><td><strong>看什么</strong></td><td>语义 —— 懂「换词同义」</td><td>字面 —— 只认字符本身</td></tr>
+          <tr><td><strong>强在</strong></td><td>换种说法也能找到</td><td>专有名词 / 编号 / 函数名（<code>SO-1003</code>、<code>create_agent</code>）</td></tr>
+          <tr><td><strong>弱在</strong></td><td>精确术语在语义空间不突出，容易漏</td><td>换个说法就彻底找不到</td></tr>
+          <tr><td><strong>本项目代码</strong></td><td><code>store.query()</code> → 余弦排序</td><td><code>BM25Index.query()</code> → 打分排序</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="source">两个「瞎子」互相补位——这正是下一节要「融合」的原因。</p>
+
+    <h3 id="r-bm25">BM25 在算什么</h3>
+    <p>BM25 的思路一句话：<strong>一个块要得高分，得让 query 里的词<em>既在本块里常见、又在整个语料里罕见</em>。</strong></p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">TF —— 词频</div>
+        <p>这个词<strong>在这个块里</strong>出现了几次。</p>
+        <p>出现越多，说明这个块越可能在讲它。但不会无限加分（出现 100 次不等于相关 100 倍），所以做了饱和处理。</p>
+      </div>
+      <div class="card">
+        <div class="card-title">IDF —— 逆文档频率</div>
+        <p>这个词<strong>在整个语料里</strong>有多稀有。</p>
+        <p>「的」「是」到处都是 → 区分度为零；<code>SO-1003</code> 只在一处出现 → 区分度极高。</p>
+      </div>
+    </div>
+    <div class="hand">每个块的 BM25 分  =  Σ  对 query 里的每个词：
+                       TF(词, 块) × IDF(词)      ← 再加一点常数项（BM25Plus 的稳定性设计）</div>
+    <div class="callout c-info">
+      <div class="c-title">💡 一句话记住</div>
+      <p><strong>向量路比的是「意思像不像」，BM25 比的是「词重不重合」。</strong>前者靠模型学出来的本领，后者靠数数——所以 BM25 完全不懂「同义词」，但也因此绝不会因为「语义相似」而放过一个精确编号。</p>
+    </div>
+
+    <h3 id="r-e3">实验 e3：同一个问题，两路各返回什么</h3>
+    <p>语料换成专为讲原理做的小语料 <code>notes-rag\data\sample_docs.md</code>（只有 6 块，你能一眼看完）：</p>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">python notes-rag\examples\e3_retrieval.py  → 真实输出（节选）</span><button class="copy-btn">复制</button></div>
+      <pre>语料：sample_docs.md  ->  6 个块
+  [0] 1. 设备定位      [1] 2. 天气查询      [2] 3. 订单系统
+  [3] 4. Agent 工具    [4] 5. 数据备份      [5] 6. 用户偏好
+
+问：SO-1003                              <span class="cm"># 专有名词</span>
+  【向量路】  #1 cos=+0.5356  3. 订单系统    #2 +0.4028 6. 用户偏好   #3 +0.3238 4. Agent 工具
+  【BM25 路】 #1 score=4.002  3. 订单系统    #2 1.946 1. 设备定位    #3 1.946 2. 天气查询
+  → 两路都命中：['3. 订单系统']
+  → 只有向量命中：['4. Agent 工具', '6. 用户偏好']
+  → 只有 BM25 命中：['1. 设备定位', '2. 天气查询']
+
+问：怎么知道设备的位置                     <span class="cm"># 语义提问</span>
+  【向量路】  #1 cos=+0.6939  1. 设备定位    #2 +0.4382 2. 天气查询   #3 +0.4219 3. 订单系统
+  【BM25 路】 #1 score=22.234 1. 设备定位    #2 15.930 2. 天气查询   #3 13.626 4. Agent 工具
+  → 两路都命中：['1. 设备定位', '2. 天气查询']
+  → 只有向量命中：['3. 订单系统']
+  → 只有 BM25 命中：['4. Agent 工具']</pre>
+    </div>
+    <h4>这张表要看什么</h4>
+    <ol>
+      <li><strong>两路的 Top-1 常常一致，但 Top-2/3 就分岔了</strong>——「SO-1003」那题，向量把「用户偏好」「Agent 工具」拉进来，BM25 却在「设备定位」「天气查询」上给了分。两路各有各的「只有它命中」的块。</li>
+      <li><strong>分数尺度差了近一个数量级</strong>：向量是 <code>0.5356</code>，BM25 是 <code>4.002</code>（另一题甚至到 <code>22.234</code>）。这正是下一节「不能直接相加」的实锤。</li>
+      <li><strong>BM25 的分数是「无上界」的</strong>——它不像余弦被压在 [0,1] 里。分数多大取决于语料和查询，跨查询比较没意义。</li>
+    </ol>
+    <div class="callout c-warn">
+      <div class="c-title">⚠️ 注意本项目 BM25 的分词方式</div>
+      <p>它用的是<strong>「中文单字」轻量分词</strong>（见 <code>bm25.py</code> 的 <code>tokenize()</code>）——所以「设」「备」这样的常用字会到处撞上，容易产生<strong>明显不相关却也拿到分的块</strong>（比如「SO-1003」那题里「设备定位」拿到 1.946）。</p>
+      <p>这是教学级实现，生产环境会换 <code>jieba</code> 等更细的分词（代码注释里也写了「够用；生产可换」）。<strong>但两路「各有所长、结果不重合」的大格局不变</strong>——所以融合依然必要。</p>
+    </div>
+    <div class="callout c-ok">
+      <div class="c-title">✅ 结论</div>
+      <p>没有任何一路能单独覆盖所有情况。向量漏术语，BM25 漏语义——<strong>把它们的结果合起来，才可能取长补短</strong>。这就是「混合检索」，也是下一节的全部动机。</p>
+    </div>
+  </section>
+
+  <section id="fuse">
+    <div class="lesson-head">
+      <h2>③ 融合：把两路合成一路</h2>
+      <div class="lesson-meta">
+        <span class="chip">代码 <code>src\rag\retriever.py</code> 的 <code>reciprocal_rank_fusion</code></span>
+        <span class="chip">实验 <code>examples\e4_fusion_rrf.py</code></span>
+      </div>
+    </div>
+
+    <h3 id="f-why">为什么不能直接相加</h3>
+    <p>拿到两路结果后，最直觉的做法是「分数加起来排序」。但上一节的实测已经说明它行不通：</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>文档（SO-1003 那题）</th><th>向量分</th><th>BM25 分</th><th>直接相加</th></tr></thead>
+        <tbody>
+          <tr><td>3. 订单系统</td><td>0.5356</td><td>4.002</td><td><strong>4.5371</strong></td></tr>
+          <tr><td>2. 天气查询</td><td>0.2816</td><td>1.946</td><td>2.2276</td></tr>
+          <tr><td>1. 设备定位</td><td>0.2623</td><td>1.946</td><td>2.2082</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="source">以上是 <span class="src-file">e3_retrieval.py</span> 里「如果直接相加」那段的真实输出（脚本会顺带算出来，你重跑就能看到）。</p>
+    <p>注意被挤掉的是谁：<strong>「用户偏好」在向量路里排第 2（0.4028），相加后却掉出了前三</strong>——因为 BM25 没提到它，它的 BM25 分是 0，总分就只有 0.4028。</p>
+    <p>反过来，「天气查询」「设备定位」在<strong>向量路里连前三都没进</strong>（只有 0.28 / 0.26，基本无关），却靠着 BM25 的 1.946「底分」被抬到了第 2、3 名。</p>
+    <p><strong>这就是「BM25 主导」的实证</strong>：加法的结果几乎只由 BM25 的分数决定，向量那路辛苦算出的语义判断，被数值直接淹没了。</p>
+    <div class="callout c-bad">
+      <div class="c-title">✗ 问题在哪</div>
+      <p>两路的分数<strong>根本不在一个尺度上</strong>：向量的余弦被压在 <code>[0, 1]</code> 区间，而 BM25 的分数可以到几十几百。</p>
+      <p>把它们相加，等于<strong>让 BM25 一个人说了算</strong>——向量那路辛苦算出来的语义信息，在数值上被彻底淹没。而且 BM25 的分还会随语料规模变化，你甚至没法调一个「固定的权重」来救它。</p>
+    </div>
+
+    <h3 id="f-rrf">RRF：干脆扔掉分数，只看排名</h3>
+    <p>既然分数不可比，那就<strong>不要分数</strong>——只保留「谁排第几」这个信息。这就是 RRF（Reciprocal Rank Fusion，倒数排名融合）：</p>
+    <div class="hand">对每一路结果：第 rank 名的文档，贡献  1 / (k + rank)     （k 通常取 60）
+
+把所有路的贡献加起来  =  这个文档的最终 RRF 分</div>
+    <p>为什么这样就公平了？因为<strong>排名是两路唯一的共同语言</strong>。向量说「A 排第 1」，BM25 说「C 排第 1」——两句话都可以翻译成「贡献 1/61」，尺度问题自然消失。</p>
+    <div class="callout c-info">
+      <div class="c-title">💡 RRF 的核心直觉：共识项胜出</div>
+      <p>一个文档如果在<strong>两路里都排得靠前</strong>，它就能拿到两份贡献，自然超过只在单路里排第一的文档。换句话说：<strong>「两边都觉得你不错」比「一边觉得你最好」更可信</strong>。</p>
+    </div>
+
+    <h3 id="f-e4">实验 e4：手算 vs 项目代码</h3>
+    <p>用一个 5 个文档的玩具榜单，把每一项贡献都算出来。两路榜单是：向量榜 <code>[A,B,C,D]</code>，BM25 榜 <code>[C,A,E,B]</code>。</p>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">python notes-rag\examples\e4_fusion_rrf.py  → 真实输出</span><button class="copy-btn">复制</button></div>
+      <pre>[1] 逐项贡献  1/(k+rank)，k=60
+    向量    文档 A  排名#1  ->  1/(60+1) = 0.016393
+    向量    文档 B  排名#2  ->  1/(60+2) = 0.016129
+    向量    文档 C  排名#3  ->  1/(60+3) = 0.015873
+    向量    文档 D  排名#4  ->  1/(60+4) = 0.015625
+    BM25  文档 C  排名#1  ->  1/(60+1) = 0.016393
+    BM25  文档 A  排名#2  ->  1/(60+2) = 0.016129
+    BM25  文档 E  排名#3  ->  1/(60+3) = 0.015873
+    BM25  文档 B  排名#4  ->  1/(60+4) = 0.015625
+
+[2] 汇总求和（手算）
+    A  = 1/61 + 1/62  =  0.032522     <span class="cm">← 两路都靠前，最高</span>
+    C  = 1/63 + 1/61  =  0.032266     <span class="cm">← BM25 第1 + 向量第3，紧跟</span>
+    B  = 1/62 + 1/64  =  0.031754
+    E  = 1/63         =  0.015873     <span class="cm">← 只有 BM25 有它</span>
+    D  = 1/64         =  0.015625     <span class="cm">← 只有向量有它</span>
+
+[3] 调用项目真实的 reciprocal_rank_fusion()
+    A  0.032522
+    C  0.032266
+    B  0.031754
+    E  0.015873
+    D  0.015625
+
+[4] 核对
+    手算顺序：['A', 'C', 'B', 'E', 'D']
+    代码顺序：['A', 'C', 'B', 'E', 'D']
+    一致？　YES ✔</pre>
+    </div>
+    <h4>这个结果说明什么</h4>
+    <ul>
+      <li><strong>A 胜出</strong>：它在向量榜第 1、BM25 榜第 2——两路都看好它（<code>1/61 + 1/62</code>）。</li>
+      <li><strong>C 紧随其后</strong>：BM25 第 1、向量第 3（<code>1/61 + 1/63</code>）。注意 <strong>C 在 BM25 榜是第一，最终却没赢过 A</strong>——因为 A 的「两路共识」比 C 的「单路称王」更值钱。</li>
+      <li><strong>E 和 D 垫底</strong>：各自只被一路提到（<code>1/63</code>、<code>1/64</code>），分数只有前两名的约一半。</li>
+      <li>最后一步是<strong>硬判据</strong>：手算顺序与代码输出<strong>逐项一致</strong>（脚本靠这个决定 exit 0 还是 1）——讲义里的手算不是示意，是真能和代码对上的。</li>
+    </ul>
+
+    <h3 id="f-k">k 是什么，为什么是 60</h3>
+    <p>公式里的 <code>k</code> 是个<strong>平滑旋钮</strong>：它决定「排名差异」被放大还是被抹平。</p>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">e4 输出 · k 的作用（节选）</span><button class="copy-btn">复制</button></div>
+      <pre>k=1     前三： A=0.8333  C=0.7500  B=0.5333
+k=60    前三： A=0.0325  C=0.0323  B=0.0318
+k=1000  前三： A=0.0020  C=0.0020  B=0.0020</pre>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>k</th><th>发生了什么</th><th>后果</th></tr></thead>
+        <tbody>
+          <tr><td><code>k=1</code></td><td><code>1/2</code>、<code>1/3</code>、<code>1/4</code>——差异巨大</td><td>第 1 名几乎通吃，后面的排名约等于没用</td></tr>
+          <tr><td><code>k=60</code></td><td><code>0.0325</code> vs <code>0.0323</code>——差异很小但仍有区分</td><td>各名次贡献接近，又不至于完全一样（<strong>常用默认值</strong>）</td></tr>
+          <tr><td><code>k=1000</code></td><td>前三名全是 <code>0.0020</code></td><td>名次差异被抹平，融合退化成「谁被提到的次数多谁赢」</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="source">对应代码：<span class="src-file">src\rag\retriever.py</span> 的 <code>reciprocal_rank_fusion(result_lists, k=60)</code>——函数签名里的默认值就是 60。</p>
+  </section>
+
+  <section id="wrap">
+    <div class="lesson-head">
+      <h2>④ 串起来：回到 src\rag</h2>
+    </div>
+
+    <h3 id="w-code">三个原理落到哪几个文件</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>原理</th><th>文件</th><th>关键函数 / 类</th><th>一句话</th></tr></thead>
+        <tbody>
+          <tr><td>① 向量化</td><td><code>embedder.py</code></td><td><code>Embedder._embed_one()</code></td><td>文本 → 512 维归一化箭头</td></tr>
+          <tr><td>② 向量检索</td><td><code>store.py</code></td><td><code>VectorStore.query()</code></td><td>编码 query → 和每个块算余弦 → 排序</td></tr>
+          <tr><td>② 关键词检索</td><td><code>bm25.py</code></td><td><code>BM25Index.query()</code></td><td>TF × IDF 打分 → 排序</td></tr>
+          <tr><td>③ 融合</td><td><code>retriever.py</code></td><td><code>reciprocal_rank_fusion()</code></td><td>两路排名 → <code>1/(k+rank)</code> 求和</td></tr>
+          <tr><td>（组装）</td><td><code>retriever.py</code></td><td><code>HybridRetriever.retrieve()</code></td><td>调上面两路 → 融合 → 取 Top-K</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>把它们连起来，一次查询的完整旅程是这样的：</p>
+    <div class="flow">
+      <div class="flow-node">问题<small>query</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node on">编码成向量<small>embedder</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node on">向量榜 + BM25 榜<small>两路并行</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node on">RRF 融合<small>1/(k+rank)</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node on">精排<small>reranker</small></div><span class="flow-arrow">→</span>
+      <div class="flow-node">拼进 prompt<small>给大模型</small></div>
+    </div>
+    <div class="callout c-info">
+      <div class="c-title">🔗 想跑通整条链路</div>
+      <p>讲义只讲到检索。要从「问题」一路到「答案」，用项目里的 <code>scripts\ask_local.py</code>——一条命令跑完检索 + 生成，不需要起服务。</p>
+    </div>
+
+    <h3 id="w-next">自己动手（理解最快的方式）</h3>
+    <p>改一个数字、重跑、看差异——比读十遍都管用。几个建议的玩法：</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>想搞懂</th><th>怎么改</th><th>预期看到</th></tr></thead>
+        <tbody>
+          <tr><td>余弦怎么随向量变化</td><td>改 <code>e1</code> 里 <code>DOCS</code> 的数值，让 <code>doc_c</code> 逐渐靠近 <code>query</code></td><td><code>doc_c</code> 的 cos 从 0 慢慢升上去，排名会爬</td></tr>
+          <tr><td>语义相似的真实边界</td><td>改 <code>e2</code> 的 <code>SENTENCES</code>，换成你自己领域的句子对</td><td>看到哪些「你以为相关」的句子，模型其实觉得不相关</td></tr>
+          <tr><td>BM25 有多依赖字面</td><td>在 <code>sample_docs.md</code> 里加一段没有共同字的近义段落，重跑 <code>e3</code></td><td>向量找到了它，BM25 完全没分</td></tr>
+          <tr><td>k 的影响</td><td>改 <code>e4</code> 里 <code>K</code> 的值（试 1 / 60 / 1000）</td><td>排序在「一家独大」和「人人平等」之间滑动</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>自测：能答上来就说明懂了</h3>
+    <div class="qa-list">
+      <details class="qa"><summary>为什么 <code>embedder.py</code> 最后一定要归一化？</summary><div class="qa-body">归一化后两个向量的模长都是 1，余弦公式的分母变成 1——<strong>于是点积就等于余弦</strong>，检索排序时可以省掉一次除法，直接用点积。</div></details>
+      <details class="qa"><summary>为什么 BM25 完全找不到「换词同义」？</summary><div class="qa-body">因为 BM25 的输入是<strong>词本身</strong>：它统计的是「query 里的这些字符，在块里出现了几次」。既然字都不一样，TF 就是 0，它没有任何办法知道两个词意思一样——那是模型的本领，不是数数的本领。</div></details>
+      <details class="qa"><summary>RRF 为什么不看分数、只看排名？</summary><div class="qa-body">因为向量分（0~1）和 BM25 分（可达几十上百）<strong>尺度不可比</strong>，相加等于让 BM25 主导。而「排名」是两路唯一的共同语言——把「第 rank 名」换算成 <code>1/(k+rank)</code>，两路就站到了同一个尺度上。</div></details>
+      <details class="qa"><summary>在 e4 里，C 是 BM25 榜第 1，为什么总分输给了 A？</summary><div class="qa-body">因为 A 在<strong>两路里都靠前</strong>（向量 #1 + BM25 #2 = <code>1/61 + 1/62</code>），而 C 只在 BM25 里第 1、向量里掉到第 3（<code>1/61 + 1/63</code>）。RRF 奖励的是<strong>共识</strong>，不是单路的冠军。</div></details>
+      <details class="qa"><summary>为什么真实模型的相似度「都挤在一起」？</summary><div class="qa-body">e2 的矩阵里，0 vs 1（语义相关）是 0.446，而 0 vs 3（不相关）是 0.436——只差 0.01。真实 embedding 的相似度分布是<strong>连续且拥挤</strong>的，绝对值很难直接当阈值用。<strong>所以系统里靠的是排序，不是分数</strong>——这也是 RRF 敢扔掉分数的底气。</div></details>
+    </div>
+
+    <div class="callout c-ok">
+      <div class="c-title">✅ 一句话总收</div>
+      <p><strong>向量化</strong>把文本变成箭头，让「语义像不像」变成能算的夹角；<strong>检索</strong>用两条互补的路（懂语义的向量 + 认字面的 BM25）各自找候选；<strong>融合</strong>因为分数不可比，改用排名来做公平的合并。</p>
+    </div>
+    <p class="source">配套实验 <span class="src-file">notes-rag\examples\e1~e4</span> · 示例语料 <span class="src-file">notes-rag\data\sample_docs.md</span> · 原理来源 <span class="src-file">src\rag\</span>（本讲义只解释，不改动任何代码）</p>
+  </section>
+
+  <footer>
+    <p>RAG 原理讲义<span class="dot">·</span>配套实验 <span class="src-file">notes-rag\examples\</span>、示例语料 <span class="src-file">notes-rag\data\sample_docs.md</span><span class="dot">·</span>单文件自包含，可离线阅读与分享</p>
+  </footer>
+
+</main>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  var btn=document.getElementById('theme-toggle');
+  var icon=document.getElementById('theme-icon');
+  var label=document.getElementById('theme-label');
+  function apply(t){
+    root.setAttribute('data-theme',t);
+    if(t==='dark'){icon.textContent='☀️'; label.textContent='切换到浅色';}
+    else{icon.textContent='🌙'; label.textContent='切换到深色';}
+  }
+  var saved=null; try{saved=localStorage.getItem('notes-theme');}catch(e){}
+  try{ var qp=new URLSearchParams(window.location.search).get('theme'); if(qp==='dark'||qp==='light'){ saved=qp; } }catch(e){}
+  if(!saved){ saved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'; }
+  apply(saved);
+  btn.addEventListener('click',function(){
+    var t = root.getAttribute('data-theme')==='dark' ? 'light':'dark';
+    apply(t); try{localStorage.setItem('notes-theme',t);}catch(e){}
+  });
+
+  var mb=document.getElementById('menu-btn'), sb=document.getElementById('sidebar');
+  mb.addEventListener('click',function(){ sb.classList.toggle('open'); });
+  sb.addEventListener('click',function(e){ if(e.target.tagName==='A'){ sb.classList.remove('open'); } });
+
+  var links=[].slice.call(document.querySelectorAll('#toc a'));
+  var map={};
+  links.forEach(function(a){
+    var id=a.getAttribute('href').slice(1);
+    var el=document.getElementById(id);
+    if(el){ map[id]=a; }
+  });
+  if('IntersectionObserver' in window){
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          var a=map[en.target.id];
+          if(a){ a.classList.add('active'); }
+        }
+      });
+    },{rootMargin:'-12% 0px -78% 0px', threshold:0});
+    Object.keys(map).forEach(function(id){
+      var el=document.getElementById(id);
+      if(el){ obs.observe(el); }
+    });
+  }
+
+  document.querySelectorAll('.copy-btn').forEach(function(b){
+    b.addEventListener('click',function(){
+      var pre=b.closest('.code').querySelector('pre');
+      var text=pre ? pre.innerText : '';
+      function done(ok){
+        var old=b.textContent;
+        b.textContent = ok ? '已复制' : '复制失败';
+        setTimeout(function(){ b.textContent=old; },1200);
+      }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){done(true);},function(){done(false);});
+      } else {
+        try{
+          var ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(true);
+        }catch(e){ done(false); }
+      }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
