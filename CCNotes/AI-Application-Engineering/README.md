@@ -73,7 +73,7 @@ AI-Application-Engineering\
 - **测试**：`tests/` 26 个单测全绿（零成本假件，不调 API）
 - **评估**：`scripts/run_eval.py` → 混合检索 hit_rate/recall = 1.00（20 题）最优；降级 rerank 反而拖低 MRR（详见 `lessons/lesson_01..04`）
 - **服务**：`uvicorn src.api.main:create_app --factory --port 8000`；客户端 `scripts/ask.py "问题"`
-- ⚠️ **真实 DeepSeek 生成环节未验证**：API key 失效（401），检索链路正常（见 `lessons/lesson_04_eval_api.md`）
+- ✅ **真实 DeepSeek 生成环节已验证**（2026-09-13 补）：key 更新后经环境变量注入重跑 `scripts/ask.py` 三问，均 exit 0 / HTTP 200 / 真实生成；防幻觉纪律生效（资料不足时如实答「资料中没有提到」）。见 `lessons/lesson_04_eval_api.md`
 
 ## 运行方式
 

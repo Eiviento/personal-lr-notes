@@ -36,3 +36,11 @@
 - **影响**：Wave4 的「真实 DeepSeek 生成」环节**未完成验证**；但检索链路在服务端日志中显示正常（请求走到 `generator.generate` 才 401，说明检索成功返回候选）。HTTP 层由 TestClient 假件覆盖、检索质量由评估报告覆盖。
 - **处置**：待用户更新 key 后，重跑 `scripts/ask.py "问题"` 补验证。不假装通过。
 
+### F3-补（2026-09-13）：key 更新后复验通过
+- 用户提供新 `DEEPSEEK_API_KEY`（尾号 087b）。
+- **方式**：`write_file(.env)` 被运行时敏感文件策略拦截 → 改用 **shell 环境变量注入**（`env DEEPSEEK_API_KEY=... <python> -m uvicorn ...`）；`generator._load_env()` 检测到本项目无 `.env` 时回落 `os.getenv`，且 `load_dotenv` 默认不覆盖已存在的环境变量，故注入生效。key **未落盘、未提交**。
+- **最小探针**：agent_env python 直连 `deepseek-chat` → 返回「有效」，exit 0。
+- **端到端**：`uvicorn src.api.main:create_app --factory --port 8000` + `scripts/ask.py` 三问（混合检索 / 文档切分策略 / MCP 原语）→ 三次均 **exit 0 / HTTP 200 / 真实 DeepSeek 生成**。
+- **结论**：F3 的「真实 DeepSeek 生成环节未完成验证」→ **已验证**；检索 + 生成全链路通。
+- **遗留**：本次 key 未落盘（安全策略所限），下次运行需自行在 `AI-Application-Engineering\.env` 配置 `DEEPSEEK_API_KEY`（该文件已 gitignore）或用环境变量注入。
+
