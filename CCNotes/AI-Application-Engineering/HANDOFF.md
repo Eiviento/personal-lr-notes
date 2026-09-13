@@ -192,6 +192,21 @@ CHROME="/c/Program Files/Google/Chrome/Application/chrome.exe"
 本次派了 2 个审查员，**1 个 failed**（输出解析失败，零有效产出）。
 **对策**：发现 worker 失败时，**自己补做它的核心检查**，并在报告里如实说明「该项由我自查，深度不如独立审查员」。不要假装审查完成了。
 
+### 🔴 坑 14：git 配了代理但代理没开，`push` 直接失败
+`git config --global http.proxy` 和仓库 local 配置**都**指向 `http://127.0.0.1:7890`，但该端口**经常没有监听**（代理软件没启动）。
+现象：`fatal: unable to access 'https://github.com/...': Failed to connect to 127.0.0.1 port 7890 ... Couldn't connect to server`（exit 128）。
+
+**对策**：**直连其实是通的**（实测 `ls-remote` 成功）。用**命令行临时覆盖**——不改动用户的 git 配置：
+```bash
+# 先只读确认能连上（安全）
+GIT_TERMINAL_PROMPT=0 git -c http.proxy= -c https.proxy= ls-remote --heads origin
+
+# 确认通了再推
+GIT_TERMINAL_PROMPT=0 git -c http.proxy= -c https.proxy= push origin main
+```
+`GIT_TERMINAL_PROMPT=0` 很重要：需要凭证时**立即失败**而不是卡死等输入。
+本次会话实测：`4dcf92d..82b951c  main -> main`，exit 0，本地与远程 HEAD 一致。
+
 ---
 
 ## 六、新会话建议的起手动作
