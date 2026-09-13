@@ -483,6 +483,32 @@ doc_c             0.0000        0.0000</pre>
     <p>注意被挤掉的是谁：<strong>「用户偏好」在向量路里排第 2（0.4028），相加后却掉出了前三</strong>——因为 BM25 没提到它，它的 BM25 分是 0，总分就只有 0.4028。</p>
     <p>反过来，「天气查询」「设备定位」在<strong>向量路里连前三都没进</strong>（只有 0.28 / 0.26，基本无关），却靠着 BM25 的 1.946「底分」被抬到了第 2、3 名。</p>
     <p><strong>这就是「BM25 主导」的实证</strong>：加法的结果几乎只由 BM25 的分数决定，向量那路辛苦算出的语义判断，被数值直接淹没了。</p>
+
+    <p>那么换成 RRF 呢？同一个问题（SO-1003），同一个脚本还输出了第三种答案：</p>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">e3 输出 · RRF 融合（同一题）</span><button class="copy-btn">复制</button></div>
+      <pre>【RRF 融合】只看排名，1/(60+rank) 求和（← 项目真实做法）
+    #1  rrf=0.032787   3. 订单系统
+    #2  rrf=0.031498   4. Agent 工具
+    #3  rrf=0.031281   6. 用户偏好</pre>
+    </div>
+    <p>把三种方式并排看（都是同一题、前 3 名）：</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>融合方式</th><th>#1</th><th>#2</th><th>#3</th></tr></thead>
+        <tbody>
+          <tr><td>只用向量路</td><td>订单系统</td><td>用户偏好</td><td>Agent 工具</td></tr>
+          <tr><td><strong>直接相加</strong></td><td>订单系统</td><td class="src-file">天气查询</td><td class="src-file">设备定位</td></tr>
+          <tr><td><strong>RRF（项目做法）</strong></td><td>订单系统</td><td>Agent 工具</td><td>用户偏好</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>看出差别了吗：<strong>RRF 的 #2/#3 与「只用向量路」完全一致</strong>（Agent 工具、用户偏好），只是顺序按两路共识做了微调；而「直接相加」把向量路认为**根本无关**的「天气查询」「设备定位」顶了上来。</p>
+    <div class="callout c-ok">
+      <div class="c-title">✅ 这就是 RRF 赢在哪</div>
+      <p>向量路给出的语义判断（订单系统最相关，其次是 Agent 工具、用户偏好），<strong>RRF 保住了</strong>；而直接相加让它被 BM25 的分数噪声淹没。</p>
+      <p>原因回到 RRF 的设计：它只看排名，所以向量榜的「第 2、第 3 名」和 BM25 榜的「第 2、第 3 名」<strong>被平等对待</strong>——不会因为某个分数数值大，就把另一路的判断整个盖掉。</p>
+    </div>
     <div class="callout c-bad">
       <div class="c-title">✗ 问题在哪</div>
       <p>两路的分数<strong>根本不在一个尺度上</strong>：向量的余弦被压在 <code>[0, 1]</code> 区间，而 BM25 的分数可以到几十几百。</p>

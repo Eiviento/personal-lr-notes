@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.rag.bm25 import BM25Index, tokenize   # noqa: E402
 from src.rag.embedder import get_embedder      # noqa: E402
+from src.rag.retriever import reciprocal_rank_fusion  # noqa: E402
 from src.rag.splitter import split             # noqa: E402
 
 CORPUS = ROOT / "notes-rag" / "data" / "sample_docs.md"
@@ -98,6 +99,17 @@ def main():
         for r, i in enumerate(summed, 1):
             tot = vscore[i] + bscore[i]
             print(f"    #{r}  {vscore[i]:.4f} + {bscore[i]:7.3f} = {tot:8.4f}   {title_of(chunks[i])}")
+
+        # ---- 对照：项目真实做法 RRF（只看排名，不看分数）----
+        vec_full = sorted(range(len(chunks)), key=lambda i: dot(qv, doc_vecs[i]), reverse=True)
+        bm_full = [(chunks.index(c), s) for c, s in bm25.query(q, k=len(chunks))]
+        fused = reciprocal_rank_fusion(
+            [[(chunks[i], 0.0) for i in vec_full], [(chunks[i], s) for i, s in bm_full]],
+            k=60,
+        )[:TOP]
+        print("  【RRF 融合】只看排名，1/(60+rank) 求和（← 项目真实做法）")
+        for r, (c, s) in enumerate(fused, 1):
+            print(f"    #{r}  rrf={s:.6f}   {title_of(c)}")
         print()
 
     print("=" * 64)
