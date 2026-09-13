@@ -7,8 +7,9 @@ Python 装饰器（decorator）：@ 到底是什么
 
 实验 1  @ 只是语法糖：手写等价形式，证明 @deco 就等于 f = deco(f)
 实验 2  两种形态：裸装饰器 @deco vs 装饰器工厂 @deco()
-实验 3  两种哲学：注册型（原函数留着）vs 替换型（原函数被换掉）——真实库对照
-实验 4  回到项目：真实 FastMCP + 项目的 validate_field_type，
+实验 3  名字去哪儿了：包完之后 validate_field_type 这个名字指向谁？（原函数还在吗）
+实验 4  两种哲学：注册型（原函数留着）vs 替换型（原函数被换掉）——真实库对照
+实验 5  回到项目：真实 FastMCP + 项目的 validate_field_type，
         看 docstring 和类型注解怎么变成模型的"参数说明书"
 
 全程零 LLM 成本、不联网。
@@ -35,6 +36,20 @@ def section(n: int, text: str) -> None:
 # ══════════════════════════════════════════════════════════════════
 section(1, "@ 只是语法糖：@deco 等价于 f = deco(f)")
 # ══════════════════════════════════════════════════════════════════
+
+print("""先说『语法糖』是什么：**一种让代码更好写、更好读的简写形式，它不提供任何
+新能力**——解释器会在背后把它翻译成原本那套更啰嗦的写法。糖衣在里面，药是一样的。
+
+你早就在用了（左边是糖，右边是它其实的意思）：
+
+    a += 1              →   a = a + 1
+    for x in [1,2]:     →   用迭代器手写 while + __next__ + StopIteration
+    f"你好{name}"        →   "你好" + str(name)   （f-string 就是拼字符串的糖）
+    def f(a, b=1): ...  →   函数签名里自动处理默认值的框架代码
+    a, b = b, a         →   用临时变量 tmp 三步交换
+
+@ 也是这一类：**它是『定义完函数后立刻包一层再赋回原名字』这个常见动作的糖。**
+""")
 
 
 def shout(func):
@@ -150,18 +165,82 @@ print("""
     @mcp.resource("protocol-tools://…") # 带括号 + 参数：资源地址是必填配置
 
 为什么 @mcp.tool() 明明没参数也非得写括号？因为 FastMCP.tool() 被设计成
-**只支持带括号**的形态——它的函数签名长这样（实验 4 会打印）：
+**只支持带括号**的形态——它的函数签名长这样（实验 5 会打印）：
 
     def tool(self, name=None, title=None, ...) -> Callable[[AnyFunction], AnyFunction]
                                                      └─ 返回值是一个装饰器 ─┘
 
 它收到调用后才返回装饰器，所以括号不能省。而 LangChain 的 @tool 两种都行
-（实验 3 验证），这是两个库的设计选择不同，不是 Python 语法不同。
+（实验 4 验证），这是两个库的设计选择不同，不是 Python 语法不同。
 """)
 
 
 # ══════════════════════════════════════════════════════════════════
-section(3, "两种哲学：注册型（原函数留着）vs 替换型（原函数被换掉）")
+section(3, "名字去哪儿了：包完之后 validate_field_type 这个名字指向谁？")
+# ══════════════════════════════════════════════════════════════════
+
+from langchain_core.tools import tool  # noqa: E402  放这里是为了紧挨着下文
+
+
+def subtract(a: int, b: int) -> int:
+    """两数相减（先当普通函数写，方便观察它的『身份』）。"""
+    return a - b
+
+
+raw_id = id(subtract)
+print("① 刚 def 完      → subtract 指向:", type(subtract).__name__, "| id =", raw_id)
+
+packed = tool(subtract)                # ← @tool 干的就是这一次调用
+print("② tool() 的产物  → 类型:", type(packed).__name__, "| id =", id(packed),
+      "| 是①那个对象吗?", id(packed) == raw_id)
+
+subtract = packed                      # ← @tool 干的第二件事：覆盖名字
+print("③ 覆盖之后       → subtract 指向:", type(subtract).__name__, "| id =", id(subtract))
+
+print("""
+把名字理解成**贴在盒子上的标签**：
+
+    第 ① 步：造了个函数盒子  ── 贴标签『subtract』
+    第 ② 步：造了个工具盒子（把①装进去）── 标签还在①上
+    第 ③ 步：把标签从①上撕下来，贴到工具盒子上
+
+关键：**旧盒子没有被销毁**，只是眼下没有名字指着它了。它还活着。""")
+
+print("旧盒子躲在哪儿？", type(subtract.func).__name__, "| id =", id(subtract.func),
+      "| 还是①那个盒子吗?", id(subtract.func) == raw_id)
+
+print("\n同一个函数，三种叫法，结果对比：")
+try:
+    subtract(5, 3)
+except TypeError as e:
+    print("  subtract(5, 3)                 →", type(e).__name__ + ":", e)
+print("  subtract.func(5, 3)            →", subtract.func(5, 3), " ← 掀开盖子，直接调原函数")
+print('  subtract.invoke({"a":5,"b":3}) →', subtract.invoke({"a": 5, "b": 3}), " ← 打包后的标准调法")
+
+print("""
+这就回答了『既然等价于 validate_field_type = tool(validate_field_type)，
+那我普通调用 validate_field_type 的时候怎么理解』：
+
+    **你不是在调用那个函数了。** 名字已经被贴到 StructuredTool 上，
+    validate_field_type(...) 等于在『调用一个工具对象』——它没实现 __call__，
+    所以直接 TypeError。
+
+回到项目 phase4_2_tool_calling.py 的三行，现在应该全通了：
+
+    第 40 行   @tool                              ← 等价于 name = tool(name)
+    第 55 行   FUNC_MAP = {"validate_field_type": validate_field_type}
+                                   ↑ 这里拿到的已经是 StructuredTool，不是函数
+    第 73 行   result = str(FUNC_MAP[name].invoke(args))
+                                       ↑ 所以 .invoke() 不是多余包装，是必须的
+
+.invoke(args) 内部做的事：收一个字典 → 拆成关键字参数 → 转交给 .func 里
+那个真正的函数。它为什么必须收字典？因为模型回传的参数就是 JSON（字典形态），
+LangChain 顺手用字典当统一入口。
+""")
+
+
+# ══════════════════════════════════════════════════════════════════
+section(4, "两种哲学：注册型（原函数留着）vs 替换型（原函数被换掉）")
 # ══════════════════════════════════════════════════════════════════
 
 # ── 哲学 A：注册型 ──────────────────────────────────────────────
@@ -185,8 +264,6 @@ print("函数还是函数吗？", type(my_tool).__name__, "| 直接调用 →", 
 
 # ── 哲学 B：替换型 ──────────────────────────────────────────────
 print("\n── 哲学 B：替换型（LangChain 的 @tool 就是这么干的）──")
-
-from langchain_core.tools import tool  # noqa: E402  （放这里是为了让实验 3 的对比紧挨着）
 
 
 @tool
@@ -230,7 +307,7 @@ print("""
 
 
 # ══════════════════════════════════════════════════════════════════
-section(4, "回到项目：真实 FastMCP 把 docstring + 类型注解变成 JSON Schema")
+section(5, "回到项目：真实 FastMCP 把 docstring + 类型注解变成 JSON Schema")
 # ══════════════════════════════════════════════════════════════════
 
 from mcp.server.fastmcp import FastMCP  # noqa: E402
@@ -287,10 +364,14 @@ print("=" * 66)
 print("一句话总结")
 print("=" * 66)
 print("""
-1. @ 是语法糖：@deco 上面的函数 = deco(原函数) 的返回值。
-2. 带括号 = 装饰器工厂：先执行 deco(配置)，拿到装饰器，再去包函数。
-3. 装饰器返回什么，决定了原函数还在不在：
+1. 语法糖 = 更好写、但不提供新能力的简写。@ 就是其中一种。
+2. @deco 等价于 f = deco(f)：定义完 → 包一层 → 用返回值覆盖原名字。
+3. 名字是贴在盒子上的标签，不是盒子本身。第三步只是把标签换了个盒子贴。
+   原函数不会被销毁——它活在装饰器的返回值里（LangChain 是 .func）。
+   『普通调用 validate_field_type 怎么理解』的答案是：那已经不是原来那个函数了。
+4. 带括号 = 装饰器工厂：先执行 deco(配置)，拿到装饰器，再去包函数。
+5. 装饰器返回什么，决定了原函数还在不在：
    FastMCP 返回原函数（注册型）→ 还能当函数调；
    LangChain 返回 StructuredTool（替换型）→ 只能用 .invoke()。
-4. 注解 + docstring 是给模型的说明书，不是给人看的注释。
+6. 注解 + docstring 是给模型的说明书，不是给人看的注释。
 """)

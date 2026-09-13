@@ -1,12 +1,18 @@
 # Python 装饰器：`@` 到底是什么（读懂 `@tool` / `@mcp.tool()`）
 
-> 2026-09-13 实操跑通（`scripts/extra_python_decorator.py` 四个实验，附真实运行输出）。覆盖：一句话理解 / `@` 是语法糖 / 带括号与不带括号 / 注册型 vs 替换型 / 逐行点名项目里那段代码 / 三个坑 / 速记表。
+> 2026-09-13 实操跑通（`scripts/extra_python_decorator.py` 五个实验，附真实运行输出）。覆盖：一句话理解 / 语法糖是什么 / `@` 是语法糖 / **名字是标签（包完之后 `validate_field_type` 指向谁）** / 带括号与不带括号 / 注册型 vs 替换型 / 逐行点名项目里那段代码 / 三个坑 / 速记表。
 >
 > 学习动线：`scripts/phase4_2_tool_calling.py` 的 `@tool`、`scripts/demo_mcp_server.py` 的 `@mcp.tool()`——一个不带括号、一个带括号。这不是魔法，是 Python 同一个语法：**装饰器**。这课把地基补上。
 
 ## 一、一句话理解
 
 **装饰器 = 一个"接收函数、返回函数"的函数。`@` 是把「定义完函数后紧接着做的包装动作」写到函数头顶的语法糖。**
+
+用三句话就能说清：
+
+1. `@tool` 让 Python 去做 `validate_field_type = tool(validate_field_type)` 这件事。
+2. 这个赋值**把函数名字重新贴到了 `tool()` 的返回值上**——所以装饰之后你再写 `validate_field_type(...)`，调到的已经不是原来那个函数了。
+3. 至于原函数还在不在、还能不能调，取决于 `tool()` 返回了什么。LangChain 的 `@tool` 返回工具对象（原函数藏进 `.func`），FastMCP 的 `@mcp.tool()` 返回原函数本身。
 
 不带 `@` 你要这么写：
 
@@ -27,7 +33,27 @@ def validate_field_type(...):
 
 **两者完全等价，一个字节的差别都没有。** 这就是全部。剩下所有看似复杂的花样（带括号、带参数、多个叠着写）都是这条规则的推论。
 
-## 二、`@` 是语法糖：拆开看就三步
+## 二、"语法糖"是什么，以及 `@` 是哪种糖
+
+**语法糖（syntactic sugar）= 一种让代码更好写、更好读的简写形式，它不提供任何新能力。** 解释器会在背后把它翻译成原本那套更啰嗦的写法——糖衣在里面，药是一样的。
+
+这个名字是"糖衣"的比喻：真正的药（底层那一堆啰嗦代码）还是得吃，但裹上糖衣就好咽了。
+
+你早就在用的糖：
+
+| 糖（好写） | 它其实的意思（啰嗦但本质） |
+|-----------|--------------------------|
+| `a += 1` | `a = a + 1` |
+| `for x in [1,2]:` | 手写迭代器：`while` + `__next__()` + 捕获 `StopIteration` |
+| `f"你好{name}"` | `"你好" + str(name)`（f-string 就是拼字符串的糖） |
+| `a, b = b, a` | 用临时变量 `tmp` 三步交换 |
+| `@deco` | `def f(): ...` 之后紧接着 `f = deco(f)` ← **本课主角** |
+
+**为什么要有糖？** 因为"定义完函数后立刻包一层、再赋回原名字"这个动作在框架里出现得太频繁（每个工具、每个路由都要来一次）。手写一是容易漏，二是会把函数本体埋进一堆赋值里。`@` 把这件事挪到函数头顶，一眼就能看出"这个函数被谁管着"。
+
+**不做会怎样？** 也不报错——你完全可以全部手写。但在 MCP 服务器里，一个函数没被 `@mcp.tool()` 包过，就**根本不会出现在工具清单里**：客户端看不见它，模型永远调不到，而且不报错。这就是为什么这个语法值得搞清楚。
+
+### `@` 拆开看就三步
 
 Python 解释器遇到 `@deco` 时，实际执行的是：
 
@@ -49,7 +75,46 @@ Python 解释器遇到 `@deco` 时，实际执行的是：
 >
 > **不做会怎样？** 也不是不行——你完全可以手动写。但在 MCP 服务器里，一个函数没被 `@mcp.tool()` 包过，就**根本不会出现在工具清单里**，客户端看不见它，模型也就永远调不到。这是静默失败：不报错，就是没反应。
 
-## 三、带括号 vs 不带括号：装饰器工厂
+## 三、名字是标签：包完之后，`validate_field_type` 指向谁？
+
+这是第二步 `f = deco(f)` 里**最反直觉的一格**。既然写的是 `validate_field_type = tool(validate_field_type)`，那"我平时调用 `validate_field_type` 的时候，到底在调什么？"
+
+**答案：装饰之后，你就不是在调那个函数了。**
+
+把名字理解成**贴在盒子上的标签**，不是盒子本身：
+
+```
+第 ① 步：造了个函数盒子        ── 贴上标签『subtract』
+第 ② 步：tool(函数) 造了个工具盒子（把①装进去）
+                                ── 标签还贴在①上，此时①和工具盒子同时存在
+第 ③ 步：subtract = 工具盒子    ── 把标签从①上撕下来，贴到工具盒子上
+```
+
+实验 3 用 `id()` 把这个过程拍了下来：
+
+```
+① 刚 def 完      → subtract 指向: function      | id = 2041696393760
+② tool() 的产物  → 类型: StructuredTool | id = 2041753677200 | 是①那个对象吗? False
+③ 覆盖之后       → subtract 指向: StructuredTool | id = 2041753677200
+
+旧盒子躲在哪儿？ function | id = 2041696393760 | 还是①那个盒子吗? True
+```
+
+**关键：旧盒子没被销毁，只是眼下没有名字指着它了。它还活着，躲在 `.func` 属性里。**
+
+同一个函数，三种叫法：
+
+```
+subtract(5, 3)                 → TypeError: 'StructuredTool' object is not callable
+subtract.func(5, 3)            → 2  ← 掀开盖子，直接调原函数
+subtract.invoke({"a":5,"b":3}) → 2  ← 打包后的标准调法
+```
+
+> 注意第一行的 `TypeError: 'StructuredTool' object is not callable`——它不是说"没有这个对象"，而是说"这个对象**不能被这样调用**"。变量名叫 `subtract`，值却是个工具对象，Python 找不到它的 `__call__` 方法，就报这个错。
+>
+> **反过来看 FastMCP**：`@mcp.tool()` 返回的是原函数本身，标签贴回原来的盒子，所以 `validate_field_type(5, 3)` 照样能调。这就是下一节要讲的"两种哲学"。
+
+## 四、带括号 vs 不带括号：装饰器工厂
 
 这是新手最容易懵的一格。
 
@@ -73,11 +138,11 @@ def tool(self, name=None, title=None, description=None, ...) -> Callable[[AnyFun
                                                               └──── 返回值是一个装饰器 ────┘
 ```
 
-它**必须被调用一次**才能拿到装饰器。而 LangChain 的 `@tool` 两种写法都支持（实验 3 验证：`@tool` 和 `@tool("named_add")` 都跑通）——因为它的第一个参数是 `name_or_callable`，收到函数就当裸用、收到字符串就当工厂。
+它**必须被调用一次**才能拿到装饰器。而 LangChain 的 `@tool` 两种写法都支持（实验 4 验证：`@tool` 和 `@tool("named_add")` 都跑通）——因为它的第一个参数是 `name_or_callable`，收到函数就当裸用、收到字符串就当工厂。
 
 > **两个库设计不同，不是 Python 语法不同。** 记不住就记住这句：**看到括号，就说明先执行了一次函数调用。**
 
-## 四、装饰器返回什么，决定原函数还在不在
+## 五、装饰器返回什么，决定原函数还在不在
 
 这是整个知识点里最实用的一格。装饰器最后返回的那个东西，会**顶替掉原函数的名字**：
 
@@ -91,7 +156,7 @@ def tool(self, name=None, title=None, description=None, ...) -> Callable[[AnyFun
 模型怎么知道它           服务器从注册表里翻出来          这个对象自带 schema
 ```
 
-实验 3 实测：
+实验 4 实测：
 
 ```
 ── 哲学 A：注册型 ──
@@ -110,7 +175,7 @@ add_bare  现在是什么类型: StructuredTool | 名字: add_bare
 
 **共同点（最重要）：两者都靠函数头上的「类型注解 + docstring」生成 JSON Schema。**
 
-## 五、逐行点名：项目里 `@tool` 那段代码
+## 六、逐行点名：项目里 `@tool` 那段代码
 
 ```python
 @tool                                    # ← ① 装饰器：把下面的函数变成 StructuredTool
@@ -121,7 +186,30 @@ def validate_field_type(field_name: str, field_type: str, length: int) -> str:
     ...
 ```
 
-实验 4 用真实 FastMCP 跑了一遍同一个函数，把"注解+docstring 怎么变成说明书"直接打了出来：
+**这一行 `@tool` 造成的连锁反应，在同一个文件里能顺着看下去**（`phase4_2_tool_calling.py`）：
+
+```python
+第 40 行   @tool
+           def validate_field_type(...): ...
+                                                  ↑ 此刻 validate_field_type 已经被
+                                                    换成 StructuredTool（第三节讲的换标签）
+
+第 55 行   FUNC_MAP = {"validate_field_type": validate_field_type}
+                                          ↑ 进字典的是 StructuredTool，不是函数
+
+第 61 行   llm_with_tools = llm.bind_tools([validate_field_type])
+                                          ↑ bind_tools 要的正是工具对象，
+                                            这也反过来说明 @tool 为什么必须替换型
+
+第 73 行   result = str(FUNC_MAP[name].invoke(args))
+                                     ↑ 所以 .invoke() 不是多余的包装，是必须的
+```
+
+> `.invoke(args)` 内部做的事：收一个字典 → 拆成关键字参数 → 转交给躲在 `.func` 里的那个真正的函数。
+>
+> 它为什么非得收字典？因为模型回传的 `tool_calls` 里，参数本来就是 JSON（字典形态）。LangChain 顺手把字典当成了所有工具的**统一入口**——这样不管原函数签名长什么样，调用方永远只用写 `.invoke({...})`。
+
+实验 5 用真实 FastMCP 跑了一遍同一个函数，把"注解+docstring 怎么变成说明书"直接打了出来：
 
 ```
   名字: validate_field_type
@@ -154,9 +242,9 @@ length: int)                         →  "length": {"type": "integer"}
 >
 > 这就是为什么 `phase4_2` 的设计原则是"**死规则交给代码**"——写一次注解，模型每次都看到准确的那份说明书，不会像让它背 `uint8 占 1 字节` 那样背错。
 
-## 六、实测输出（`scripts/extra_python_decorator.py`）
+## 七、实测输出（`scripts/extra_python_decorator.py`）
 
-零 LLM 成本、不联网，四个实验一次跑完：
+零 LLM 成本、不联网，五个实验一次跑完：
 
 ```
 实验 1｜@ 只是语法糖：@deco 等价于 f = deco(f)
@@ -172,12 +260,23 @@ length: int)                         →  "length": {"type": "integer"}
 @tag          → <裸用>
 @tag_with("<<")→ <<带括号<<
 
-实验 3｜两种哲学：注册型（原函数留着）vs 替换型（原函数被换掉）
+实验 3｜名字去哪儿了：包完之后 validate_field_type 这个名字指向谁？
+① 刚 def 完      → subtract 指向: function | id = 2041696393760
+② tool() 的产物  → 类型: StructuredTool | id = 2041753677200 | 是①那个对象吗? False
+③ 覆盖之后       → subtract 指向: StructuredTool | id = 2041753677200
+旧盒子躲在哪儿？ function | id = 2041696393760 | 还是①那个盒子吗? True
+
+同一个函数，三种叫法，结果对比：
+  subtract(5, 3)                 → TypeError: 'StructuredTool' object is not callable
+  subtract.func(5, 3)            → 2  ← 掀开盖子，直接调原函数
+  subtract.invoke({"a":5,"b":3}) → 2  ← 打包后的标准调法
+
+实验 4｜两种哲学：注册型（原函数留着）vs 替换型（原函数被换掉）
 add_bare  现在是什么类型: StructuredTool | 名字: add_bare
 当普通函数调 → TypeError: 'StructuredTool' object is not callable
 正确调法 → 3
 
-实验 4｜回到项目：真实 FastMCP 把 docstring + 类型注解变成 JSON Schema
+实验 5｜回到项目：真实 FastMCP 把 docstring + 类型注解变成 JSON Schema
 装饰一下之后，validate_field_type 还是普通函数吗？ function
   | 直接调 → seq: uint8 标准 1 字节，声明 1 → 合法
 但服务器内部已经悄悄记下了它。问服务器要工具清单： 名字: validate_field_type
@@ -185,7 +284,7 @@ add_bare  现在是什么类型: StructuredTool | 名字: add_bare
 
 完整输出存于 `outputs/extra_python_decorator.log`。
 
-## 七、三个坑
+## 八、三个坑
 
 ### 坑 1：`@mcp.tool` 忘了括号
 
@@ -228,7 +327,7 @@ def f(): ...
 
 等价于 `f = a(b(f))`：**离函数近的先包（b 先执行），离函数远的后包（a 后执行）**。读代码时从下往上读，写代码时最上面那个是"最外层"。
 
-## 八、速记表
+## 九、速记表
 
 | 你看到 | 它是什么 | 拆开等价于 |
 |--------|---------|-----------|
@@ -239,4 +338,12 @@ def f(): ...
 | `@tool`（LangChain） | 双形态，返回 `StructuredTool` | 原函数被**替换**，用 `.invoke()` |
 | `@mcp.tool()`（FastMCP） | 只支持带括号，返回原函数 | 原函数**保留**，同时登记进服务器 |
 
-**一句话记忆：`@` 就是把"包装"写到函数头顶；括号表示先执行一次拿到装饰器；装饰器返回什么，原函数就变成什么。**
+三条最容易混的，单独记：
+
+| 问题 | 答案 |
+|------|------|
+| 装饰之后 `my_func` 这个名字还指向原来那个函数吗？ | 不一定——看装饰器返回啥。LangChain 说不是，FastMCP 说是 |
+| 那个原函数死了吗？ | 没死。它活在装饰器的返回值里（LangChain 是 `.func`），只是暂时没名字指着它 |
+| 那 `.invoke({"a":1})` 里的字典是干嘛的？ | 拆成关键字参数转交给原函数。用字典是因为模型回传的参数本来就是 JSON |
+
+**一句话记忆：`@` 就是把"包装"写到函数头顶；括号表示先执行一次拿到装饰器；装饰器返回什么，原函数那个名字就指向什么。**
