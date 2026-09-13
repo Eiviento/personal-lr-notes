@@ -29,7 +29,7 @@
 | [langchain_api_reference.md](langchain_api_reference.md) | **API 手册（查词条来这里）**：9 章 26 词条七段式（签名/参数表/真实输出示例/项目出处/原理/踩坑）+ 配套 demo 脚本 | `scripts/demo_api_reference.py` |
 | [extra_mcp.md](extra_mcp.md) | MCP：工具/数据的 USB-C 标准插头 / 架构三件套 / 三原语 / 与 Function Calling 对比 / 实操走查（零 LLM 成本） | `scripts/demo_mcp_server.py` + `demo_mcp_client.py` |
 | [extra_thread_vs_coroutine.md](extra_thread_vs_coroutine.md) | **基础补课**：线程 vs 协程（MCP/async 代码的地基）——厨房类比 / 对比表 / GIL / 三实验实测 / 三大坑 / 读懂 MCP 客户端的 async 行 | `scripts/extra_thread_vs_coroutine.py` |
-| [extra_python_decorator.md](extra_python_decorator.md) | **基础补课**：Python 装饰器（`@tool` / `@mcp.tool()` 的地基）——`@` 是语法糖 / 带括号=装饰器工厂 / 注册型 vs 替换型 / 注解+docstring 怎么变成 JSON Schema / 三个坑 / 四实验实测 | `scripts/extra_python_decorator.py` |
+| [extra_python_decorator.md](extra_python_decorator.md) | **基础补课**：Python 装饰器（`@tool` / `@mcp.tool()` 的地基）——语法糖是什么 / 名字是标签（原函数去哪了）/ 带括号=装饰器工厂 / 注册型 vs 替换型 / 注解+docstring 怎么变成 JSON Schema / 三个坑 / 五实验实测 | `scripts/extra_python_decorator.py` + `scripts/demo_tool_after_decorator.py` |
 
 约定：
 - 每个文档 = 知识点（表格优先）+ 为什么（原理）+ 踩过的坑

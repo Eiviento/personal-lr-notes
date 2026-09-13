@@ -1,0 +1,72 @@
+==============================================================
+同一个函数的两份拷贝，6 种调用方式各试一遍
+==============================================================
+
+──────────────────────────────────────────────────────────────
+【对照组 A】普通函数 def add_plain(...)，没有 @tool
+──────────────────────────────────────────────────────────────
+  f 的类型 = function | callable(f) = True
+
+  ✅ ① 直接调用        f(1, 2)
+       → 3
+  ✅ ② 关键字调用      f(a=1, b=2)
+       → 3
+  ✅ ③ 放进字典再调    d["add"](1, 2)      ← 项目里 FUNC_MAP 的用法
+       → 3
+  ✅ ④ 当参数传给别的函数  apply(f, 1, 2)
+       → 3
+  ✅ ⑤ 看身份          f.__name__
+       → 'add_plain'
+  ❌ ⑥ 工具的标准调法  f.invoke({"a": 1, "b": 2})
+       → AttributeError: 'function' object has no attribute 'invoke'
+
+──────────────────────────────────────────────────────────────
+【实验组 B】同一个函数，头上加了 @tool
+──────────────────────────────────────────────────────────────
+  f 的类型 = StructuredTool | callable(f) = False
+
+  ❌ ① 直接调用        f(1, 2)
+       → TypeError: 'StructuredTool' object is not callable
+  ❌ ② 关键字调用      f(a=1, b=2)
+       → TypeError: 'StructuredTool' object is not callable
+  ❌ ③ 放进字典再调    d["add"](1, 2)      ← 项目里 FUNC_MAP 的用法
+       → TypeError: 'StructuredTool' object is not callable
+  ❌ ④ 当参数传给别的函数  apply(f, 1, 2)
+       → TypeError: 'StructuredTool' object is not callable
+  ❌ ⑤ 看身份          f.__name__
+       → AttributeError: 'StructuredTool' object has no attribute '__name__'
+  ✅ ⑥ 工具的标准调法  f.invoke({"a": 1, "b": 2})
+       → 3
+
+──────────────────────────────────────────────────────────────
+补充：原函数没死，躲在 .func 里
+──────────────────────────────────────────────────────────────
+  add_tooled.func        → <function add_tooled at 0x000001A6E1730EE0>
+  add_tooled.func(1, 2)  → 3   ← 掀开盖子，原地满血
+  它是上面 add_plain 那个对象吗？ False   ← False 很正常：本脚本 def 了两次，是两份独立拷贝
+
+──────────────────────────────────────────────────────────────
+补充：名字和 docstring 也换了地方
+──────────────────────────────────────────────────────────────
+  add_plain.__name__      → 'add_plain'
+  add_tooled.__name__     → '（没有这个属性了）'
+  add_tooled.name         → 'add_tooled'   ← 改用 .name 了
+  add_tooled.description  → '两数相加。'   ← docstring 搬到了这里
+
+==============================================================
+结论
+==============================================================
+  加了 @tool 之后，原来 4 种『把函数当函数调』的写法全部失效（①②③④），
+  连 __name__ 都没了。只有 ⑥ f.invoke({...}) 这一种调法活着。
+
+  这就是为什么项目 phase4_2_tool_calling.py 第 73 行必须写：
+
+      result = str(FUNC_MAP[name].invoke(args))
+
+  而不是想象中的：
+
+      result = str(FUNC_MAP[name](**args))     ← 这行会 TypeError
+
+  ③ 是最容易踩的一个坑：字典本身没问题，值（工具对象）被调用了才炸。
+  而模型的 tool_calls 回传的参数本来就是 JSON 字典，.invoke() 正好对上。
+

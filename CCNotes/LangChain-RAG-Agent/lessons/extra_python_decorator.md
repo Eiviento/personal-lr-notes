@@ -114,6 +114,40 @@ subtract.invoke({"a":5,"b":3}) → 2  ← 打包后的标准调法
 >
 > **反过来看 FastMCP**：`@mcp.tool()` 返回的是原函数本身，标签贴回原来的盒子，所以 `validate_field_type(5, 3)` 照样能调。这就是下一节要讲的"两种哲学"。
 
+### 想自己跑一遍看效果？→ `scripts/demo_tool_after_decorator.py`
+
+一个 60 行的最小对照脚本，拿同一个函数的两份拷贝，用**一样的 6 种调用方式**各试一遍：
+
+```
+【对照组 A】普通函数，没有 @tool     f 的类型 = function | callable(f) = True
+  ✅ ① 直接调用        f(1, 2)                        → 3
+  ✅ ② 关键字调用      f(a=1, b=2)                    → 3
+  ✅ ③ 放进字典再调    d["add"](1, 2)   ← FUNC_MAP 用法 → 3
+  ✅ ④ 当参数传给别的函数  apply(f, 1, 2)              → 3
+  ✅ ⑤ 看身份          f.__name__                     → 'add_plain'
+  ❌ ⑥ 工具的标准调法  f.invoke({"a": 1, "b": 2})
+       → AttributeError: 'function' object has no attribute 'invoke'
+
+【实验组 B】同一个函数，头上加了 @tool   f 的类型 = StructuredTool | callable(f) = False
+  ❌ ① 直接调用        f(1, 2)
+       → TypeError: 'StructuredTool' object is not callable
+  ❌ ② 关键字调用      f(a=1, b=2)                    → 同上 TypeError
+  ❌ ③ 放进字典再调    d["add"](1, 2)   ← FUNC_MAP 用法 → 同上 TypeError
+  ❌ ④ 当参数传给别的函数  apply(f, 1, 2)              → 同上 TypeError
+  ❌ ⑤ 看身份          f.__name__
+       → AttributeError: 'StructuredTool' object has no attribute '__name__'
+  ✅ ⑥ 工具的标准调法  f.invoke({"a": 1, "b": 2})      → 3
+```
+
+**两个信息量最大的点：**
+
+- `callable(f)` 从 `True` 变成 `False`——这就是①~④集体报 `not callable` 的根本原因，一行验完。
+- **③ 是最容易踩的坑**：字典本身没问题（`FUNC_MAP` 那行代码写得对），是**里面的值被调用时**才炸。而模型的 `tool_calls` 回传的参数本来就是 JSON 字典，`.invoke()` 正好对上。
+
+另外 `__name__` 也没了（改用 `.name`），docstring 搬到了 `.description`——这正是工具说明书的来源。原函数则完整地藏在 `.func` 里，`add_tooled.func(1, 2)` 照样返回 `3`。
+
+完整输出存于 `outputs/demo_tool_after_decorator.log`。
+
 ## 四、带括号 vs 不带括号：装饰器工厂
 
 这是新手最容易懵的一格。
