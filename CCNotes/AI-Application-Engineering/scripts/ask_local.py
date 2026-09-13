@@ -1,7 +1,7 @@
 """ask_local —— 本地端到端 RAG：一条命令跑完「检索 + 生成」，无需起服务
 
 对比 scripts/ask.py（那个是 HTTP 客户端，要先起 uvicorn）：
-本脚本把 api/main.py 的 _build_default() 那套组装逻辑搬到命令行里直接跑，
+本脚本把 src/api/main.py 的 _build_default() 那套组装逻辑搬到命令行里直接跑，
 适合「我就想看看完整 RAG 出来的答案长什么样」的场景。
 
 用法：
@@ -19,7 +19,7 @@
   - 生成阶段需要 DEEPSEEK_API_KEY（环境变量或 .env）。未配置时自动跳过生成，
     只打印检索候选并给出提示——脚本仍然可用（不会崩）。
   - 索引落在 outputs/chroma_db_local（outputs/ 已 gitignore），首次运行构建、
-    之后复用；不触碰 api/main.py 用的 data/chroma_db_api。
+    之后复用；不触碰 src/api/main.py 用的 data/chroma_db_api。
 """
 import shutil
 import sys
@@ -46,7 +46,7 @@ DEFAULT_QUESTION = "混合检索是怎么融合关键词和向量的"
 
 
 def load_chunks(strategy: str = "markdown", size: int = 500) -> list:
-    """切分语料 → 文本块列表（与 api/main.py 的 _build_index 同一套切法）。"""
+    """切分语料 → 文本块列表（与 src/api/main.py 的 _build_index 同一套切法）。"""
     chunks = []
     for md in sorted(DOCS_DIR.glob("*.md")):
         for c in split(md.read_text(encoding="utf-8"), strategy=strategy, size=size):

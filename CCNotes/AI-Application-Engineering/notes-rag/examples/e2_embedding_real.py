@@ -71,9 +71,13 @@ def main():
         print(f"[{i}] {row}")
 
     print("\n观察：")
-    print(f"  0 vs 1 = {dot(vecs[0], vecs[1]):.3f}  <- 0 个共同字，却很像（模型懂语义）")
-    print(f"  0 vs 2 = {dot(vecs[0], vecs[2]):.3f}  <- 对照组，明显更低")
-    print(f"  3 vs 4 = {dot(vecs[3], vecs[4]):.3f}  <- 换词同义，接近 1")
+    print(f"  0 vs 1 = {dot(vecs[0], vecs[1]):.3f}  <- 0 个共同字，却不低（模型懂语义）")
+    print(f"  3 vs 4 = {dot(vecs[3], vecs[4]):.3f}  <- 换词同义，接近 1（最干净的一组证据）")
+    print(f"  0 vs 2 = {dot(vecs[0], vecs[2]):.3f}  <- 对照组，最低")
+    print("\n但别急着把 0 vs 1 的 0.446 读成「很像」——回头看矩阵第 0 行：")
+    print(f"  0 vs 1 = {dot(vecs[0], vecs[1]):.3f}，"
+          f"而 0 vs 3 = {dot(vecs[0], vecs[3]):.3f}、0 vs 4 = {dot(vecs[0], vecs[4]):.3f} 与它几乎持平。")
+    print("  真实 embedding 的相似度普遍挤在一起，绝对值不可靠——有意义的是排序，不是分数本身。")
     print("\n这就是「向量检索」能命中换词同义、而关键词检索不能的根本原因。")
     return 0
 
