@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 应用工程 · 阶段 1 阅读笔记</title>
+<style>
+/* ============ 主题变量 ============ */
+*{box-sizing:border-box}
+:root{
+  color-scheme:light;
+  --bg:#f6f7f9; --panel:#ffffff; --panel-2:#fbfcfd;
+  --text:#1f2328; --dim:#59636e; --faint:#8b949e;
+  --border:#e3e6ea; --border-strong:#d0d7de;
+  --accent:#4f46e5; --accent-2:#6366f1; --accent-soft:#eef0ff;
+  --green:#1a7f37; --green-soft:#e8f5ec; --green-bd:#b7e0c2;
+  --blue:#0969da; --blue-soft:#e7f1fc; --blue-bd:#b6d7f7;
+  --red:#cf222e; --red-soft:#fdecee; --red-bd:#f5c2c7;
+  --amber:#9a6700; --amber-soft:#fff6e0; --amber-bd:#f0d9a0;
+  --code-bg:#0d1117; --code-text:#e6edf3; --code-dim:#8b949e;
+  --shadow:0 1px 2px rgba(27,31,36,.06),0 4px 14px rgba(27,31,36,.06);
+  --radius:12px; --sb:284px;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,"Courier New",monospace;
+}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0d1117; --panel:#161b22; --panel-2:#1c2128;
+  --text:#e6edf3; --dim:#9aa4ae; --faint:#6e7681;
+  --border:#2b3138; --border-strong:#3d444d;
+  --accent:#8b93ff; --accent-2:#a5abff; --accent-soft:#1b2136;
+  --green:#57d38a; --green-soft:#12261a; --green-bd:#1f4d31;
+  --blue:#6cb6ff; --blue-soft:#0f2033; --blue-bd:#1c4067;
+  --red:#ff8188; --red-soft:#2b1518; --red-bd:#5c2228;
+  --amber:#e3b341; --amber-soft:#2a220f; --amber-bd:#57471a;
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 6px 20px rgba(0,0,0,.38);
+}
+/* ============ 基础 ============ */
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--sans); font-size:16.5px; line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+  display:grid; grid-template-columns:var(--sb) minmax(0,1fr);
+}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.35; font-weight:700; letter-spacing:-.01em}
+p{margin:.7em 0}
+::selection{background:var(--accent-soft)}
+/* ============ 侧边栏 ============ */
+.sidebar{
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+  background:var(--panel); border-right:1px solid var(--border);
+  padding:22px 16px 40px; z-index:40;
+}
+.brand{display:flex; gap:11px; align-items:center; margin:2px 6px 18px}
+.logo{
+  width:38px; height:38px; border-radius:11px; flex:none;
+  display:grid; place-items:center; font-size:19px; color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  box-shadow:var(--shadow);
+}
+.brand-title{font-weight:700; font-size:15px; line-height:1.2}
+.brand-sub{font-size:12px; color:var(--faint); margin-top:2px}
+.theme-toggle{
+  width:100%; margin:0 0 16px; padding:8px 12px; cursor:pointer;
+  font:inherit; font-size:13.5px; color:var(--dim);
+  background:var(--panel-2); border:1px solid var(--border); border-radius:9px;
+  display:flex; align-items:center; justify-content:center; gap:7px; transition:.15s;
+}
+.theme-toggle:hover{color:var(--text); border-color:var(--border-strong)}
+#toc{font-size:14px}
+#toc a{display:block; color:var(--dim); padding:5px 10px; border-radius:7px; text-decoration:none; border-left:2px solid transparent; transition:.12s}
+#toc a:hover{color:var(--text); background:var(--panel-2)}
+#toc .toc-sec{font-weight:700; color:var(--text); margin-top:14px; font-size:13.5px; padding:6px 10px; letter-spacing:.02em}
+#toc .toc-sub{padding-left:22px; font-size:13px}
+#toc a.active{color:var(--accent); background:var(--accent-soft); border-left-color:var(--accent); font-weight:600}
+.menu-btn{
+  display:none; position:fixed; top:14px; left:14px; z-index:60;
+  width:44px; height:44px; border-radius:12px; cursor:pointer;
+  background:var(--panel); color:var(--text); border:1px solid var(--border);
+  font-size:19px; box-shadow:var(--shadow);
+}
+/* ============ 主区 ============ */
+main{width:100%; max-width:860px; margin:0 auto; padding:56px 40px 120px; min-width:0}
+section{scroll-margin-top:24px; margin-bottom:64px}
+.lesson-head{border-bottom:2px solid var(--border); padding-bottom:16px; margin-bottom:26px}
+.lesson-head h2{margin:0; font-size:29px}
+.lesson-meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+.chip{font-size:12.5px; padding:3px 10px; border-radius:999px; background:var(--panel); border:1px solid var(--border); color:var(--dim)}
+.chip code{font-size:12px; color:var(--accent); background:none; padding:0}
+h3{font-size:20px; margin:2em 0 .5em; padding-left:12px; border-left:4px solid var(--accent); border-radius:2px}
+h4{font-size:16.5px; margin:1.4em 0 .4em}
+.lead{font-size:17px; color:var(--dim)}
+/* ============ 三段式卡片 ============ */
+.triad{display:grid; gap:12px; margin:18px 0}
+.triad-item{padding:14px 16px 14px 18px; border-radius:var(--radius); background:var(--panel); border:1px solid var(--border); border-left:5px solid var(--border-strong)}
+.triad-item .t-label{font-size:12.5px; font-weight:700; letter-spacing:.06em; margin-bottom:4px}
+.triad-item p{margin:.2em 0}
+.t-do{border-left-color:var(--green)} .t-do .t-label{color:var(--green)}
+.t-why{border-left-color:var(--blue)} .t-why .t-label{color:var(--blue)}
+.t-not{border-left-color:var(--red)} .t-not .t-label{color:var(--red)}
+/* ============ 卡片 / 提示 ============ */
+.card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin:16px 0; box-shadow:var(--shadow)}
+.card-title{font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:8px}
+.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.callout{border-radius:var(--radius); padding:13px 16px; margin:16px 0; border:1px solid; font-size:15.5px}
+.callout .c-title{font-weight:700; margin-bottom:3px; display:flex; gap:7px; align-items:center}
+.callout p{margin:.25em 0}
+.c-warn{background:var(--amber-soft); border-color:var(--amber-bd)}
+.c-warn .c-title{color:var(--amber)}
+.c-info{background:var(--blue-soft); border-color:var(--blue-bd)}
+.c-info .c-title{color:var(--blue)}
+.c-ok{background:var(--green-soft); border-color:var(--green-bd)}
+.c-ok .c-title{color:var(--green)}
+.c-bad{background:var(--red-soft); border-color:var(--red-bd)}
+.c-bad .c-title{color:var(--red)}
+/* ============ 徽章 ============ */
+.badge{display:inline-block; font-size:12.5px; font-weight:700; padding:2px 9px; border-radius:999px; line-height:1.6}
+.b-green{background:var(--green-soft); color:var(--green); border:1px solid var(--green-bd)}
+.b-blue{background:var(--blue-soft); color:var(--blue); border:1px solid var(--blue-bd)}
+.b-red{background:var(--red-soft); color:var(--red); border:1px solid var(--red-bd)}
+.b-amber{background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber-bd)}
+/* ============ 表格 ============ */
+.tbl-wrap{overflow-x:auto; margin:16px 0; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel)}
+table{border-collapse:collapse; width:100%; font-size:14.5px}
+th,td{padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top}
+th{background:var(--panel-2); font-weight:700; font-size:13.5px; color:var(--dim); white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel-2)}
+td code,p code,li code{font-family:var(--mono); font-size:.87em; background:var(--accent-soft); color:var(--accent); padding:1.5px 5px; border-radius:5px}
+/* ============ 代码块 ============ */
+.code{position:relative; margin:16px 0; border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); background:var(--code-bg)}
+.code-head{display:flex; align-items:center; justify-content:space-between; padding:7px 12px; background:#161b22; border-bottom:1px solid #21262d}
+.code-lang{font-size:12px; color:var(--code-dim); font-family:var(--mono); letter-spacing:.03em}
+.copy-btn{font:inherit; font-size:12px; cursor:pointer; color:var(--code-dim); background:transparent; border:1px solid #30363d; border-radius:6px; padding:2px 9px; transition:.15s}
+.copy-btn:hover{color:var(--code-text); border-color:#484f58}
+.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-family:var(--mono); font-size:13.5px; line-height:1.65; color:var(--code-text)}
+.code pre .cm{color:var(--code-dim)}
+/* ============ 条形图 ============ */
+.bars{display:grid; gap:11px; margin:18px 0}
+.bar-row{display:grid; grid-template-columns:118px 1fr 62px; align-items:center; gap:12px; font-size:14px}
+.bar-track{height:22px; background:var(--panel-2); border-radius:7px; overflow:hidden; border:1px solid var(--border)}
+.bar-fill{height:100%; border-radius:6px 0 0 6px; transition:width .6s cubic-bezier(.2,.7,.3,1)}
+.f-vec{background:linear-gradient(90deg,#8b93ff,#6366f1)}
+.f-hyb{background:linear-gradient(90deg,#3fb950,#1a7f37)}
+.f-rr{background:linear-gradient(90deg,#e3b341,#bf8700)}
+.bar-val{text-align:right; font-weight:700; font-variant-numeric:tabular-nums}
+.bar-name{color:var(--dim)}
+.legend{display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:var(--dim); margin:-4px 0 12px}
+.legend i{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:5px; vertical-align:-1px}
+/* ============ tabs ============ */
+.tabs{margin:18px 0}
+.tab-btns{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid var(--border)}
+.tab-btn{font:inherit; font-size:14px; cursor:pointer; padding:8px 15px; color:var(--dim); background:transparent; border:none; border-bottom:2.5px solid transparent; margin-bottom:-1px; transition:.15s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent); border-bottom-color:var(--accent); font-weight:700}
+.tab-panel{display:none}
+.tab-panel.active{display:block; animation:fade .25s ease}
+@keyframes fade{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
+/* ============ 问答卡（三问法） ============ */
+.qa-list{display:grid; gap:10px; margin:16px 0}
+details.qa{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden}
+details.qa>summary{cursor:pointer; padding:13px 18px 13px 44px; position:relative; font-weight:600; font-size:15.5px; list-style:none; transition:.12s}
+details.qa>summary::-webkit-details-marker{display:none}
+details.qa>summary::before{content:"?"; position:absolute; left:14px; top:50%; transform:translateY(-50%); width:21px; height:21px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:13px; font-weight:800; display:grid; place-items:center}
+details.qa>summary::after{content:"+"; position:absolute; right:16px; top:50%; transform:translateY(-50%); color:var(--faint); font-size:19px; transition:.2s}
+details.qa[open]>summary::after{content:"−"}
+details.qa[open]>summary{background:var(--panel-2); border-bottom:1px solid var(--border)}
+details.qa>summary:hover{color:var(--accent)}
+.qa-body{padding:14px 18px 16px 44px; font-size:15px; color:var(--dim); animation:fade .2s ease}
+.qa-body strong{color:var(--text)}
+/* ============ 通用折叠 ============ */
+details.fold{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); margin:16px 0; overflow:hidden}
+details.fold>summary{cursor:pointer; padding:12px 18px; font-weight:700; font-size:15px; list-style:none}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"▸"; color:var(--accent); margin-right:9px; display:inline-block; transition:.2s}
+details.fold[open]>summary::before{transform:rotate(90deg)}
+details.fold[open]>summary{border-bottom:1px solid var(--border)}
+.fold-body{padding:6px 18px 16px}
+/* ============ 流程图 / 管线 ============ */
+.pipe{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:20px 0; padding:18px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow)}
+.pipe-node{flex:none; padding:9px 14px; border-radius:9px; background:var(--accent-soft); color:var(--accent); font-weight:600; font-size:14px; border:1px solid var(--border)}
+.pipe-node small{display:block; font-weight:400; font-size:11.5px; color:var(--dim)}
+.pipe-arrow{color:var(--faint); font-size:17px; font-weight:700}
+.pipe-node.end{background:var(--green-soft); color:var(--green)}
+/* ============ 路线图 rail ============ */
+.rail{display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin:22px 0}
+.rail-node{position:relative; text-align:center; padding:14px 8px 12px; border-radius:var(--radius); background:var(--panel); border:1px solid var(--border); opacity:.62}
+.rail-node.done{opacity:1; border-color:var(--green-bd); background:var(--green-soft)}
+.rail-node.now{opacity:1; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+.rail-num{font-size:12px; font-weight:800; color:var(--faint); letter-spacing:.05em}
+.rail-title{font-size:13.5px; font-weight:700; margin:5px 0 6px; line-height:1.3}
+.rail-node small{font-size:11px; color:var(--dim)}
+/* ============ 时间线 ============ */
+.timeline{position:relative; margin:20px 0 20px 8px; padding-left:26px; border-left:2px solid var(--border)}
+.tl-item{position:relative; margin-bottom:18px}
+.tl-item::before{content:""; position:absolute; left:-33px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--panel); border:2.5px solid var(--accent)}
+.tl-item.ok::before{border-color:var(--green); background:var(--green)}
+.tl-item.bad::before{border-color:var(--red)}
+.tl-date{font-size:12.5px; color:var(--faint); font-weight:700; letter-spacing:.03em}
+.tl-title{font-weight:700; margin:2px 0 3px}
+.tl-body{font-size:14.5px; color:var(--dim)}
+/* ============ 来源引用 ============ */
+.source{font-size:13.5px; color:var(--faint); border-left:3px solid var(--border-strong); padding:4px 0 4px 12px; margin:14px 0}
+.src-file{font-family:var(--mono); font-size:12.5px; color:var(--accent)}
+kbd{font-family:var(--mono); font-size:12.5px; background:var(--panel-2); border:1px solid var(--border-strong); border-bottom-width:2px; border-radius:5px; padding:1px 6px}
+/* ============ hero ============ */
+.hero{background:linear-gradient(135deg,var(--accent-soft),transparent 70%); border:1px solid var(--border); border-radius:18px; padding:30px 30px 26px; margin-bottom:34px}
+.hero h1{margin:0 0 10px; font-size:34px; letter-spacing:-.02em}
+.hero .lead{margin:0; max-width:60ch}
+.hero .tags{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px}
+/* ============ 导航卡 ============ */
+.nav-cards{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0}
+a.nav-card{display:block; padding:15px 17px; border-radius:var(--radius); background:var(--panel); border:1px solid var(--border); text-decoration:none; color:inherit; transition:.15s}
+a.nav-card:hover{text-decoration:none; border-color:var(--accent); transform:translateY(-2px); box-shadow:var(--shadow)}
+a.nav-card .nc-kicker{font-size:12px; font-weight:800; color:var(--accent); letter-spacing:.05em}
+a.nav-card .nc-title{font-weight:700; margin:4px 0 3px}
+a.nav-card .nc-desc{font-size:13.5px; color:var(--dim)}
+footer{color:var(--faint); font-size:13.5px; border-top:1px solid var(--border); padding-top:22px; margin-top:40px}
+footer .dot{color:var(--border-strong); margin:0 7px}
+/* ============ 响应式 ============ */
+@media (max-width:980px){
+  body{grid-template-columns:1fr}
+  .sidebar{position:fixed; top:0; left:0; width:284px; height:100vh; transform:translateX(-100%); transition:transform .25s ease; box-shadow:var(--shadow)}
+  .sidebar.open{transform:none}
+  .menu-btn{display:grid; place-items:center}
+  main{padding:70px 20px 90px; max-width:100%}
+  .grid-2,.nav-cards{grid-template-columns:1fr}
+  .rail{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:26px}
+  .lesson-head h2{font-size:23px}
+  .bar-row{grid-template-columns:88px 1fr 54px; font-size:13px}
+}
+@media (min-width:981px){ .menu-btn{display:none} }
+</style>
+</head>
+<body>
+
+<button class="menu-btn" id="menu-btn" aria-label="打开目录">☰</button>
+
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <span class="logo">◆</span>
+    <div>
+      <div class="brand-title">AI 应用工程</div>
+      <div class="brand-sub">阶段 1 · 生产级 RAG</div>
+    </div>
+  </div>
+  <button class="theme-toggle" id="theme-toggle"><span id="theme-icon">🌙</span><span id="theme-label">切换到深色</span></button>
+  <nav id="toc">
+    <a href="#home" class="toc-sec">🏠 项目与路线</a>
+    <a href="#home-overview" class="toc-sub">这是什么</a>
+    <a href="#home-rail" class="toc-sub">六阶段路线图</a>
+    <a href="#home-pipeline" class="toc-sub">RAG 全链路</a>
+    <a href="#home-env" class="toc-sub">环境事实</a>
+    <a href="#lesson-01" class="toc-sec">① 文档切分</a>
+    <a href="#l1-why" class="toc-sub">为什么是第一道杠杆</a>
+    <a href="#l1-strategies" class="toc-sub">三种策略</a>
+    <a href="#l1-data" class="toc-sub">实跑数据</a>
+    <a href="#lesson-02" class="toc-sec">② 向量检索</a>
+    <a href="#l2-flow" class="toc-sub">embedding 三步</a>
+    <a href="#l2-store" class="toc-sub">向量库设计</a>
+    <a href="#l2-data" class="toc-sub">实跑证据</a>
+    <a href="#lesson-03" class="toc-sec">③ 混合检索与精排</a>
+    <a href="#l3-vs" class="toc-sub">向量 vs BM25</a>
+    <a href="#l3-rrf" class="toc-sub">为什么用 RRF</a>
+    <a href="#l3-rerank" class="toc-sub">降级精排的教训</a>
+    <a href="#lesson-04" class="toc-sec">④ 评估与服务化</a>
+    <a href="#l4-metrics" class="toc-sub">三个指标</a>
+    <a href="#l4-report" class="toc-sub">评估报告</a>
+    <a href="#l4-api" class="toc-sub">HTTP 服务</a>
+    <a href="#l4-verify" class="toc-sub">端到端验证</a>
+  </nav>
+</aside>
+
+<main>
+
+  <section id="home">
+    <div class="hero">
+      <h1>AI 应用工程 · 阅读笔记</h1>
+      <p class="lead">把「会搭 Agent」升级为「能交付生产级 AI 应用」。这里是阶段 1「生产级 RAG 服务」的知识落盘——从切分、向量、混合检索到评估与服务化，每一步都有实跑数据支撑。</p>
+      <div class="tags">
+        <span class="badge b-blue">阶段 1 · DocQA</span>
+        <span class="badge b-green">26 单测全绿</span>
+        <span class="badge b-green">混合检索 hit/recall = 1.00</span>
+        <span class="badge b-amber">真实生成已复验</span>
+      </div>
+    </div>
+
+    <h3 id="home-overview">这是什么</h3>
+    <p>这是完成三条 AI 学习线之后的<strong>第二条主线</strong>：前面三个项目回答「这个机制是什么」（理解层），本项目回答「怎么把它做成能上线的服务」（生产层）。</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>阶段</th><th>项目</th><th>定位</th></tr></thead>
+        <tbody>
+          <tr><td>理解层</td><td><code>..\LangChain-RAG-Agent</code></td><td>LangChain 基础 + RAG + 对话 Agent</td></tr>
+          <tr><td>理解层</td><td><code>..\Project-Langchain</code></td><td>LangGraph 7 Phase（机制全景）</td></tr>
+          <tr><td>理解层</td><td><code>..\mcp-hello1</code></td><td>MCP 协议</td></tr>
+          <tr><td><strong>生产层</strong></td><td><strong>本项目</strong></td><td><strong>把机制组装成可部署 / 可观测 / 可扩展的系统</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="source">一句话区别：旧项目回答「这个机制是什么」，本项目回答「怎么把它做成能上线的服务」。来源 <span class="src-file">README.md</span></p>
+
+    <h3 id="home-rail">六阶段路线图</h3>
+    <p>六个阶段环环相扣，最后收敛成一个企业 AI 助手平台。下方高亮为当前所在位置。</p>
+    <div class="rail">
+      <div class="rail-node now"><div class="rail-num">01</div><div class="rail-title">生产级 RAG 服务</div><small>← 本页内容</small></div>
+      <div class="rail-node"><div class="rail-num">02</div><div class="rail-title">记忆体系</div><small>长期记忆 · 遗忘</small></div>
+      <div class="rail-node"><div class="rail-num">03</div><div class="rail-title">多 Agent + Skill</div><small>协同 · MCP 工具</small></div>
+      <div class="rail-node"><div class="rail-num">04</div><div class="rail-title">GraphRAG</div><small>知识图谱融合</small></div>
+      <div class="rail-node"><div class="rail-num">05</div><div class="rail-title">工程化部署</div><small>缓存 · 限流 · 监控</small></div>
+      <div class="rail-node"><div class="rail-num">06</div><div class="rail-title">模型微调</div><small>LoRA / QLoRA</small></div>
+    </div>
+
+    <h3 id="home-pipeline">RAG 全链路</h3>
+    <p>阶段 1 做的事情，就是把下面这条管线从「能跑」打磨到「测得准、当得了服务」。</p>
+    <div class="pipe">
+      <div class="pipe-node">文档切分<small>chunking</small></div><span class="pipe-arrow">→</span>
+      <div class="pipe-node">向量化<small>embedding</small></div><span class="pipe-arrow">→</span>
+      <div class="pipe-node">向量库<small>chromadb</small></div><span class="pipe-arrow">→</span>
+      <div class="pipe-node">混合检索<small>向量 + BM25 · RRF</small></div><span class="pipe-arrow">→</span>
+      <div class="pipe-node">精排<small>rerank</small></div><span class="pipe-arrow">→</span>
+      <div class="pipe-node end">生成答案<small>DeepSeek</small></div>
+    </div>
+    <p class="source">每一环对应一课：切分 → 课①，向量 → 课②，混合 + 精排 → 课③，评估 + 服务化 → 课④。</p>
+
+    <h3 id="home-env">环境事实</h3>
+    <p>技术选型不靠猜——下面是 Wave 0 探针的实测结论（2026-09）。</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>能力</th><th>状态</th><th>影响</th></tr></thead>
+        <tbody>
+          <tr><td>FastAPI 0.133.1 + uvicorn 0.41.0</td><td><span class="badge b-green">✅ 已装</span></td><td>阶段 1/5 的 API 服务可行</td></tr>
+          <tr><td>pydantic 2.12.5 / httpx 0.28.1</td><td><span class="badge b-green">✅</span></td><td>请求校验 + 客户端</td></tr>
+          <tr><td>chromadb 1.5.9</td><td><span class="badge b-green">✅</span></td><td>阶段 1 向量库</td></tr>
+          <tr><td>psycopg2 + PostgreSQL(5432)</td><td><span class="badge b-green">✅ 在跑</span></td><td>阶段 5 关系库持久化</td></tr>
+          <tr><td>NVIDIA RTX 4060 Laptop 8GB</td><td><span class="badge b-green">✅</span></td><td>阶段 6 可做小模型 LoRA/QLoRA</td></tr>
+          <tr><td>Redis 客户端 + 服务</td><td><span class="badge b-red">✗ 缺失</span></td><td>阶段 5 缓存 → 降级内存/文件</td></tr>
+          <tr><td>Docker</td><td><span class="badge b-red">✗ 未装</span></td><td>阶段 5 部署 → 降级本地多进程脚本</td></tr>
+          <tr><td>qdrant</td><td><span class="badge b-red">✗ 缺失</span></td><td>阶段 1 向量库备选，按需安装</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout c-ok">
+      <div class="c-title">✅ 结论</div>
+      <p>六个阶段<strong>全部可推进</strong>，无硬阻塞，只有两处降级（Redis 缓存、Docker 部署）。GPU 到位使阶段 6 从「只能演示」升级为「可真跑」。</p>
+    </div>
+
+    <h3>四课导览</h3>
+    <div class="nav-cards">
+      <a class="nav-card" href="#lesson-01"><div class="nc-kicker">LESSON 01</div><div class="nc-title">文档切分</div><div class="nc-desc">RAG 的第一道杠杆：块太大答案被淹没，块太小语义被切碎。</div></a>
+      <a class="nav-card" href="#lesson-02"><div class="nc-kicker">LESSON 02</div><div class="nc-title">向量检索</div><div class="nc-desc">把文本变成能算相似度的向量——embedding 内部只有三步，没有魔法。</div></a>
+      <a class="nav-card" href="#lesson-03"><div class="nc-kicker">LESSON 03</div><div class="nc-title">混合检索与精排</div><div class="nc-desc">向量和 BM25 是互补的两个瞎子；召回与排序是两件事。</div></a>
+      <a class="nav-card" href="#lesson-04"><div class="nc-kicker">LESSON 04</div><div class="nc-title">评估与服务化</div><div class="nc-desc">把「感觉准」变成「测出来准」，再把 RAG 链路变成 HTTP 服务。</div></a>
+    </div>
+  </section>
+
+  <section id="lesson-01">
+    <div class="lesson-head">
+      <h2>① 文档切分：RAG 的第一道杠杆</h2>
+      <div class="lesson-meta">
+        <span class="chip">阶段 1 / Wave 1</span>
+        <span class="chip">代码 <code>src\rag\splitter.py</code></span>
+        <span class="chip">测试 <code>tests\test_splitter.py</code></span>
+        <span class="chip">脚本 <code>scripts\compare_splitter.py</code></span>
+      </div>
+    </div>
+
+    <h3 id="l1-why">做什么 / 为什么 / 不做会怎样</h3>
+    <div class="triad">
+      <div class="triad-item t-do"><div class="t-label">做什么</div><p>把一篇长文档切成一块块小文本（chunk），供后续向量化与检索。</p></div>
+      <div class="triad-item t-why"><div class="t-label">为什么</div><p>向量检索算的是「一段文本 ↔ 一个问题」的语义相似度，而数据的最小单位就是 chunk：<strong>块太大</strong>——一块里混了好几个主题，命中了但答案淹没在无关内容里，模型抓不住重点、token 还贵；<strong>块太小</strong>——语义被切碎（把「七天无理由退货」切成「七天」「无理由」），检索反而找不到。</p></div>
+      <div class="triad-item t-not"><div class="t-label">不做会怎样</div><p>整篇当一块：一篇 3000 字文档只对应一个向量，等于「用一句话概括全文」——检索精度必然差。</p></div>
+    </div>
+    <div class="callout c-info">
+      <div class="c-title">💡 一句话</div>
+      <p>切分粒度是 RAG 调优的<strong>第一个旋钮</strong>——它错了，后面 rerank / 生成再强也救不回来。</p>
+    </div>
+
+    <h3 id="l1-strategies">三种策略</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>策略</th><th>怎么切</th><th>优点</th><th>缺点</th></tr></thead>
+        <tbody>
+          <tr><td><code>fixed</code></td><td>按固定字符数硬切，可设重叠</td><td>简单、块长整齐、可控</td><td>会切断句子 / 段落，破坏语义</td></tr>
+          <tr><td><code>recursive</code></td><td>按分隔符优先级（段落→换行→句号→空格）尽量在语义边界切</td><td>语义较完整、长度有弹性</td><td>逻辑稍复杂</td></tr>
+          <tr><td><code>markdown</code></td><td>按 <code>##&nbsp;</code> 二级标题切，每节一块</td><td>最贴合技术文档结构，块 ≈ 一个主题</td><td>依赖文档有规范标题；无标题则退化</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>重叠（overlap）</strong> 的作用：让相邻块共享一段文本，避免「答案正好卡在两块的交界处、两边都不完整」。<code>fixed</code> 策略里用，牺牲存储换召回。</p>
+
+    <h3 id="l1-data">实跑数据</h3>
+    <p>33 篇技术文档，单次实跑、未挑选：</p>
+    <div class="bars">
+      <div class="bar-row"><span class="bar-name"><code>fixed</code></span><div class="bar-track"><div class="bar-fill f-vec" style="width:76%"></div></div><span class="bar-val">472</span></div>
+      <div class="bar-row"><span class="bar-name"><code>recursive</code></span><div class="bar-track"><div class="bar-fill f-hyb" style="width:92%"></div></div><span class="bar-val">570</span></div>
+      <div class="bar-row"><span class="bar-name"><code>markdown</code></span><div class="bar-track"><div class="bar-fill f-rr" style="width:100%"></div></div><span class="bar-val">621</span></div>
+    </div>
+    <p class="source">平均块长：fixed 484 / recursive 361 / markdown 314 字；最长块均为 500。</p>
+    <div class="callout c-warn">
+      <div class="c-title">⚠️ 一个值得记住的教训</div>
+      <p>我最初<strong>预设</strong>「fixed 按规整窗口切，块数应该最多」——数据打脸了：fixed 块数<strong>最少</strong>（472）。原因：fixed 不理文本结构，长文档里很多字符落在同一块；而 markdown 遇到 <code>##</code> 就切，技术文档标题密集 → 块最碎（621 块）。<strong>调 RAG 时不要凭直觉断言哪个策略「应该」更好——实跑数据说话。</strong></p>
+    </div>
+
+    <h3>TDD 是怎么走的</h3>
+    <details class="fold">
+      <summary>展开：本 Wave 的实际过程（先红后绿）</summary>
+      <div class="fold-body">
+        <p>1. <strong>先写测试</strong>（<code>tests\test_splitter.py</code>，6 条断言锁定期望行为）<br>
+        2. <strong>跑测试 → 红灯</strong>：<code>ModuleNotFoundError: No module named 'src.rag.splitter'</code>（模块还没写，exit 2）<br>
+        3. <strong>实现 <code>splitter.py</code></strong><br>
+        4. <strong>跑测试 → 绿灯</strong>：<code>6 passed in 0.02s</code>（exit 0）</p>
+        <p>纯函数模块（无外部依赖）最适合这么练：测试是「行为契约」——先把「切 100 字、窗口 30、无重叠 → 4 块」这种期望写死，实现时目标明确，改坏了立刻红灯暴露。</p>
+      </div>
+    </details>
+
+    <h3>三问法精读</h3>
+    <div class="qa-list">
+      <details class="qa"><summary><code>_rec_split</code> 递归函数吃什么、吐什么？</summary><div class="qa-body">吃「一段可能超长的文本 + 分隔符列表 + 上限 size」，吐「若干不超过 size 的片段」；超长片段用下一级分隔符再切，直到 <code>""</code> 兜底硬切。</div></details>
+      <details class="qa"><summary><code>markdown</code> 策略为什么要用前瞻 <code>(?=^##&nbsp;)</code> 分割？</summary><div class="qa-body">前瞻分割让 <code>##&nbsp;</code> 留在每段<strong>开头</strong>而非被吃掉——这样每块都带标题，检索时标题也是语义信号。</div></details>
+      <details class="qa"><summary>不写 <code>overlap</code> 会怎样？</summary><div class="qa-body">答案若横跨两块边界，两块都只含半句，检索命中但内容不完整——overlap 用冗余换边界完整性。</div></details>
+    </div>
+    <p class="source">来源 <span class="src-file">lessons\lesson_01_splitter.md</span></p>
+  </section>
+
+  <section id="lesson-02">
+    <div class="lesson-head">
+      <h2>② 向量检索：把文本变成能「算相似度」的东西</h2>
+      <div class="lesson-meta">
+        <span class="chip">阶段 1 / Wave 2</span>
+        <span class="chip">代码 <code>src\rag\embedder.py</code> · <code>store.py</code></span>
+        <span class="chip">测试 <code>tests\test_embedder.py</code> · <code>test_store.py</code></span>
+        <span class="chip">Demo <code>scripts\demo_retrieve.py</code></span>
+      </div>
+    </div>
+
+    <h3>做什么 / 为什么 / 不做会怎样</h3>
+    <div class="triad">
+      <div class="triad-item t-do"><div class="t-label">做什么</div><p>把课①切出的文本块<strong>向量化</strong>（embedding）存进向量库；查询时把问题也向量化，找「语义最近」的块。</p></div>
+      <div class="triad-item t-why"><div class="t-label">为什么</div><p>关键词匹配做不到「语义相关但用词不同」。比如问「怎么防止模型编造订单号」，文档里写的是「防幻觉纵深：验证节点」——<strong>没有一个字相同</strong>，但语义相关。向量检索能命中，关键词检索不能。</p></div>
+      <div class="triad-item t-not"><div class="t-label">不做会怎样</div><p>退化成关键词搜索，用户换个说法就搜不到——这正是 RAG 要解决的核心痛点之一。</p></div>
+    </div>
+
+    <h3 id="l2-flow">embedding 内部就三步（没有魔法）</h3>
+    <div class="pipe">
+      <div class="pipe-node">原文<small>text</small></div><span class="pipe-arrow">→</span>
+      <div class="pipe-node">WordPiece 分词<small>中文逐字 / 英文子词</small></div><span class="pipe-arrow">→</span>
+      <div class="pipe-node">ONNX 前向推理<small>BGE-small-zh</small></div><span class="pipe-arrow">→</span>
+      <div class="pipe-node">池化 + 归一化<small>取 [CLS]，除模长</small></div><span class="pipe-arrow">→</span>
+      <div class="pipe-node end">向量<small>可直接算相似度</small></div>
+    </div>
+    <div class="callout c-info">
+      <div class="c-title">💡 归一化的意义</div>
+      <p>归一化后，两个向量的<strong>点积 == 余弦相似度</strong>——检索时排序只需点积，省一次除法。这正是「为什么归一化后点积等于余弦」的直觉来源。</p>
+    </div>
+    <p><strong>为什么用本地 ONNX 而不是 API</strong>：DeepSeek 没有 embedding API；chromadb 内置模型的 S3 下载国内不通。旧项目已下载好 BGE 中文模型，本模块<strong>复用</strong>它——这就是「不重新发明轮子」。</p>
+
+    <h3 id="l2-store">向量库：chromadb 的封装要点</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🔌 embeddings 外部算好显式传入</div>
+        <p>不让 chromadb 用自己的 embedding function——否则它会去下载内置模型（国内会卡）。副作用是 <code>store</code> 能用<strong>假嵌入器</strong>独立测试（<code>tests\test_store.py</code> 用了 FakeEmbedder，又快又稳）。</p>
+      </div>
+      <div class="card">
+        <div class="card-title">📐 相似度用余弦，距离换算成相似度</div>
+        <p>建库用 <code>metadata={"hnsw:space":"cosine"}</code>；chroma 返回的是<strong>距离</strong>，本模块换算成 <code>score = 1 - distance</code>（越大越相似，符合直觉）。</p>
+      </div>
+    </div>
+
+    <h3 id="l2-data">实跑证据（单次实跑、未挑选）</h3>
+    <p>建索引：33 篇文档 → markdown 切分 → <strong>621 块</strong>。查询命中：</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>问题</th><th>命中（Top-1）</th><th>相似度</th></tr></thead>
+        <tbody>
+          <tr><td>checkpointer 有什么用</td><td><code>pl_lesson_agent7_webapp.md</code>（checkpointer 一段）</td><td>0.670</td></tr>
+          <tr><td>怎么防止模型编造不存在的订单号</td><td><code>pl_lesson_agent4_reliability.md</code>「防幻觉纵深：验证节点」</td><td>0.650</td></tr>
+          <tr><td>MCP 协议里 server 和 client 是什么关系</td><td><code>lc_extra_mcp.md</code>「架构三件套」</td><td>0.674</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout c-ok">
+      <div class="c-title">✅ 关键观察</div>
+      <p>三个问题命中的都是<strong>语义最相关</strong>的块，且<strong>用词不同</strong>（问题问「编造订单号」，命中块写「防幻觉验证节点」）——这正是向量检索相对关键词检索的价值。原始日志见 <code>outputs\wave2_demo_retrieve.log</code>。</p>
+    </div>
+
+    <h3>TDD 过程与踩坑</h3>
+    <details class="fold">
+      <summary>展开：真实记录（一次几秒内暴露的 bug）</summary>
+      <div class="fold-body">
+        <p><strong>测试先行</strong>：<code>test_embedder.py</code>（形状 / 归一化 / 语义序）+ <code>test_store.py</code>（增删查 / 持久化），先跑到 RED（模块不存在）。</p>
+        <p><strong>踩坑</strong>：实现 <code>store.py</code> 时列表推导 <code>[c.metadata or {...} for i,c in ...]</code> 漏写 <code>enumerate</code>，pytest 立刻报 <code>NameError: name 'c' is not defined</code> → 修正 → <code>12 passed</code>。<strong>这就是先写测试的价值：bug 在几秒内暴露，而不是等到跑 demo 才发现。</strong></p>
+      </div>
+    </details>
+
+    <h3>三问法精读</h3>
+    <div class="qa-list">
+      <details class="qa"><summary>为什么归一化后「点积 = 余弦」？</summary><div class="qa-body">余弦 = 点积 /（模长乘积）；归一化让两个模长都 = 1，分母变 1，点积即余弦。</div></details>
+      <details class="qa"><summary><code>VectorStore</code> 为什么不自己算 embedding、而要外部传入？</summary><div class="qa-body">① 不让 chromadb 下载内置模型；② 解耦——store 可用假嵌入器独立测试；③ embedder 可替换而不改 store。</div></details>
+      <details class="qa"><summary>chroma 返回的 distance 和我们的 score 什么关系？</summary><div class="qa-body">cosine 空间下 <code>distance = 1 - 余弦相似度</code>，故 <code>score = 1 - distance</code>；换算后语义是「越大越相似」。</div></details>
+    </div>
+    <p class="source">来源 <span class="src-file">lessons\lesson_02_vector_retrieval.md</span></p>
+  </section>
+
+  <section id="lesson-03">
+    <div class="lesson-head">
+      <h2>③ 混合检索与精排：召回与排序是两件事</h2>
+      <div class="lesson-meta">
+        <span class="chip">阶段 1 / Wave 3</span>
+        <span class="chip">代码 <code>src\rag\bm25.py</code> · <code>retriever.py</code> · <code>reranker.py</code></span>
+        <span class="chip">测试 <code>tests\test_bm25.py</code> · <code>test_retriever.py</code></span>
+        <span class="chip">对比 <code>scripts\compare_retrieval.py</code></span>
+      </div>
+    </div>
+
+    <h3 id="l3-vs">为什么需要「混合」：向量和 BM25 是互补的两个瞎子</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th></th><th>强在</th><th>弱在</th></tr></thead>
+        <tbody>
+          <tr><td><strong>向量检索</strong></td><td>语义相近（换词也能命中）</td><td><strong>专有名词 / 编号 / 精确术语</strong>在语义空间不突出，易漏</td></tr>
+          <tr><td><strong>BM25</strong></td><td>关键词精确命中（术语、函数名、订单号）</td><td>换个说法就搜不到</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>用户在找 <code>create_agent</code> 时，向量可能给你一堆「讲 agent 是什么」的泛泛段落；BM25 则死死盯住 <code>create_agent</code> 这个词。<strong>两者融合 = 混合检索</strong>，是生产级 RAG 的标配。</p>
+
+    <h3 id="l3-rrf">融合为什么用 RRF 而不是「分数相加」</h3>
+    <p>向量相似度 ∈ [0, 1]，BM25 分数可达几十上百——<strong>尺度不同，直接相加没意义</strong>（BM25 会主导排序）。</p>
+    <div class="card">
+      <div class="card-title">🎯 RRF（Reciprocal Rank Fusion）只看排名</div>
+      <p>每个结果列表里，第 <code>rank</code> 名给该文档贡献 <code>1/(k + rank)</code>，多路结果求和。排名越靠前贡献越大，<code>k</code>（默认 60）起平滑作用。</p>
+      <div class="grid-2">
+        <div class="card" style="margin:10px 0"><div class="card-title">向量榜（第 1、2 名）</div><p><code>docA → 1/(60+1)</code> · <code>docB → 1/(60+2)</code></p></div>
+        <div class="card" style="margin:10px 0"><div class="card-title">BM25 榜（第 1、2 名）</div><p><code>docB → 1/(60+1)</code> · <code>docC → 1/(60+2)</code></p></div>
+      </div>
+      <p style="text-align:center; font-weight:700; color:var(--accent)">↓ 两路求和 → 融合榜</p>
+      <p><code>docB = 1/62 + 1/61</code>（两榜都靠前）<strong>胜出</strong>；<code>docA</code>、<code>docC</code> 各只在一路出现，排名靠后。<strong>共识项优先</strong>——这正是 RRF 的直觉。</p>
+    </div>
+    <div class="callout c-info">
+      <div class="c-title">💡 好处</div>
+      <p>RRF 免调参、对异构源更稳——它把任意尺度的分数都归一成「排名贡献」，不用去纠结「向量分和 BM25 分该配什么权重」。</p>
+    </div>
+
+    <h3 id="l3-rerank">精排（rerank）：召回之后再筛一遍</h3>
+    <p><strong>召回 ≠ 排序</strong>。混合检索先「召回」一批候选（如 20 个），但它们的顺序未必准。精排模型（cross-encoder）把「查询 + 候选」<strong>拼在一起</strong>喂模型打分，比向量距离准得多——代价是慢，所以只对少量候选做。</p>
+    <div class="callout c-warn">
+      <div class="c-title">⚠️ 本项目的诚实降级</div>
+      <p>真正的 cross-encoder（如 BGE-reranker）需要额外下载模型（国内可能受阻，本项目<strong>未验证可获取性</strong>）→ 采用降级实现：用「查询词在候选中的覆盖率」重排。下面的数据会显示<strong>这个降级版并不总优于 RRF</strong>——这正是「没有真精排模型就别吹精排」的实证。</p>
+    </div>
+
+    <h3>实跑对比</h3>
+    <p>621 块语料，单次实跑、未挑选：</p>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">retrieval-compare.txt</span><button class="copy-btn">复制</button></div>
+      <pre>[专有名词] create_agent 和 create_react_agent 有什么区别
+    纯向量       pl_lesson_agent6_scale(0.683) | ...
+    混合RRF     lc_extra_chat_assistan(0.031) | pl_lesson_agent6_scale(0.031) | ...
+
+[专有名词] thread_id 是干什么用的
+    纯向量       pl_lesson_agent3_memor(0.647) | ...
+    混合RRF     pl_lesson_agent4_relia(0.032) | pl_lesson_agent7_webap(0.032) | ...
+
+[语义] 怎么让 agent 在写操作前停下来等人工审批
+    纯向量       pl_lesson_agent4_relia(0.661) | ...
+    混合+rerank pl_lesson_agent4_relia(0.706) | ...
+
+[语义] 怎么判断检索系统好不好
+    纯向量       lc_code_walkthrough_ph(0.544) | ...   <span class="cm">← 泛化段落，没抓到 eval</span>
+    混合RRF     pl_lesson_agent5_eval.(0.032) | ...     <span class="cm">← 命中 agent5_eval（正确！）</span>
+    混合+rerank pl_lesson_agent1_white(0.700) | ...    <span class="cm">← 反而打乱</span></pre>
+    </div>
+    <div class="callout c-warn">
+      <div class="c-title">🔍 怎么读（诚实分析）</div>
+      <p><strong>1. 混合检索确实有效</strong>：最后一例问「怎么判断检索系统好不好」，纯向量给的是泛化的 walkthrough 段落，而混合 RRF 把 <code>lesson_agent5_eval</code>（讲评估的）提到第一——这正是混合想解决的事。<br>
+      <strong>2. 降级 rerank 不稳定</strong>：最后一例里，覆盖率重排反而把正确的 eval 文档挤掉、换成了 agent1。<strong>结论：没有真正的 cross-encoder 模型时，别迷信「加了 rerank 就更好」。</strong><br>
+      <strong>3. RRF 分数（0.03 量级）比向量相似度（0.6 量级）小很多，属正常</strong>——RRF 是<strong>排名分</strong>，不是相似度，别跨档比绝对值。</p>
+    </div>
+
+    <h3>TDD 过程与踩坑</h3>
+    <details class="fold">
+      <summary>展开：BM25 的一个反直觉行为</summary>
+      <div class="fold-body">
+        <p>先用 <code>BM25Okapi</code>，测试挂了——两个小测试失败（一个 <code>IndexError</code>、一个排序错）。根因：<strong>BM25Okapi 的 IDF 公式在小语料上会失真</strong>——词恰好出现在一半文档时，<code>IDF = log((N-n+0.5)/(n+0.5)) = log(1) = 0</code>，导致正确块得 0 分被过滤。改用 <code>BM25Plus</code>（IDF 恒非负）解决。</p>
+        <p><strong>教训</strong>：经典算法在小数据上有边界行为，<strong>测试小语料反而更容易暴露它</strong>。RRF 的 3 条测试（共识项优先 / 单路保序 / 分数正且降序）也是先红后绿。</p>
+      </div>
+    </details>
+
+    <h3>三问法精读</h3>
+    <div class="qa-list">
+      <details class="qa"><summary>RRF 为什么能容忍两路分数尺度不同？</summary><div class="qa-body">它只用 rank 不看 score，<code>1/(k+rank)</code> 把任意尺度的分数都归一成「排名贡献」。</div></details>
+      <details class="qa"><summary>为什么不干脆把向量和 BM25 分数加权相加？</summary><div class="qa-body">尺度不可比，权重极难调；RRF 免调参、对异构源更稳。</div></details>
+      <details class="qa"><summary><code>Reranker(mode="coverage")</code> 和真 cross-encoder 差在哪？</summary><div class="qa-body">coverage 只看词是否出现，不懂语义；cross-encoder 把 query+doc 一起过模型，理解语义相关度，但需模型且慢。</div></details>
+    </div>
+    <p class="source">来源 <span class="src-file">lessons\lesson_03_hybrid_rerank.md</span></p>
+  </section>
+
+  <section id="lesson-04">
+    <div class="lesson-head">
+      <h2>④ 检索评估与服务化：让「好不好」变成数字</h2>
+      <div class="lesson-meta">
+        <span class="chip">阶段 1 / Wave 4</span>
+        <span class="chip">代码 <code>src\evaluation\evaluate.py</code> · <code>src\api\main.py</code> · <code>src\rag\generator.py</code></span>
+        <span class="chip">脚本 <code>scripts\run_eval.py</code> · <code>scripts\ask.py</code></span>
+      </div>
+    </div>
+
+    <h3 id="l4-metrics">为什么必须评估：调优不能靠感觉</h3>
+    <p>前三课做了切分 / 向量 / 混合 / 精排——但「哪个策略更好」不能凭嘴说。评估把「感觉准」变成<strong>可计算的三个指标</strong>：</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>指标</th><th>问的问题</th><th>怎么算</th></tr></thead>
+        <tbody>
+          <tr><td><strong>hit_rate</strong></td><td>Top-K 里有没有命中相关文档？</td><td>有命中的问题数 / 总问题数</td></tr>
+          <tr><td><strong>recall@k</strong></td><td>相关文档被找全了吗？（一条问题可有多篇相关文档）</td><td>Top-K 覆盖的相关文档比例，取平均</td></tr>
+          <tr><td><strong>MRR</strong></td><td>正确的排得靠前吗？</td><td>第一个相关文档排名的倒数（第 1 名=1，第 2 名=0.5…），取平均</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="source">指标全用<strong>可编程判据</strong>（子串 / 集合运算），不靠第二个 LLM 评判——透明、可复现、零成本。</p>
+
+    <h3 id="l4-report">实跑评估报告</h3>
+    <p>621 块语料 · 20 题 · Top-5，单次实跑、未挑选。点击标签切换策略：</p>
+    <div class="tabs">
+      <div class="tab-btns">
+        <button class="tab-btn active">纯向量</button>
+        <button class="tab-btn">混合 RRF</button>
+        <button class="tab-btn">混合 + rerank</button>
+      </div>
+      <div class="tab-panel active">
+        <div class="bars">
+          <div class="bar-row"><span class="bar-name">hit_rate</span><div class="bar-track"><div class="bar-fill f-vec" style="width:90%"></div></div><span class="bar-val">0.90</span></div>
+          <div class="bar-row"><span class="bar-name">recall</span><div class="bar-track"><div class="bar-fill f-vec" style="width:88%"></div></div><span class="bar-val">0.88</span></div>
+          <div class="bar-row"><span class="bar-name">MRR</span><div class="bar-track"><div class="bar-fill f-vec" style="width:82%"></div></div><span class="bar-val">0.82</span></div>
+        </div>
+        <p class="source">基线：纯语义检索。漏在专有名词 / 编号上。</p>
+      </div>
+      <div class="tab-panel">
+        <div class="bars">
+          <div class="bar-row"><span class="bar-name">hit_rate</span><div class="bar-track"><div class="bar-fill f-hyb" style="width:100%"></div></div><span class="bar-val">1.00</span></div>
+          <div class="bar-row"><span class="bar-name">recall</span><div class="bar-track"><div class="bar-fill f-hyb" style="width:100%"></div></div><span class="bar-val">1.00</span></div>
+          <div class="bar-row"><span class="bar-name">MRR</span><div class="bar-track"><div class="bar-fill f-hyb" style="width:83%"></div></div><span class="bar-val">0.83</span></div>
+        </div>
+        <p class="source">最优：20 题全命中（hit/recall = 1.00），MRR 也最高。</p>
+      </div>
+      <div class="tab-panel">
+        <div class="bars">
+          <div class="bar-row"><span class="bar-name">hit_rate</span><div class="bar-track"><div class="bar-fill f-rr" style="width:95%"></div></div><span class="bar-val">0.95</span></div>
+          <div class="bar-row"><span class="bar-name">recall</span><div class="bar-track"><div class="bar-fill f-rr" style="width:95%"></div></div><span class="bar-val">0.95</span></div>
+          <div class="bar-row"><span class="bar-name">MRR</span><div class="bar-track"><div class="bar-fill f-rr" style="width:64%"></div></div><span class="bar-val">0.64</span></div>
+        </div>
+        <p class="source">负优化：加了降级重排后，hit/recall 掉到 0.95，MRR 从 0.83 暴跌到 0.64。</p>
+      </div>
+    </div>
+    <div class="callout c-ok">
+      <div class="c-title">✅ 三个结论</div>
+      <p><strong>1. 混合检索确实赢</strong>：纯向量 0.90 → 混合 1.00（20 题全命中）。BM25 补上了向量对术语 / 编号的短板。<br>
+      <strong>2. 降级 rerank 是负优化</strong>：重排打乱了 RRF 已经不错的顺序——<strong>没有真 cross-encoder 模型时，别加「假精排」</strong>。<br>
+      <strong>3. 这组数字是「可对比基线」</strong>：以后换切分策略 / embedding 模型 / RRF 参数，重跑 <code>run_eval.py</code> 就能知道变好还是变坏（单变量回归的雏形）。</p>
+    </div>
+
+    <h3 id="l4-api">服务化：把 RAG 链路变成 HTTP 接口</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>接口</th><th>作用</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /health</code></td><td>健康检查</td></tr>
+          <tr><td><code>POST /qa</code></td><td><code>{question, k}</code> → <code>{answer, sources}</code></td></tr>
+          <tr><td><code>POST /ingest</code></td><td>重建索引</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">🔑 关键设计——依赖注入</div>
+      <p><code>create_app(retriever, generator)</code> 允许把检索器 / 生成器换掉：</p>
+      <p><strong>测试时</strong>注入<strong>假件</strong>（零 API、快）→ <code>tests\test_api.py</code> 用 TestClient 跑通路由 / 校验 / 序列化；<br>
+      <strong>生产时</strong>用 <code>--factory</code> 走 <code>_build_default()</code>（真 ONNX + DeepSeek）。</p>
+    </div>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">启动服务</span><button class="copy-btn">复制</button></div>
+      <pre>uvicorn src.api.main:create_app --factory --port 8000<span class="cm">   # 起服务</span>
+python scripts/ask.py "你的问题"<span class="cm">                            # 客户端调用</span></pre>
+    </div>
+
+    <h3 id="l4-verify">端到端验证：从「未完成」到已复验</h3>
+    <div class="timeline">
+      <div class="tl-item bad">
+        <div class="tl-date">2026-09-12</div>
+        <div class="tl-title">真实问答返回 500 <span class="badge b-red">未完成</span></div>
+        <div class="tl-body"><code>/health</code> 返回 200 ✅；<code>/qa</code> 返回 <strong>500</strong>——根因 <code>openai.AuthenticationError: 401 ... api key is invalid</code>。服务端日志显示请求走到了 <code>generator.generate</code> 才 401，说明<strong>检索链路正常</strong>，只是生成环节的 key 失效。</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">2026-09-12 · 排查</div>
+        <div class="tl-title">定位为环境问题，非代码问题</div>
+        <div class="tl-body">① shell 无 <code>DEEPSEEK_API_KEY</code>（无污染）；② 加载的是 <code>..\Project-Langchain\.env</code>；③ 用该 key 直连 DeepSeek → 同样 401。→ <strong>key 本身失效</strong>。纪律：不假装通过，明确标记「未验证」。</div>
+      </div>
+      <div class="tl-item ok">
+        <div class="tl-date">2026-09-13</div>
+        <div class="tl-title">key 更新后复验通过 <span class="badge b-green">已验证</span></div>
+        <div class="tl-body">新 key 经 shell 环境变量注入（未落盘）。最小探针直连 <code>deepseek-chat</code> → 「有效」；起服务 + <code>ask.py</code> 三问，均 <strong>exit 0 / HTTP 200 / 真实生成</strong>。检索 + 生成全链路通。</div>
+      </div>
+    </div>
+    <div class="code">
+      <div class="code-head"><span class="code-lang">scripts/ask.py 实跑输出（节选）</span><button class="copy-btn">复制</button></div>
+      <pre>问：混合检索是怎么融合关键词和向量的？
+
+答： 资料中没有提到混合检索如何融合关键词和向量。
+现有资料只涉及：向量检索原理（embedding 三步）、为什么用向量而非关键词…
+
+引用来源： ['lc_00_beginner_guide.md', 'lc_phase4_rag.md', 'lc_code_walkthrough_phase4.md']</pre>
+    </div>
+    <div class="callout c-info">
+      <div class="c-title">🔍 这个「资料中没有提到」不是失败</div>
+      <p>语料库（<code>data\documents\</code>，姊妹项目笔记）本就不含该主题；模型如实说「没有」并列出实际命中的来源——<strong>这是 System Prompt 防幻觉规则按设计生效</strong>（只据资料回答、资料不足如实说），同时证明生成环节真实读取了检索内容。</p>
+    </div>
+
+    <h3>三问法精读</h3>
+    <div class="qa-list">
+      <details class="qa"><summary><code>create_app(retriever, generator)</code> 为什么要能注入？</summary><div class="qa-body">测试用假件隔离 HTTP 层、零成本；生产用真件；同一份路由代码两种场景复用——这就是依赖注入对可测试性的价值。</div></details>
+      <details class="qa"><summary>为什么 <code>run_eval</code> 的指标用集合运算而不是让 LLM 打分？</summary><div class="qa-body">透明、可复现、零成本、不引入第二个模型的随机性；LLM 评判会引入裁判自身的偏差。</div></details>
+      <details class="qa"><summary>降级 rerank 的 MRR 为什么暴跌？</summary><div class="qa-body">coverage 只看「查询词是否出现」，不理解语义重排——它把 RRF 已排好的顺序打乱，把词面偶然匹配但语义不相关的块提前了。</div></details>
+    </div>
+    <p class="source">来源 <span class="src-file">lessons\lesson_04_eval_api.md</span> · 验证记录 <span class="src-file">docs\findings.md</span> F3</p>
+  </section>
+
+  <footer>
+    <p>AI 应用工程 · 阶段 1「生产级 RAG 服务」阅读笔记<span class="dot">·</span>由 <span class="src-file">lessons\lesson_01~04</span> 与 <span class="src-file">README.md</span>、<span class="src-file">docs\learning-plan.md</span> 整理<span class="dot">·</span>单文件自包含，可离线阅读与分享</p>
+  </footer>
+
+</main>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  var btn=document.getElementById('theme-toggle');
+  var icon=document.getElementById('theme-icon');
+  var label=document.getElementById('theme-label');
+  function apply(t){
+    root.setAttribute('data-theme',t);
+    if(t==='dark'){icon.textContent='☀️'; label.textContent='切换到浅色';}
+    else{icon.textContent='🌙'; label.textContent='切换到深色';}
+  }
+  var saved=null; try{saved=localStorage.getItem('notes-theme');}catch(e){}
+  try{ var qp=new URLSearchParams(window.location.search).get('theme'); if(qp==='dark'||qp==='light'){ saved=qp; } }catch(e){}
+  if(!saved){ saved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'; }
+  apply(saved);
+  btn.addEventListener('click',function(){
+    var t = root.getAttribute('data-theme')==='dark' ? 'light':'dark';
+    apply(t); try{localStorage.setItem('notes-theme',t);}catch(e){}
+  });
+
+  var mb=document.getElementById('menu-btn'), sb=document.getElementById('sidebar');
+  mb.addEventListener('click',function(){ sb.classList.toggle('open'); });
+  sb.addEventListener('click',function(e){ if(e.target.tagName==='A'){ sb.classList.remove('open'); } });
+
+  var links=[].slice.call(document.querySelectorAll('#toc a'));
+  var map={};
+  links.forEach(function(a){
+    var id=a.getAttribute('href').slice(1);
+    var el=document.getElementById(id);
+    if(el){ map[id]=a; }
+  });
+  if('IntersectionObserver' in window){
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          var a=map[en.target.id];
+          if(a){ a.classList.add('active'); }
+        }
+      });
+    },{rootMargin:'-12% 0px -78% 0px', threshold:0});
+    Object.keys(map).forEach(function(id){
+      var el=document.getElementById(id);
+      if(el){ obs.observe(el); }
+    });
+  }
+
+  document.querySelectorAll('.copy-btn').forEach(function(b){
+    b.addEventListener('click',function(){
+      var pre=b.closest('.code').querySelector('pre');
+      var text=pre ? pre.innerText : '';
+      function done(ok){
+        var old=b.textContent;
+        b.textContent = ok ? '已复制' : '复制失败';
+        setTimeout(function(){ b.textContent=old; },1200);
+      }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){done(true);},function(){done(false);});
+      } else {
+        try{
+          var ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(true);
+        }catch(e){ done(false); }
+      }
+    });
+  });
+
+  document.querySelectorAll('.tabs').forEach(function(tabs){
+    var btns=[].slice.call(tabs.querySelectorAll('.tab-btn'));
+    var panels=[].slice.call(tabs.querySelectorAll('.tab-panel'));
+    btns.forEach(function(btn2,i){
+      btn2.addEventListener('click',function(){
+        btns.forEach(function(x){ x.classList.remove('active'); });
+        panels.forEach(function(x){ x.classList.remove('active'); });
+        btn2.classList.add('active');
+        if(panels[i]){ panels[i].classList.add('active'); }
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
