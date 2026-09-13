@@ -209,6 +209,8 @@ add_bare  现在是什么类型: StructuredTool | 名字: add_bare
 
 **共同点（最重要）：两者都靠函数头上的「类型注解 + docstring」生成 JSON Schema。**
 
+> 这里反复出现的 `__name__` / `__doc__` 是什么写法、`lambda` 为什么不能拿来写工具函数 → 见 **[extra_python_lambda_dunder.md](extra_python_lambda_dunder.md)**。
+
 ## 六、逐行点名：项目里 `@tool` 那段代码
 
 ```python
