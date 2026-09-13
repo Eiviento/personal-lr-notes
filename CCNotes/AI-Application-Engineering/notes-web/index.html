@@ -289,6 +289,18 @@ footer .dot{color:var(--border-strong); margin:0 7px}
       </div>
     </div>
 
+    <div class="callout c-warn">
+      <div class="c-title">📅 关于本页数据的时点（重要）</div>
+      <p>本页所有「实跑数据」录于 <strong>2026-09-12，当时语料 33 篇</strong>。此后姊妹项目的笔记陆续补充，截至 <strong>2026-09-13 语料已增至 37 篇</strong> —— 因此有几处数字与今天重跑不同：</p>
+      <ul>
+        <li><strong>切分块数</strong>：33 篇时 <code>472 / 570 / 621</code> → 37 篇时 <code>552 / 659 / 714</code></li>
+        <li><strong>语料规模</strong>：<code>621 块</code> → <code>714 块</code>（课二 / 课三 / 课四都引用了这个数）</li>
+        <li><strong>混合 + rerank 档</strong>：<code>0.95 / 0.95 / 0.64</code> → <code>0.85 / 0.85 / 0.62</code></li>
+      </ul>
+      <p>而 <strong>纯向量（0.90 / 0.88 / 0.82）与混合 RRF（1.00 / 1.00 / 0.83）两档，在 37 篇下重跑数值不变</strong>。</p>
+      <p><strong>结论全部不变</strong>：fixed 块数最少、markdown 最碎；混合检索优于纯向量；降级 rerank 拖低 MRR。<strong>变的是数值，不是规律</strong>——这也正是「用实跑数据说话」的含义：数字会随语料变，规律不会。</p>
+    </div>
+
     <h3 id="home-overview">这是什么</h3>
     <p>这是完成三条 AI 学习线之后的<strong>第二条主线</strong>：前面三个项目回答「这个机制是什么」（理解层），本项目回答「怎么把它做成能上线的服务」（生产层）。</p>
     <div class="tbl-wrap">
