@@ -32,6 +32,7 @@
 | [extra_python_decorator.md](extra_python_decorator.md) | **基础补课**：Python 装饰器（`@tool` / `@mcp.tool()` 的地基）——语法糖是什么 / 名字是标签（原函数去哪了）/ 带括号=装饰器工厂 / 注册型 vs 替换型 / 注解+docstring 怎么变成 JSON Schema / 三个坑 / 五实验实测 | `scripts/extra_python_decorator.py` + `scripts/demo_tool_after_decorator.py` |
 | [extra_python_lambda_dunder.md](extra_python_lambda_dunder.md) | **基础补课**：lambda 和 dunder——lambda 是简写函数 / **为什么非用不可（延迟执行，不用它 try 就白写）** / 排序 key + RunnableLambda / 为什么工具函数不能用 lambda；`__name__` 是普通属性 / `if __name__ == "__main__"` 的真相 / 四种下划线 / dunder 钩子（顺带解答 `not callable`） | `scripts/extra_python_lambda_dunder.py` |
 | [extra_cosine_similarity.md](extra_cosine_similarity.md) | **基础补课**：向量相似度——向量/点积/模长三个零件 / 余弦相似度是什么（只看方向）/ **归一化后点积 == 余弦的推导** / 为什么要归一化（点积被长度带偏的实测）/ 回到 `phase4_1_rag.py:133` 那行代码 | `scripts/extra_cosine_similarity.py` |
+| [extra_cosine_vs_sine.md](extra_cosine_vs_sine.md) | **基础补课**：为什么不叫正弦相似度——余弦=余角的正弦（`cos θ = sin(90°−θ)`）/ **sin 真正的死穴：不单调（"一样"和"相反"同分）** / 高维压扁动态范围（附诚实的反方意见：噪声也缩，排序仍成立）/ cos 长在点积定义里 | `scripts/extra_cosine_vs_sine.py` |
 
 约定：
 - 每个文档 = 知识点（表格优先）+ 为什么（原理）+ 踩过的坑
