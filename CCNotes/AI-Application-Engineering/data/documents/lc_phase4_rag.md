@@ -23,6 +23,8 @@
 2. **ONNX 推理**：token ids → 神经网络 → 每个 token 一个向量
 3. **池化 + 归一化**：BGE 取 `[CLS]` 向量（`pooling="cls"`）；MiniLM 用全 token 平均（`pooling="mean"`）；归一化后余弦相似度 = 点积
 
+> 最后半句「归一化后余弦相似度 = 点积」的来龙去脉（余弦是什么、那个等式怎么推出来的、为什么非得归一化）→ 见专课 **[extra_cosine_similarity.md](extra_cosine_similarity.md)**。
+
 ## 链怎么接：只换"字段定义"这一环
 
 ```python
