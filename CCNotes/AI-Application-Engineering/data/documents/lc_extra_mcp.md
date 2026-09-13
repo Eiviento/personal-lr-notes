@@ -82,6 +82,8 @@ if __name__ == "__main__":
     mcp.run(transport="stdio")                        # 等客户端来插
 ```
 
+> 关于 `@mcp.tool()` 这个 `@` 本身是什么 Python 语法、为什么它带括号而 `phase4_2` 的 `@tool` 不带、装饰之后函数还在不在——见基础补课 **[extra_python_decorator.md](extra_python_decorator.md)**。一句话：`@` 是装饰器语法糖，`@mcp.tool()` 是「装饰器工厂」，它把函数登记进服务器清单后**返回原函数**（所以函数本身照常能调）。
+
 客户端 40 行 = 插上插头说 JSON-RPC（**没有一个大模型参与**）：
 
 ```python
